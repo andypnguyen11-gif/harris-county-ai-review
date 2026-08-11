@@ -11,7 +11,9 @@ public static class ValidationServiceExtensions
     public static IServiceCollection AddValidation(this IServiceCollection services)
     {
         services.AddScoped<DocumentValidationService>();
-        services.AddSingleton<IWorkflowDefinition, FloodplainDevelopmentPermitWorkflow>();
+        // Scoped, not singleton: the workflow may consume ISemanticValidationService,
+        // which is scoped to the request.
+        services.AddScoped<IWorkflowDefinition, FloodplainDevelopmentPermitWorkflow>();
 
         services.AddScoped<RunValidationHandler>();
         services.AddScoped<GetLatestValidationReportHandler>();

@@ -95,18 +95,31 @@ applicability conditions):
   certificate, and certificates; FIRM panel and datum consistency
   (`HC_Civil_Review_Checklist_2024.pdf`).
 
-## Deferred to semantic (LLM) validation
+## Semantic (LLM) rules in `FloodplainDevelopmentPermitWorkflow`
 
 Judgment calls that deterministic rules must not attempt (see the core engineering principle in
-`CLAUDE.md`):
+`CLAUDE.md`) run as `SemanticEvaluationRule` instances through `ISemanticValidationService`,
+clearly separated from the deterministic section (`BuildSemanticRules()` vs
+`BuildDeterministicRules()`) and stamped `ValidationType.Semantic`. Two are implemented:
 
-- Adequacy of the "Describe use of Accessory Building or Other" free-text description.
+| Requirement | Judgment asked of the model | Deterministic gating (no model call) |
+|---|---|---|
+| Project description consistency with construction type | Is the narrative description of the work consistent with the checked construction-type boxes (e.g. fill described but Fill unchecked)? | Skipped as not applicable when the application has no narrative description or no construction-type box is checked |
+| Accessory building or other use description | Does the "Describe use of Accessory Building or Other" free text adequately describe the intended use? | Only applicable when the Accessory Building or Other box is checked; a checked box with no description reports `Missing` without a model call |
+
+The model returns a strict JSON verdict (`pass` / `fail` / `needs_human_review`) with short
+reasoning; anything else — model errors included — fails closed to `UnableToDetermine`. Document
+text enters the prompt as delimited untrusted data with instructions to ignore anything
+instruction-like inside it (boundary hygiene only; a fuller prompt-injection defense lands in a
+later PR).
+
+## Still deferred to semantic (LLM) validation
+
 - Site-plan sufficiency — "sufficient description to locate the property", to-scale or
   "sufficient dimensioning" (Regs 4.04(a)) is a qualitative standard.
 - Benchmark description completeness on drawings (`HC_Residential_Floodplain_Notes_2017.pdf`).
 - Designer certification wording vs the required statement (Floodplain Notes NOTE block).
 - Substantial Improvement / Substantial Damage reasoning (Regs 4.04(e)(3), 5.01–5.03).
-- Consistency of narrative descriptions vs checked boxes (e.g. fill described but Fill unchecked).
 - HCFCD/PCPM compliance evidence and insignificant-development waiver eligibility (Regs 4.04(e),
   4.05(b)(1)).
 
