@@ -61,6 +61,13 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Search:Endpoint", "https://search.test.invalid");
         builder.UseSetting("Search:ApiKey", "integration-test-key");
 
+        // Embedding options are validated when the service is first resolved;
+        // tests never call the real service, so any well-formed values
+        // satisfy validation.
+        builder.UseSetting("Embeddings:Endpoint", "https://embeddings.test.invalid");
+        builder.UseSetting("Embeddings:ApiKey", "integration-test-key");
+        builder.UseSetting("Embeddings:Deployment", "integration-test-deployment");
+
         if (ConnectionStringOverride is not null)
         {
             builder.UseSetting("ConnectionStrings:Database", ConnectionStringOverride);
