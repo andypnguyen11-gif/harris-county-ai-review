@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using HarrisCountyAI.Application.Documents.Normalization;
 using HarrisCountyAI.Domain.Entities;
 using HarrisCountyAI.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -8,30 +9,37 @@ namespace HarrisCountyAI.Application.Documents.Extraction;
 /// <summary>
 /// Default <see cref="IDocumentProcessingService"/>: marks the document
 /// <see cref="DocumentProcessingStatus.Extracting"/>, downloads its content
-/// from blob storage, runs extraction, and marks the document
-/// <see cref="DocumentProcessingStatus.Extracted"/> on success or
-/// <see cref="DocumentProcessingStatus.Failed"/> on error.
+/// from blob storage, runs extraction (marking the document
+/// <see cref="DocumentProcessingStatus.Extracted"/>), normalizes and persists
+/// the result (marking it <see cref="DocumentProcessingStatus.Normalized"/>),
+/// or marks it <see cref="DocumentProcessingStatus.Failed"/> on error.
 /// </summary>
 public class DocumentProcessingService : IDocumentProcessingService
 {
     private readonly IDocumentRepository _documentRepository;
     private readonly IDocumentStorageService _documentStorage;
     private readonly IDocumentExtractionService _extractionService;
+    private readonly IDocumentNormalizationService _normalizationService;
+    private readonly INormalizedDocumentRepository _normalizedDocumentRepository;
     private readonly ILogger<DocumentProcessingService> _logger;
 
     public DocumentProcessingService(
         IDocumentRepository documentRepository,
         IDocumentStorageService documentStorage,
         IDocumentExtractionService extractionService,
+        IDocumentNormalizationService normalizationService,
+        INormalizedDocumentRepository normalizedDocumentRepository,
         ILogger<DocumentProcessingService> logger)
     {
         _documentRepository = documentRepository;
         _documentStorage = documentStorage;
         _extractionService = extractionService;
+        _normalizationService = normalizationService;
+        _normalizedDocumentRepository = normalizedDocumentRepository;
         _logger = logger;
     }
 
-    public async Task<ExtractedDocument> ProcessAsync(Guid documentId, CancellationToken cancellationToken = default)
+    public async Task<NormalizedDocument> ProcessAsync(Guid documentId, CancellationToken cancellationToken = default)
     {
         var document = await _documentRepository.GetByIdAsync(documentId, cancellationToken)
             ?? throw new InvalidOperationException($"Document '{documentId}' was not found.");
@@ -44,13 +52,20 @@ public class DocumentProcessingService : IDocumentProcessingService
             var extracted = await ExtractAsync(document, cancellationToken);
             await SetStatusAsync(document, DocumentProcessingStatus.Extracted, cancellationToken);
 
+            var normalized = _normalizationService.Normalize(document.CaseId, document.DocumentType, extracted);
+            await _normalizedDocumentRepository.AddAsync(normalized, cancellationToken);
+            await _normalizedDocumentRepository.SaveChangesAsync(cancellationToken);
+            await SetStatusAsync(document, DocumentProcessingStatus.Normalized, cancellationToken);
+
             _logger.LogInformation(
-                "Extracted document {DocumentId} ({FileName}) in {ElapsedMilliseconds} ms.",
+                "Processed document {DocumentId} ({FileName}) in {ElapsedMilliseconds} ms: {PageCount} pages, {FieldCount} fields.",
                 document.Id,
                 document.FileName,
-                stopwatch.ElapsedMilliseconds);
+                stopwatch.ElapsedMilliseconds,
+                normalized.Pages.Count,
+                normalized.Fields.Count);
 
-            return extracted;
+            return normalized;
         }
         catch (Exception exception)
         {

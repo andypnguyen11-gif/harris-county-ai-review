@@ -1,5 +1,6 @@
 using HarrisCountyAI.Application.Documents;
 using HarrisCountyAI.Application.Documents.Extraction;
+using HarrisCountyAI.Application.Documents.Normalization;
 using HarrisCountyAI.Domain.Entities;
 using HarrisCountyAI.Domain.Enums;
 
@@ -111,5 +112,28 @@ public sealed class FakeDocumentExtractionService : IDocumentExtractionService
             ModelId = "fake-model",
             ExtractedAt = DateTime.UtcNow,
         });
+    }
+}
+
+/// <summary>In-memory <see cref="INormalizedDocumentRepository"/>.</summary>
+public sealed class FakeNormalizedDocumentRepository : INormalizedDocumentRepository
+{
+    public List<NormalizedDocument> Added { get; } = [];
+
+    public int SaveChangesCallCount { get; private set; }
+
+    public Task<NormalizedDocument?> GetByDocumentIdAsync(Guid documentId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Added.OrderByDescending(d => d.CreatedAt).FirstOrDefault(d => d.DocumentId == documentId));
+
+    public Task AddAsync(NormalizedDocument normalizedDocument, CancellationToken cancellationToken = default)
+    {
+        Added.Add(normalizedDocument);
+        return Task.CompletedTask;
+    }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        SaveChangesCallCount++;
+        return Task.CompletedTask;
     }
 }

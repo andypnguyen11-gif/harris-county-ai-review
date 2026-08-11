@@ -2,6 +2,7 @@ using Azure;
 using Azure.AI.DocumentIntelligence;
 using HarrisCountyAI.Application.Documents;
 using HarrisCountyAI.Application.Documents.Extraction;
+using HarrisCountyAI.Application.Documents.Normalization;
 using HarrisCountyAI.Infrastructure.Persistence.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,7 @@ public static class DocumentIntelligenceServiceExtensions
         services.AddSingleton<AnalyzeResultMapper>();
         services.AddSingleton<IDocumentExtractionService, AzureDocumentExtractionService>();
 
+        services.AddScoped<INormalizedDocumentRepository, NormalizedDocumentRepository>();
         services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
 
         return services;

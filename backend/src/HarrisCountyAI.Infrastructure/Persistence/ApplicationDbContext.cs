@@ -15,6 +15,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Document> Documents => Set<Document>();
 
+    public DbSet<NormalizedDocument> NormalizedDocuments => Set<NormalizedDocument>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
