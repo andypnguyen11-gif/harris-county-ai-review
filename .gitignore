@@ -1,1 +1,29 @@
+# macOS
 .DS_Store
+
+# Worktrees (parallel development)
+.worktrees/
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+
+# Environment / secrets
+*.env
+appsettings.Local.json
+
+# IDE
+.idea/
+.vscode/
+
+# Test artifacts
+TestResults/
+coverage/
