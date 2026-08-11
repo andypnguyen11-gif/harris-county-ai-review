@@ -36,7 +36,8 @@ public class KnowledgeBaseApiTests : IClassFixture<SqlServerTestDatabase>, IAsyn
             },
         };
         _factory.SettingOverrides["BlobStorage:KnowledgeBaseContainerName"] = _knowledgeBaseContainerName;
-        _client = _factory.CreateClient();
+        _client = _factory.CreateClient().WithToken(
+            TestAuthentication.CreateToken(TestAuthentication.AdministratorUsername, ["Administrator"]));
     }
 
     public Task InitializeAsync() => Task.CompletedTask;

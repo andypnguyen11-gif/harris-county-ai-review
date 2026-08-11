@@ -1,4 +1,5 @@
 using System.Globalization;
+using HarrisCountyAI.Api.Authorization;
 using HarrisCountyAI.Api.Contracts.KnowledgeBase;
 using HarrisCountyAI.Application.Documents;
 using HarrisCountyAI.Application.KnowledgeBase;
@@ -6,6 +7,7 @@ using HarrisCountyAI.Application.KnowledgeBase.DeactivateKnowledgeDocument;
 using HarrisCountyAI.Application.KnowledgeBase.GetKnowledgeDocuments;
 using HarrisCountyAI.Application.KnowledgeBase.Ingestion;
 using HarrisCountyAI.Application.KnowledgeBase.UploadKnowledgeDocument;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -15,11 +17,13 @@ namespace HarrisCountyAI.Api.Controllers;
 /// Administration endpoints for the Harris County reference corpus.
 /// </summary>
 /// <remarks>
-/// These endpoints are admin-only; authorization arrives with the security
-/// milestone and is intentionally not enforced here yet.
+/// These endpoints manage the corpus itself, so they require the
+/// Administrator role. Reviewers reach the corpus for case work through the
+/// grounded question-answering endpoints instead.
 /// </remarks>
 [ApiController]
 [Route("api/knowledge-base")]
+[Authorize(Policy = AuthorizationPolicies.RequireAdministrator)]
 public class KnowledgeBaseController : ControllerBase
 {
     private readonly UploadKnowledgeDocumentHandler _uploadDocument;

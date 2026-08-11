@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 
+import { ApplicationRoles } from './core/auth/application-roles';
 import { authGuard } from './core/guards/auth.guard';
+import { requireRole } from './core/guards/role.guard';
 
 export const routes: Routes = [
   {
@@ -45,7 +47,8 @@ export const routes: Routes = [
   {
     path: 'knowledge-base',
     title: 'Knowledge Base | Harris County AI Document Review',
-    canActivate: [authGuard],
+    // Corpus administration, not case work: administrators only.
+    canActivate: [requireRole(ApplicationRoles.Administrator)],
     loadComponent: () =>
       import('./features/knowledge-base/knowledge-base').then((m) => m.KnowledgeBase),
   },

@@ -24,12 +24,14 @@
         <a class="app-nav__link" routerLink="/ask" routerLinkActive="app-nav__link--active"
           >Ask a Question</a
         >
-        <a
-          class="app-nav__link"
-          routerLink="/knowledge-base"
-          routerLinkActive="app-nav__link--active"
-          >Knowledge Base</a
-        >
+        @if (isAdministrator()) {
+          <a
+            class="app-nav__link"
+            routerLink="/knowledge-base"
+            routerLinkActive="app-nav__link--active"
+            >Knowledge Base</a
+          >
+        }
       </nav>
       <div class="app-user">
         <span class="app-user__name">{{ user()?.displayName }}</span>

@@ -34,7 +34,8 @@ public class CaseQuestionsApiTests : IDisposable
                 services.AddQuestionAnswering();
             },
         };
-        _client = _factory.CreateClient();
+        _client = _factory.CreateClient().WithToken(
+            TestAuthentication.CreateToken(TestAuthentication.ReviewerUsername, ["Reviewer"]));
     }
 
     public void Dispose()
