@@ -1,26 +1,37 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { CaseService } from '../../../core/services/case.service';
 import { DocumentService } from '../../../core/services/document.service';
+import { ValidationService } from '../../../core/services/validation.service';
 import { DocumentUpload } from '../../document-upload/document-upload';
 import { makeCase } from '../../../testing/case-fixtures';
 import { makeDocument } from '../../../testing/document-fixtures';
+import { makeValidationReport } from '../../../testing/validation-fixtures';
 import { CaseDetail } from './case-detail';
 
 describe('CaseDetail', () => {
   let getCase: ReturnType<typeof vi.fn>;
   let getDocuments: ReturnType<typeof vi.fn>;
+  let getLatestReport: ReturnType<typeof vi.fn>;
 
   function setup(id: string): void {
     getDocuments ??= vi.fn(() => of([]));
+    getLatestReport ??= vi.fn(() =>
+      throwError(() => new HttpErrorResponse({ status: 404, statusText: 'Not Found' })),
+    );
     TestBed.configureTestingModule({
       imports: [CaseDetail],
       providers: [
         provideRouter([]),
         { provide: CaseService, useValue: { getCase } },
         { provide: DocumentService, useValue: { getDocuments, uploadDocument: vi.fn() } },
+        {
+          provide: ValidationService,
+          useValue: { getLatestReport, runValidation: vi.fn() },
+        },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: new Map([['id', id]]) } },
@@ -31,6 +42,7 @@ describe('CaseDetail', () => {
 
   afterEach(() => {
     getDocuments = undefined as unknown as ReturnType<typeof vi.fn>;
+    getLatestReport = undefined as unknown as ReturnType<typeof vi.fn>;
   });
 
   async function render() {
@@ -134,6 +146,37 @@ describe('CaseDetail', () => {
 
     expect(getDocuments).toHaveBeenCalledTimes(2);
     expect(el.textContent).toContain('late.pdf');
+  });
+
+  it('embeds the validation report panel for the case', async () => {
+    const caseItem = makeCase();
+    getCase = vi.fn(() => of(caseItem));
+    getLatestReport = vi.fn(() =>
+      of(
+        makeValidationReport({
+          caseId: caseItem.id,
+          items: [],
+        }),
+      ),
+    );
+    setup(caseItem.id);
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(getLatestReport).toHaveBeenCalledWith(caseItem.id);
+    expect(el.querySelector('app-validation-report')).not.toBeNull();
+    expect(el.textContent).toContain('Re-run validation');
+  });
+
+  it('shows the validation empty state when the case has never been validated', async () => {
+    const caseItem = makeCase();
+    getCase = vi.fn(() => of(caseItem));
+    setup(caseItem.id);
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.textContent).toContain('No validation report yet.');
+    expect(el.textContent).toContain('Run validation');
   });
 
   it('appends a document to the list when the upload component reports success', async () => {

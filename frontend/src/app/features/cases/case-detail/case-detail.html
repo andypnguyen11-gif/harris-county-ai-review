@@ -95,11 +95,6 @@
 
   <section class="card detail-section" aria-labelledby="validation-heading">
     <h2 id="validation-heading">Validation</h2>
-    <div class="detail-section__placeholder">
-      <p>Automated validation results will be available in an upcoming release.</p>
-      <p class="detail-section__note">
-        Completeness checks against Harris County requirements will appear here.
-      </p>
-    </div>
+    <app-validation-report [caseId]="c.id" />
   </section>
 }

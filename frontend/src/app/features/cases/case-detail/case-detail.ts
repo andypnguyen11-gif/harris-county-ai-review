@@ -8,10 +8,11 @@ import { CaseService } from '../../../core/services/case.service';
 import { DocumentService } from '../../../core/services/document.service';
 import { StatusBadge } from '../../../shared/components/status-badge/status-badge';
 import { DocumentUpload } from '../../document-upload/document-upload';
+import { ValidationReportPanel } from '../../validation-report/validation-report';
 
 @Component({
   selector: 'app-case-detail',
-  imports: [DatePipe, RouterLink, StatusBadge, DocumentUpload],
+  imports: [DatePipe, RouterLink, StatusBadge, DocumentUpload, ValidationReportPanel],
   templateUrl: './case-detail.html',
   styleUrl: './case-detail.scss',
 })
