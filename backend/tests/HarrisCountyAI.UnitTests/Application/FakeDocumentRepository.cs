@@ -15,6 +15,9 @@ internal sealed class FakeDocumentRepository : IDocumentRepository
     public Task<Document?> GetByIdAsync(Guid caseId, Guid documentId, CancellationToken cancellationToken = default) =>
         Task.FromResult(_documents.SingleOrDefault(d => d.Id == documentId && d.CaseId == caseId));
 
+    public Task<Document?> GetByIdAsync(Guid documentId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_documents.SingleOrDefault(d => d.Id == documentId));
+
     public Task<IReadOnlyList<Document>> GetByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Document>>(_documents
             .Where(d => d.CaseId == caseId)

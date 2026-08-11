@@ -19,6 +19,21 @@ public sealed class FakeDocumentRepository : IDocumentRepository
     public Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_documents.TryGetValue(id, out var document) ? document : null);
 
+    public Task<Document?> GetByIdAsync(Guid caseId, Guid documentId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_documents.TryGetValue(documentId, out var document) && document.CaseId == caseId ? document : null);
+
+    public Task<IReadOnlyList<Document>> GetByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Document>>(_documents.Values
+            .Where(d => d.CaseId == caseId)
+            .OrderBy(d => d.CreatedAt)
+            .ToList());
+
+    public Task AddAsync(Document document, CancellationToken cancellationToken = default)
+    {
+        _documents[document.Id] = document;
+        return Task.CompletedTask;
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         SaveChangesCallCount++;

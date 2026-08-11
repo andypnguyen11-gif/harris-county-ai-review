@@ -1,5 +1,6 @@
 using HarrisCountyAI.Application.Cases;
 using HarrisCountyAI.Infrastructure.Azure.BlobStorage;
+using HarrisCountyAI.Infrastructure.Azure.DocumentIntelligence;
 using HarrisCountyAI.Infrastructure.Persistence;
 using HarrisCountyAI.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<ICaseRepository, CaseRepository>();
         services.AddDocumentPersistence();
         services.AddBlobStorage(configuration);
+        services.AddDocumentIntelligence(configuration);
 
         return services;
     }

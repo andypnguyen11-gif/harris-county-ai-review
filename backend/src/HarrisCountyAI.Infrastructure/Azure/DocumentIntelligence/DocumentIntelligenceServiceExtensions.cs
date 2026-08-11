@@ -42,7 +42,6 @@ public static class DocumentIntelligenceServiceExtensions
         services.AddSingleton<AnalyzeResultMapper>();
         services.AddSingleton<IDocumentExtractionService, AzureDocumentExtractionService>();
 
-        services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
 
         return services;
