@@ -1,8 +1,9 @@
 # macOS
 .DS_Store
 
-# Worktrees (parallel development)
+# Worktrees and local agent workspaces (parallel development)
 .worktrees/
+.claude/
 
 # .NET
 bin/
