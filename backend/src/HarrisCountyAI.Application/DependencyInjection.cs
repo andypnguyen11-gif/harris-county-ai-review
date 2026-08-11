@@ -6,7 +6,9 @@ using HarrisCountyAI.Application.Documents;
 using HarrisCountyAI.Application.Documents.Normalization;
 using HarrisCountyAI.Application.KnowledgeBase.DeactivateKnowledgeDocument;
 using HarrisCountyAI.Application.KnowledgeBase.GetKnowledgeDocuments;
+using HarrisCountyAI.Application.KnowledgeBase.Ingestion;
 using HarrisCountyAI.Application.KnowledgeBase.UploadKnowledgeDocument;
+using HarrisCountyAI.Application.Search.Chunking;
 using HarrisCountyAI.Application.Validation;
 using HarrisCountyAI.Application.Validation.Semantic;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +30,8 @@ public static class DependencyInjection
         services.AddScoped<UploadKnowledgeDocumentHandler>();
         services.AddScoped<GetKnowledgeDocumentsHandler>();
         services.AddScoped<DeactivateKnowledgeDocumentHandler>();
+        services.AddScoped<IKnowledgeDocumentIngestionService, KnowledgeDocumentIngestionService>();
+        services.AddSingleton<IDocumentChunkingService, StructureAwareChunkingService>();
 
         services.AddSingleton<IDocumentNormalizationService, DocumentNormalizationService>();
 

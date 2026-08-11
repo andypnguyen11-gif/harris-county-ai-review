@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddBlobStorage(configuration);
         services.AddDocumentIntelligence(configuration);
         services.AddLanguageModel(configuration);
+        services.AddEmbeddingService(configuration);
         services.AddSearchIndexing(configuration);
 
         return services;

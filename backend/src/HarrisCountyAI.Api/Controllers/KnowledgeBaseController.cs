@@ -4,6 +4,7 @@ using HarrisCountyAI.Application.Documents;
 using HarrisCountyAI.Application.KnowledgeBase;
 using HarrisCountyAI.Application.KnowledgeBase.DeactivateKnowledgeDocument;
 using HarrisCountyAI.Application.KnowledgeBase.GetKnowledgeDocuments;
+using HarrisCountyAI.Application.KnowledgeBase.Ingestion;
 using HarrisCountyAI.Application.KnowledgeBase.UploadKnowledgeDocument;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -24,17 +25,20 @@ public class KnowledgeBaseController : ControllerBase
     private readonly UploadKnowledgeDocumentHandler _uploadDocument;
     private readonly GetKnowledgeDocumentsHandler _getDocuments;
     private readonly DeactivateKnowledgeDocumentHandler _deactivateDocument;
+    private readonly IKnowledgeDocumentIngestionService _ingestionService;
     private readonly DocumentFileValidator _fileValidator;
 
     public KnowledgeBaseController(
         UploadKnowledgeDocumentHandler uploadDocument,
         GetKnowledgeDocumentsHandler getDocuments,
         DeactivateKnowledgeDocumentHandler deactivateDocument,
+        IKnowledgeDocumentIngestionService ingestionService,
         DocumentFileValidator fileValidator)
     {
         _uploadDocument = uploadDocument;
         _getDocuments = getDocuments;
         _deactivateDocument = deactivateDocument;
+        _ingestionService = ingestionService;
         _fileValidator = fileValidator;
     }
 
@@ -102,6 +106,35 @@ public class KnowledgeBaseController : ControllerBase
     {
         var documents = await _getDocuments.HandleAsync(includeDeactivated, cancellationToken);
         return Ok(documents);
+    }
+
+    /// <summary>
+    /// Runs the ingestion pipeline (extract → chunk → embed → index) over the
+    /// document. Also used to reprocess a failed document or re-index an
+    /// already-ingested one after a corpus update.
+    /// </summary>
+    [HttpPost("documents/{id:guid}/ingest")]
+    [ProducesResponseType<IngestionResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Ingest(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _ingestionService.IngestAsync(id, cancellationToken);
+            return result is null ? NotFound() : Ok(result);
+        }
+        catch (InvalidOperationException exception)
+        {
+            // The document is deactivated or already being processed; stage
+            // failures are reported in the result body, not thrown.
+            return Conflict(new ProblemDetails
+            {
+                Title = "The document cannot be ingested.",
+                Detail = exception.Message,
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
     }
 
     [HttpDelete("documents/{id:guid}")]
