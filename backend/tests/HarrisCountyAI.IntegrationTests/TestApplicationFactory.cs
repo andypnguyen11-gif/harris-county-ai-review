@@ -46,8 +46,12 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
             builder.UseSetting($"BlobStorage:{key}", value);
         }
 
-        // Document persistence is registered via its own extension; the
-        // composition-root wiring mirrors this call.
-        builder.ConfigureServices(services => services.AddDocumentPersistence());
+        // Document and validation report persistence are registered via their
+        // own extensions; the composition-root wiring mirrors these calls.
+        builder.ConfigureServices(services =>
+        {
+            services.AddDocumentPersistence();
+            services.AddValidationReports();
+        });
     }
 }

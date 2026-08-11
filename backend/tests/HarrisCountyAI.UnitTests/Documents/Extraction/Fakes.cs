@@ -125,6 +125,14 @@ public sealed class FakeNormalizedDocumentRepository : INormalizedDocumentReposi
     public Task<NormalizedDocument?> GetByDocumentIdAsync(Guid documentId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Added.OrderByDescending(d => d.CreatedAt).FirstOrDefault(d => d.DocumentId == documentId));
 
+    public Task<IReadOnlyList<NormalizedDocument>> GetLatestByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<NormalizedDocument>>(Added
+            .Where(d => d.CaseId == caseId)
+            .GroupBy(d => d.DocumentId)
+            .Select(group => group.OrderByDescending(d => d.CreatedAt).First())
+            .OrderBy(d => d.CreatedAt)
+            .ToList());
+
     public Task AddAsync(NormalizedDocument normalizedDocument, CancellationToken cancellationToken = default)
     {
         Added.Add(normalizedDocument);

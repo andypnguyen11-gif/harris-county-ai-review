@@ -4,6 +4,7 @@ using HarrisCountyAI.Application.Cases.GetCases;
 using HarrisCountyAI.Application.Cases.UpdateCase;
 using HarrisCountyAI.Application.Documents;
 using HarrisCountyAI.Application.Documents.Normalization;
+using HarrisCountyAI.Application.Validation;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HarrisCountyAI.Application;
@@ -17,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<GetCasesHandler>();
         services.AddScoped<UpdateCaseHandler>();
         services.AddDocumentHandlers();
+        services.AddValidation();
 
         services.AddSingleton<IDocumentNormalizationService, DocumentNormalizationService>();
 
