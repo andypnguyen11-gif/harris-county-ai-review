@@ -1,0 +1,97 @@
+<div class="page-header">
+  <div>
+    <h1>Ask a question</h1>
+    <p class="page-header__subtitle">
+      Ask what Harris County requires. Answers come only from the reference corpus and cite
+      their sources.
+    </p>
+  </div>
+</div>
+
+<section class="card question-form-section" aria-labelledby="question-heading">
+  <h2 id="question-heading" class="visually-hidden">Your question</h2>
+
+  <form class="question-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+    <div class="form-field">
+      <label for="qa-question">Question</label>
+      <textarea
+        id="qa-question"
+        formControlName="question"
+        rows="3"
+        [attr.maxlength]="maxQuestionLength"
+        placeholder="e.g. What documents must a floodplain development permit application include?"
+        [attr.aria-invalid]="showQuestionError()"
+        [attr.aria-describedby]="showQuestionError() ? 'qa-question-error' : null"
+      ></textarea>
+      @if (showQuestionError()) {
+        <span class="form-field__error" id="qa-question-error">A question is required.</span>
+      }
+    </div>
+
+    <div class="question-form__actions">
+      <button type="submit" class="btn btn--primary" [disabled]="asking()">
+        {{ asking() ? 'Searching the corpus…' : 'Ask' }}
+      </button>
+    </div>
+  </form>
+</section>
+
+@if (asking()) {
+  <div class="state-panel" role="status">
+    <p>Searching the Harris County reference corpus…</p>
+  </div>
+} @else if (askError()) {
+  <div class="state-panel state-panel--error" role="alert">
+    <h3>The question could not be answered</h3>
+    <p>Something went wrong while answering. Verify the API is running and try again.</p>
+  </div>
+} @else if (response(); as answer) {
+  <section class="answer-section" aria-labelledby="answer-heading">
+    <h2 id="answer-heading" class="visually-hidden">Answer</h2>
+
+    <p class="asked-question">“{{ askedQuestion() }}”</p>
+
+    @if (answer.outcome === 'Answered') {
+      <div class="card answer-card">
+        <p class="answer-text">{{ answer.answer }}</p>
+
+        <h3 class="citations-heading">Sources</h3>
+        <ol class="citations">
+          @for (citation of answer.citations; track citation.number) {
+            <li class="citation">
+              <span class="citation__number" aria-hidden="true">[{{ citation.number }}]</span>
+              <span class="citation__details">
+                @if (citation.sourceUrl) {
+                  <a
+                    class="citation__title"
+                    [href]="citation.sourceUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >{{ citation.title }}</a
+                  >
+                } @else {
+                  <span class="citation__title">{{ citation.title }}</span>
+                }
+                @if (citation.section) {
+                  <span class="citation__section">{{ citation.section }}</span>
+                }
+                @if (citation.page !== null) {
+                  <span class="citation__page">Page {{ citation.page }}</span>
+                }
+              </span>
+            </li>
+          }
+        </ol>
+      </div>
+    } @else {
+      <div class="card insufficient-evidence" role="status">
+        <h3>Not enough evidence to answer</h3>
+        <p>{{ answer.answer }}</p>
+        <p class="insufficient-evidence__hint">
+          The assistant only answers from the Harris County reference corpus. Try rephrasing the
+          question, or ask an administrator to add the relevant reference document.
+        </p>
+      </div>
+    }
+  </section>
+}
