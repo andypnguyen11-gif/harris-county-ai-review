@@ -8,8 +8,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace HarrisCountyAI.IntegrationTests;
 
 /// <summary>
-/// WebApplicationFactory that skips startup database migrations and optionally
-/// points the application at a test-specific database and blob storage setup.
+/// WebApplicationFactory that skips startup database migrations, configures
+/// local-development JWT authentication with well-known test values, and
+/// optionally points the application at a test-specific database and blob
+/// storage setup.
 /// </summary>
 public class TestApplicationFactory : WebApplicationFactory<Program>
 {
@@ -27,8 +29,10 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
     public Dictionary<string, string> BlobStorageOverrides { get; } = [];
 
     /// <summary>
-    /// Additional host configuration values, e.g. test-specific blob container
-    /// names. Populate before the first client is created.
+    /// Extra configuration overrides applied last — after the authentication
+    /// defaults and the test-specific blob container names — so individual
+    /// tests can change authentication mode or user settings. Populate before
+    /// the first client is created.
     /// </summary>
     public Dictionary<string, string?> SettingOverrides { get; } = [];
 
@@ -94,8 +98,8 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
         }
 
         // UseSetting flows into the host configuration before Program.cs runs,
-        // so values read during service registration (e.g. the connection string)
-        // pick up the overrides.
+        // so values read during service registration (e.g. the connection string
+        // and the Authentication section) pick up the overrides.
         builder.UseSetting("Database:ApplyMigrationsAtStartup", "false");
 
         // Document Intelligence options are validated at startup; tests never
@@ -120,6 +124,20 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Embeddings:Endpoint", "https://embeddings.test.invalid");
         builder.UseSetting("Embeddings:ApiKey", "integration-test-key");
         builder.UseSetting("Embeddings:Deployment", "integration-test-deployment");
+
+        // Local-development authentication with well-known test values, so the
+        // suite can mint its own tokens without a real identity provider.
+        builder.UseSetting("Authentication:Mode", "LocalDevelopment");
+        builder.UseSetting("Authentication:LocalDevelopment:Issuer", TestAuthentication.Issuer);
+        builder.UseSetting("Authentication:LocalDevelopment:Audience", TestAuthentication.Audience);
+        builder.UseSetting("Authentication:LocalDevelopment:SigningKey", TestAuthentication.SigningKey);
+        builder.UseSetting("Authentication:LocalDevelopment:TokenLifetimeMinutes", "60");
+        builder.UseSetting("Authentication:LocalDevelopment:Users:0:Username", TestAuthentication.ReviewerUsername);
+        builder.UseSetting("Authentication:LocalDevelopment:Users:0:DisplayName", "Test Reviewer");
+        builder.UseSetting("Authentication:LocalDevelopment:Users:0:Roles:0", "Reviewer");
+        builder.UseSetting("Authentication:LocalDevelopment:Users:1:Username", TestAuthentication.AdministratorUsername);
+        builder.UseSetting("Authentication:LocalDevelopment:Users:1:DisplayName", "Test Administrator");
+        builder.UseSetting("Authentication:LocalDevelopment:Users:1:Roles:0", "Administrator");
 
         if (ConnectionStringOverride is not null)
         {

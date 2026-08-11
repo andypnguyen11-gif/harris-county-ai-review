@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\HarrisCountyAI.Api\HarrisCountyAI.Api.csproj" />
     <ProjectReference Include="..\..\src\HarrisCountyAI.Application\HarrisCountyAI.Application.csproj" />
     <ProjectReference Include="..\..\src\HarrisCountyAI.Domain\HarrisCountyAI.Domain.csproj" />
     <ProjectReference Include="..\..\src\HarrisCountyAI.Infrastructure\HarrisCountyAI.Infrastructure.csproj" />

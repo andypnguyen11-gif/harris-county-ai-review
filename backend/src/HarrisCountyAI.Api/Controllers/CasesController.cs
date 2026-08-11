@@ -5,12 +5,14 @@ using HarrisCountyAI.Application.Cases.GetCase;
 using HarrisCountyAI.Application.Cases.GetCases;
 using HarrisCountyAI.Application.Cases.UpdateCase;
 using HarrisCountyAI.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HarrisCountyAI.Api.Controllers;
 
 [ApiController]
 [Route("api/cases")]
+[Authorize]
 public class CasesController : ControllerBase
 {
     private readonly CreateCaseHandler _createCase;

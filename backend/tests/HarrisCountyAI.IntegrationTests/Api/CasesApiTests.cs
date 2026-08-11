@@ -14,7 +14,7 @@ public class CasesApiTests : IClassFixture<SqlServerTestDatabase>, IDisposable
     public CasesApiTests(SqlServerTestDatabase database)
     {
         _factory = new TestApplicationFactory { ConnectionStringOverride = database.ConnectionString };
-        _client = _factory.CreateClient();
+        _client = _factory.CreateClient().WithToken(TestAuthentication.CreateToken(roles: ["Reviewer"]));
     }
 
     public void Dispose()

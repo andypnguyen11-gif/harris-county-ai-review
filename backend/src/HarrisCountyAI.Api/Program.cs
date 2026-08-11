@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using HarrisCountyAI.Api.Extensions;
 using HarrisCountyAI.Application;
 using HarrisCountyAI.Infrastructure;
 using HarrisCountyAI.Infrastructure.Persistence;
@@ -15,6 +16,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApiAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
@@ -35,6 +37,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
