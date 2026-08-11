@@ -1,0 +1,6 @@
+@HarrisCountyAI.Api_HostAddress = http://localhost:5096
+
+GET {{HarrisCountyAI.Api_HostAddress}}/health
+Accept: application/json
+
+###

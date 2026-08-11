@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HarrisCountyAI.Application\HarrisCountyAI.Application.csproj" />
+    <ProjectReference Include="..\HarrisCountyAI.Infrastructure\HarrisCountyAI.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel superseded runs for the same ref so only the latest commit is validated.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      # TreatWarningsAsErrors=false keeps compiler warnings informational; the job
+      # fails only on build errors or test failures. (MSBuild rejects the
+      # /warnaserror- switch form on Linux runners.)
+      - name: Build
+        run: dotnet build --no-restore -p:TreatWarningsAsErrors=false
+
+      - name: Test
+        # trx files are auto-named so each test project keeps its own results file.
+        run: dotnet test --no-build --verbosity normal --logger trx --results-directory TestResults
+
+      - name: Test summary
+        if: always()
+        run: |
+          {
+            echo "### Backend test results"
+            echo '```'
+            grep -rho '<Counters [^>]*/>' TestResults || echo "No test results found"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npx ng test --watch=false
+
+      # Formatting is a placeholder check for now: it runs only when a Prettier
+      # config exists, and it is advisory (continue-on-error) because several
+      # scaffold files predate the check and are not yet Prettier-clean. Make it
+      # blocking once the scaffold is reformatted in a dedicated change.
+      - name: Check formatting
+        continue-on-error: true
+        run: |
+          if [ -f .prettierrc ]; then
+            npx prettier --check "src/**/*.{ts,html,css}"
+          else
+            echo "No Prettier config found; skipping formatting check."
+          fi
