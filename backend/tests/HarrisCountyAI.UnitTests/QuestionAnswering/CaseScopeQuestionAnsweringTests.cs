@@ -147,6 +147,48 @@ public class CaseScopeQuestionAnsweringTests
     }
 
     [Fact]
+    public async Task A_Case_Citation_Is_Tagged_As_Case_Sourced()
+    {
+        _languageModel.EnqueueContent(
+            """{"status":"answered","answer":"Jane Doe signed it.","citations":[1]}""");
+        _retrieval.ChunksToReturn = [FakeRetrievalService.Chunk(title: "application.pdf")];
+
+        var response = await _service.AnswerAsync(CaseQuestion());
+
+        Assert.Equal(SourceType.Case, Assert.Single(response.Citations).Source);
+    }
+
+    [Fact]
+    public async Task A_County_Citation_Is_Tagged_As_County_Sourced()
+    {
+        _languageModel.EnqueueContent(
+            """{"status":"answered","answer":"A site plan is required.","citations":[1]}""");
+        _retrieval.ChunksToReturn = [FakeRetrievalService.Chunk()];
+
+        var response = await _service.AnswerAsync(
+            new QuestionRequest { Question = "What does the county require?" });
+
+        Assert.Equal(SourceType.County, Assert.Single(response.Citations).Source);
+    }
+
+    [Fact]
+    public async Task A_Both_Scoped_Question_Is_Refused_Rather_Than_Silently_Narrowed()
+    {
+        // Both belongs to the dual-source path; answering it here would quietly
+        // return a single-corpus answer to a comparison question.
+        var request = new QuestionRequest
+        {
+            Question = "Does the submission meet the county requirements?",
+            Scope = QuestionScope.Both,
+            CaseId = CaseId,
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.AnswerAsync(request));
+
+        Assert.Empty(_retrieval.Requests);
+    }
+
+    [Fact]
     public async Task An_Uncited_Case_Answer_Is_Downgraded_To_Insufficient_Evidence()
     {
         _languageModel.EnqueueContent(
