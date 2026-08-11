@@ -19,6 +19,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<ValidationReport> ValidationReports => Set<ValidationReport>();
 
+    public DbSet<KnowledgeDocument> KnowledgeDocuments => Set<KnowledgeDocument>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
