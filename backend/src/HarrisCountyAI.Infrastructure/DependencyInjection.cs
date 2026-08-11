@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddLanguageModel(configuration);
         services.AddEmbeddingService(configuration);
         services.AddSearchIndexing(configuration);
+        services.AddCorpusRetrieval(configuration);
 
         return services;
     }
