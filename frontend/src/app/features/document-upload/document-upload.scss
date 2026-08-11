@@ -1,0 +1,156 @@
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  padding: 1.5rem;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &--active {
+    border-color: var(--color-primary, #1c4e80);
+    background: #e7f0fa;
+  }
+
+  &__title {
+    margin: 0 0 0.25rem;
+    font-weight: 600;
+  }
+
+  &__hint {
+    margin: 0 0 0.75rem;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
+
+  &__input {
+    display: none;
+  }
+}
+
+.upload-rejected {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  color: #8f2a1d;
+}
+
+.upload-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.upload-item {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.625rem 0.875rem;
+
+  &--error {
+    border-color: #efb2ab;
+  }
+
+  &__main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  &__file {
+    flex: 1 1 12rem;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  &__size {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  &__type select {
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-surface, #fff);
+    font-size: 0.875rem;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__state {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+
+    &--success {
+      color: #1e6b3a;
+    }
+
+    &--error {
+      color: #8f2a1d;
+    }
+  }
+
+  &__progress {
+    margin-top: 0.5rem;
+    height: 0.375rem;
+    border-radius: 999px;
+    background: var(--color-surface-muted);
+    overflow: hidden;
+  }
+
+  &__progress-bar {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--color-primary);
+    transition: width 0.15s ease;
+  }
+
+  &__error {
+    margin: 0.5rem 0 0;
+    font-size: 0.8125rem;
+    color: #8f2a1d;
+  }
+}
+
+.upload-submit {
+  margin-top: 0.75rem;
+}
+
+.btn--link {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  color: var(--color-link);
+  font-size: 0.8125rem;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

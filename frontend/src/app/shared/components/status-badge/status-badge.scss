@@ -37,4 +37,41 @@
     border-color: #abd4ba;
     color: #1e6b3a;
   }
+
+  // Document processing statuses.
+  &--pending {
+    background: #eef2f7;
+    border-color: #c3cfdb;
+    color: #33475b;
+  }
+
+  &--uploaded {
+    background: #e7f0fa;
+    border-color: #aecbea;
+    color: #1c4e80;
+  }
+
+  &--extracting {
+    background: #fdf3e0;
+    border-color: #ecd096;
+    color: #7a5410;
+  }
+
+  &--extracted {
+    background: #f0eafa;
+    border-color: #cbb8ec;
+    color: #4b2d83;
+  }
+
+  &--normalized {
+    background: #e8f3ec;
+    border-color: #abd4ba;
+    color: #1e6b3a;
+  }
+
+  &--failed {
+    background: #fbe9e7;
+    border-color: #efb2ab;
+    color: #8f2a1d;
+  }
 }

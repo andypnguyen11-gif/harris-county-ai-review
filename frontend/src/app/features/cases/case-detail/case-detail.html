@@ -47,11 +47,49 @@
 
   <section class="card detail-section" aria-labelledby="documents-heading">
     <h2 id="documents-heading">Documents</h2>
-    <div class="detail-section__placeholder">
-      <p>Document upload and review will be available in an upcoming release.</p>
-      <p class="detail-section__note">
-        Submitted permit application documents for this case will appear here.
-      </p>
+
+    @if (documentsLoading()) {
+      <div class="detail-section__placeholder" role="status">
+        <p>Loading documents…</p>
+      </div>
+    } @else if (documentsError()) {
+      <div class="detail-section__placeholder" role="alert">
+        <p>The documents for this case could not be loaded.</p>
+        <button type="button" class="btn btn--secondary" (click)="loadDocuments()">Retry</button>
+      </div>
+    } @else if (documents().length === 0) {
+      <div class="detail-section__placeholder">
+        <p>No documents have been uploaded yet.</p>
+        <p class="detail-section__note">
+          Add the applicant's submitted PDFs below to start the review.
+        </p>
+      </div>
+    } @else {
+      <table class="document-table">
+        <thead>
+          <tr>
+            <th scope="col">File name</th>
+            <th scope="col">Type</th>
+            <th scope="col">Status</th>
+            <th scope="col">Uploaded</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (doc of documents(); track doc.id) {
+            <tr>
+              <td class="document-table__name">{{ doc.fileName }}</td>
+              <td>{{ documentTypeLabels[doc.documentType] }}</td>
+              <td><app-status-badge [status]="doc.processingStatus" /></td>
+              <td>{{ doc.createdAt | date: 'medium' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div class="detail-section__upload">
+      <h3>Upload documents</h3>
+      <app-document-upload [caseId]="c.id" (uploaded)="onDocumentUploaded($event)" />
     </div>
   </section>
 

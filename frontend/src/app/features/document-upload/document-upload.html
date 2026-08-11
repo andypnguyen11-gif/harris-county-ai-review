@@ -1,0 +1,109 @@
+<div
+  class="dropzone"
+  [class.dropzone--active]="dragActive()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave()"
+  (drop)="onDrop($event)"
+>
+  <p class="dropzone__title">Drag and drop PDF documents here</p>
+  <p class="dropzone__hint">or</p>
+  <button type="button" class="btn btn--secondary" (click)="fileInput.click()">
+    Choose files
+  </button>
+  <input
+    #fileInput
+    type="file"
+    class="dropzone__input"
+    multiple
+    accept="application/pdf,.pdf"
+    (change)="onFileInputChange($event)"
+  />
+</div>
+
+@if (rejectedFiles().length > 0) {
+  <p class="upload-rejected" role="alert">
+    Skipped (PDF only): {{ rejectedFiles().join(', ') }}
+  </p>
+}
+
+@if (items().length > 0) {
+  <ul class="upload-list">
+    @for (item of items(); track item) {
+      <li class="upload-item" [class.upload-item--error]="item.status === 'error'">
+        <div class="upload-item__main">
+          <div class="upload-item__file">
+            <span class="upload-item__name">{{ item.file.name }}</span>
+            <span class="upload-item__size">{{ formatFileSize(item.file.size) }}</span>
+          </div>
+
+          <label class="upload-item__type">
+            <span class="visually-hidden">Document type for {{ item.file.name }}</span>
+            <select
+              [value]="item.documentType"
+              [disabled]="item.status === 'uploading' || item.status === 'success'"
+              (change)="setDocumentType(item, $event)"
+            >
+              @for (type of documentTypes; track type) {
+                <option [value]="type" [selected]="type === item.documentType">
+                  {{ documentTypeLabels[type] }}
+                </option>
+              }
+            </select>
+          </label>
+
+          <div class="upload-item__actions">
+            @switch (item.status) {
+              @case ('ready') {
+                <span class="upload-item__state">Ready</span>
+                <button type="button" class="btn btn--link" (click)="removeItem(item)">
+                  Remove
+                </button>
+              }
+              @case ('uploading') {
+                <span class="upload-item__state">{{ item.progress }}%</span>
+              }
+              @case ('success') {
+                <span class="upload-item__state upload-item__state--success">Uploaded</span>
+              }
+              @case ('error') {
+                <span class="upload-item__state upload-item__state--error">Failed</span>
+                <button type="button" class="btn btn--secondary" (click)="retry(item)">
+                  Retry
+                </button>
+                <button type="button" class="btn btn--link" (click)="removeItem(item)">
+                  Remove
+                </button>
+              }
+            }
+          </div>
+        </div>
+
+        @if (item.status === 'uploading') {
+          <div
+            class="upload-item__progress"
+            role="progressbar"
+            [attr.aria-valuenow]="item.progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            [attr.aria-label]="'Upload progress for ' + item.file.name"
+          >
+            <div class="upload-item__progress-bar" [style.width.%]="item.progress"></div>
+          </div>
+        }
+
+        @if (item.status === 'error' && item.error) {
+          <p class="upload-item__error" role="alert">{{ item.error }}</p>
+        }
+      </li>
+    }
+  </ul>
+
+  <button
+    type="button"
+    class="btn btn--primary upload-submit"
+    [disabled]="!hasReadyItems()"
+    (click)="uploadAll()"
+  >
+    Upload
+  </button>
+}
