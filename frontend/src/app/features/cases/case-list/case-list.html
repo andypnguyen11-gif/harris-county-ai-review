@@ -1,0 +1,50 @@
+<div class="page-header">
+  <div>
+    <h1>Cases</h1>
+    <p class="page-header__subtitle">All permit application review cases.</p>
+  </div>
+  <a class="btn btn--primary" routerLink="/cases/new">Create case</a>
+</div>
+
+@if (loading()) {
+  <div class="state-panel" role="status">
+    <p>Loading cases…</p>
+  </div>
+} @else if (error()) {
+  <div class="state-panel state-panel--error" role="alert">
+    <h2>Unable to load cases</h2>
+    <p>The case list could not be retrieved. Verify the API is running and try again.</p>
+    <button type="button" class="btn btn--secondary" (click)="load()">Retry</button>
+  </div>
+} @else if (cases().length === 0) {
+  <div class="state-panel">
+    <h2>No cases yet</h2>
+    <p>Create your first case to begin reviewing permit application documents.</p>
+    <a class="btn btn--primary" routerLink="/cases/new">Create case</a>
+  </div>
+} @else {
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th scope="col">Case number</th>
+          <th scope="col">Name</th>
+          <th scope="col">Status</th>
+          <th scope="col">Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (caseItem of cases(); track caseItem.id) {
+          <tr>
+            <td class="case-number">
+              <a [routerLink]="['/cases', caseItem.id]">{{ caseItem.caseNumber }}</a>
+            </td>
+            <td>{{ caseItem.name }}</td>
+            <td><app-status-badge [status]="caseItem.status" /></td>
+            <td>{{ caseItem.createdAt | date: 'mediumDate' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

@@ -1,0 +1,65 @@
+<div class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="page-header__subtitle">Overview of permit application review activity.</p>
+  </div>
+  <a class="btn btn--primary" routerLink="/cases/new">Create case</a>
+</div>
+
+@if (loading()) {
+  <div class="state-panel" role="status">
+    <p>Loading dashboard…</p>
+  </div>
+} @else if (error()) {
+  <div class="state-panel state-panel--error" role="alert">
+    <h2>Unable to load dashboard</h2>
+    <p>The case data could not be retrieved. Verify the API is running and try again.</p>
+    <button type="button" class="btn btn--secondary" (click)="load()">Retry</button>
+  </div>
+} @else {
+  <section aria-labelledby="summary-heading" class="summary">
+    <h2 id="summary-heading" class="visually-hidden">Case summary</h2>
+    <div class="summary__grid">
+      <div class="card summary__card summary__card--total" data-testid="total-cases">
+        <span class="summary__count">{{ totalCases() }}</span>
+        <span class="summary__label">Total cases</span>
+      </div>
+      @for (summary of statusSummaries(); track summary.status) {
+        <div class="card summary__card" [attr.data-testid]="'count-' + summary.status">
+          <span class="summary__count">{{ summary.count }}</span>
+          <span class="summary__label">{{ summary.label }}</span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section aria-labelledby="recent-heading" class="recent">
+    <div class="recent__header">
+      <h2 id="recent-heading">Recent cases</h2>
+      <a routerLink="/cases">View all cases</a>
+    </div>
+
+    @if (recentCases().length === 0) {
+      <div class="state-panel">
+        <h3>No cases yet</h3>
+        <p>Create your first case to begin reviewing permit application documents.</p>
+        <a class="btn btn--primary" routerLink="/cases/new">Create case</a>
+      </div>
+    } @else {
+      <ul class="recent__list">
+        @for (caseItem of recentCases(); track caseItem.id) {
+          <li class="card recent__item">
+            <div class="recent__item-main">
+              <a class="recent__item-name" [routerLink]="['/cases', caseItem.id]">{{ caseItem.name }}</a>
+              <span class="recent__item-number">{{ caseItem.caseNumber }}</span>
+            </div>
+            <div class="recent__item-meta">
+              <app-status-badge [status]="caseItem.status" />
+              <span class="recent__item-date">Created {{ caseItem.createdAt | date: 'mediumDate' }}</span>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+}
