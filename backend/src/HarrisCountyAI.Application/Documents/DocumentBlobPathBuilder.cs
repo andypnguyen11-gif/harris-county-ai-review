@@ -4,11 +4,13 @@ namespace HarrisCountyAI.Application.Documents;
 
 /// <summary>
 /// Builds deterministic, storage-safe blob paths for document content.
-/// Case documents are stored under <c>{caseId}/{documentId}_{safeFileName}</c>.
+/// Case documents are stored under <c>{caseId}/{documentId}_{safeFileName}</c>;
+/// knowledge-base documents under <c>knowledge/{documentId}_{safeFileName}</c>.
 /// </summary>
 public static partial class DocumentBlobPathBuilder
 {
     private const string FallbackFileName = "file";
+    private const string KnowledgeBasePrefix = "knowledge";
 
     /// <summary>
     /// Builds the blob path for a case document:
@@ -16,6 +18,13 @@ public static partial class DocumentBlobPathBuilder
     /// </summary>
     public static string ForCaseDocument(Guid caseId, Guid documentId, string fileName)
         => $"{caseId:D}/{documentId:D}_{SanitizeFileName(fileName)}";
+
+    /// <summary>
+    /// Builds the blob path for a knowledge-base document:
+    /// <c>knowledge/{documentId}_{safeFileName}</c>.
+    /// </summary>
+    public static string ForKnowledgeDocument(Guid documentId, string fileName)
+        => $"{KnowledgeBasePrefix}/{documentId:D}_{SanitizeFileName(fileName)}";
 
     /// <summary>
     /// Reduces an arbitrary client-supplied file name to a storage-safe name:
