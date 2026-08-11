@@ -1,0 +1,443 @@
+
+===== PAGE 1 =====
+Instructions MT-EZ Form 1 
+APPLICATION FORM FOR SINGLE RESIDENTIAL STRUCTURE OR LOT 
+AMENDMENTS TO NATIONAL FLOOD INSURANCE PROGRAM MAPS 
+ 
+eLOMA 
+A faster alternative to using the MT-EZ application is eLOMA. eLOMA is a web-based application that provides licensed land 
+surveyors and professional engineers a system to submit simple LOMA requests to FEMA. Most requests that qualify for the 
+MT-EZ application can be submitted to FEMA using eLOMA. You can find additional information about eLOMA at 
+https://hazards.fema.gov.  
+ 
+ 
+Online LOMC 
+For requests that cannot be processed by eLOMA, FEMA has developed the Online LOMC tool to allow applicants to submit 
+their requests electronically.  This tool is a convenient way for applicants to upload all information and supporting 
+documentation and check the status of their request online.  Users can submit requests through this tool instead of filing 
+the paper form via mail.  You can find additional information about FEMA’s Online LOMC Tool at 
+https://hazards.fema.gov/onlinelomc/ext/Help/loadInstructions. 
+ 
+General Background Information 
+In 1968, the U.S. Congress passed the National Flood Insurance Act, which created the National Flood Insurance Program 
+(NFIP). The NFIP was designed to reduce future flood losses through the adoption of local floodplain management 
+regulations and to provide protection for property owners against potential losses through an insurance mechanism that 
+allows a premium to be paid for the protection of those who need it most. The creation of the NFIP represented a major 
+shift in Federal strategy from previous structural flood-control and disaster relief programs.  
+ 
+As part of the agreement for making flood insurance available in a community, the NFIP requires the community to adopt 
+floodplain management ordinances that meet certain minimum requirements intended to reduce future flood losses. The 
+community official or agency responsible for floodplain management in a community may be able to provide information 
+that would be useful to a requester. This official or agency usually is responsible for engineering, public works, flood 
+control, or planning in the community as well.  
+ 
+Use of Application Forms 
+ 
+The Department of Homeland Security’s Federal Emergency Management Agency (DHS-FEMA) implemented the use of 
+application forms for requesting revisions or amendments to NFIP maps for two reasons. First, the forms provide requesters 
+with a comprehensive, step-by-step process to follow. This process provides the requester with assurance that all necessary 
+information to support their request is being submitted to DHS-FEMA at one time, thus avoiding the need to go through an 
+iterative process of providing additional information in a piecemeal fashion, which can result in a time-consuming and cost-
+intensive process. Second, use of the forms assures that the requesters’ submissions are complete and more logically 
+structured, and generally allows DHS-FEMA to complete its review in a shorter timeframe. 
+ 
+This form should be used to request that DHS-FEMA remove a single structure or a legally recorded parcel of land or a 
+portion of a parcel, described by metes and bounds, certified by a Registered Professional Engineer or Licensed Land 
+Surveyor, from a designated Special Flood Hazard Area (SFHA), an area that would be inundated by the flood having a 1-
+percent-annual-chance of being equaled or exceeded in any given year (base flood), via Letter of Map Amendment (LOMA). 
+A LOMA is a letter from DHS-FEMA stating that an existing structure or parcel of land that has not been elevated by fill (i.e., 
+the existing structure or parcel of land is on natural grade) would not be inundated by the base flood. Fill is defined as 
+material from any source (including the subject property) placed that raises the ground to or above the Base Flood 
+Elevation (BFE). The common construction practice of removing unsuitable existing material (topsoil) and backfilling with 
+select structural material is not considered the placement of fill if the practice does not alter the existing (natural ground) 
+elevation, which is at or above the BFE. Fill placed before the date of the first NFIP map showing the area in an SFHA is 
+considered natural ground. You may consult with the community map repository or the community official or agency 
+responsible for floodplain management to obtain previous editions of the NFIP map. In addition, digital copies of historic 
+    
+ 
+   
+    
+ 
+   
+      
+  
+ 
+         
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+     
+  
+ 
+===== PAGE 2 =====
+Instructions MT-EZ Form    2 
+maps may be available on DHS-FEMA’s Map Service Center (MSC). Interested parties may visit the MSC website at 
+https://msc.fema.gov/portal. For additional information regarding historic maps, interested parties may contact the DHS-
+FEMA Mapping and Insurance eXchange (FMIX) toll free, at 1-877-FEMA MAP (1-877-336-2627). 
+ 
+The MT-EZ form shall not be used for requests submitted by developers, for requests involving multiple structures or lots, 
+for property in alluvial fan areas, for property located within the regulatory floodway, for requests involving the placement 
+of fill, or for conditional requests—for such requests, requesters should use the MT-1 or MT-2 application forms, as 
+appropriate. The MT-1 and MT-2 forms packages may be downloaded from the DHS-FEMA Flood Maps website at 
+https://www.fema.gov/flood-maps/change-your-flood-zone/paper-application-forms/mt-1 and 
+https://www.fema.gov/flood-maps/change-your-flood-zone/paper-application-forms/mt-2.  
+ 
+For additional assistance in completing this form, interested parties may consult the LOMA Tutorial, available on DHS-
+FEMA’s Flood Maps website at: https://www.fema.gov/flood-maps/tutorials/letter-map-amendment.  
+ 
+Data Submission Requirements 
+ 
+In accordance with NFIP regulations, DHS-FEMA will use the information provided in the MT-EZ form to determine whether 
+property (i.e., structure, parcel of land) should be removed from a designated SFHA. In certain instances, additional data 
+not referenced on the MT-EZ form may be required. A DHS-FEMA representative will notify the requester of any additional 
+data requirements. 
+ 
+DHS-FEMA encourages the submission of the required data in digital format (e.g., scanned documents on a CD). This may 
+help expedite the processing of your request. 
+ 
+Applicable Regulations 
+ 
+The regulations pertaining to LOMAs are presented in Title 44, Chapter I, Code of Federal Regulations (CFR), Part 70, which 
+are available at https://www.govinfo.gov/app/details/CFR-2011-title44-vol1/CFR-2011-title44-vol1-part70. The purpose of 
+Part 70 is to provide an administrative procedure whereby DHS-FEMA will review information submitted by an owner or 
+lessee of property who believes that their property has been inadvertently included in a designated SFHA. Part 70 provides 
+information about the technical difficulty of accurately delineating the SFHA boundaries on the NFIP map for a community. 
+Part 70 procedures shall not apply if the topography has been altered to raise the original ground to or above the BFE since 
+the effective date of the first NFIP map [i.e., a Flood Insurance Rate Map (FIRM) or Flood Hazard Boundary Map (FHBM)] 
+showing the property to be within the SFHA.  
+ 
+Basis of Determination 
+ 
+If no fill has been placed, DHS-FEMA’s determination as to whether a structure or legally recorded parcel of land, or a 
+portion of a parcel, described by metes and bounds, may be removed from the SFHA will be based on a comparison of the 
+BFE with certain elevation information. The elevation information required will depend on whether a structure or a legally 
+recorded parcel of land is to be removed from the SFHA. For LOMA requests involving property located in Zone A, with no 
+BFEs determined, interested parties should refer to DHS-FEMA-265, Managing Floodplain Development in Approximate 
+Zone A Areas, A Guide for Obtaining and Developing Base (100-Year) Flood Elevations, available on DHS-FEMA’s website at 
+https://www.fema.gov/sites/default/files/documents/fema_approx-zone-a-guide.pdf.  
+ 
+The following special considerations may affect DHS-FEMA's determination: 
+ 
+• In areas of shallow/sheet flooding (Zone AO), the elevation of the Lowest Adjacent Grade (including deck posts) of the 
+structure(s) must be above the surrounding grade by an amount equal to or greater than the depth shown on the 
+NFIP map. In addition, adequate drainage paths are required to guide floodwaters around and away from the 
+structure(s); the structure(s) should be on an elevated pad within the Zone AO area. With your application package, in 
+addition to elevation information regarding the structure(s), provide a map showing the topographic data of the 
+property and the immediate surrounding area, and the location of any structure(s) existing on the property (certified 
+by a registered professional engineer or licensed land surveyor) to demonstrate that the above criteria have been 
+met. 
+===== PAGE 3 =====
+Instructions MT-EZ Form    3 
+• If the lowest floor of a building has been elevated on posts, piers, or pilings above the BFE and any portion of the 
+structure (i.e., posts, pilings, or piers) is still below the BFE, the building will not be removed from the SFHA. 
+ 
+Response Timeframe 
+ 
+In accordance with Section 70.4 of the NFIP regulations, DHS-FEMA will notify the requester of the determination in writing 
+within 60 days of the date of receipt of all required data. Information about the status of active LOMA requests and other 
+Letter of Map Change (LOMC) requests is available from DHS-FEMA’s Mapping Information Platform (MIP) at 
+https://hazards.fema.gov. The MIP allows requesters to search Open LOMCs by entering their Project (Case) Number and 
+Project Type to find out the status of their request. From the MIP Home Page requesters should click on Tools & Links, 
+Public Reports and select Public Reports from the Report Category dropdown. Information about the status of LOMA 
+requests and other Letter of Map Change (LOMC) requests is also available from DHS-FEMA’s Flood Maps website at 
+https://www.fema.gov/flood-maps/change-your-flood-zone/status. The FHM site allows requesters to search LOMCs by 
+entering their Project (Case) Number or Community Name. 
+ 
+As mentioned previously, submitting the MT-EZ form and required supporting documents in digital format may help 
+expedite the processing of your request. 
+ 
+Effect on Insurance Purchase Requirements 
+ 
+Although DHS-FEMA may issue a LOMA removing a structure from the SFHA, it is the lending institution's prerogative to 
+require flood insurance, as a condition of a loan, if it deems such action appropriate. Historically, about 25% of all flood 
+claims occur in areas outside of the SFHA.  
+ 
+If the lender agrees to waive the flood insurance purchase requirement, the property owner is eligible for a pro-rata refund 
+of the premium paid for the current policy year, provided that no claim is pending or has been paid on the policy in 
+question during the same policy year. To initiate processing of the refund, the property owner should provide the LOMA 
+and evidence of the waiver of the flood insurance requirement from the lender to the insurance agent or broker who sold 
+the policy. 
+ 
+General Instructions – Section A 
+ 
+The property owner, a Licensed Land Surveyor, or a Registered Professional Engineer may complete Section A to support a 
+request for a LOMA for a single structure or lot. 
+ 
+Before completing Section A, the requester must obtain one of the following documents from the County/Parish Clerk, 
+Recorder, or Register of Deeds for the community: 
+ 
+• A copy of the Deed for the property, showing the recordation information (e.g., Book/Volume and Page numbers or 
+Document/Instrument number) containing the recorder's seal and recordation date, accompanied by a tax assessor's 
+or other suitable map showing the surveyed location of the property relative to local streets and watercourses. The 
+map should include at least one street intersection that is shown on the FIRM panel. 
+• A copy of the Plat Map for the property, showing the recordation information (e.g., Book/Volume and Page numbers 
+or Document/Instrument number) and containing the recorder's seal and recordation date. 
+ 
+The requester must also obtain a photocopy of the effective FIRM panel (including the Title Block) that shows the area in 
+which the property is located. This map should be available at the community map repository or from the community 
+official or agency responsible for floodplain management. However, digital copies of the FIRM Index and FIRM panels may 
+be available on the DHS-FEMA Map Service Center (MSC). Interested parties may visit the MSC website at 
+https://msc.fema.gov/portal
+. A FIRMette, which can be printed free of charge from the MSC website, may be submitted in 
+lieu of a photocopy of the FIRM. (For some communities, the effective NFIP map may be a Flood Hazard Boundary Map 
+(FHBM), not a FIRM. In such cases, the requester should obtain and use the FHBM.)  
+ 
+Requesters without Internet access should contact the FMIX by calling 1-877-FEMA MAP (1-877-336-2627).  
+===== PAGE 4 =====
+Instructions MT-EZ Form    4 
+ 
+Specific Instructions – Section A 
+ 
+Number 1 - Fill Placement 
+ 
+Regardless of the type of LOMC being requested, the requester must clearly state, to the best of his or her knowledge, 
+whether fill has been placed on the property. The requester must answer “yes” or “no” to this question. (See “Use of 
+Application Forms” for additional information about fill.) If fill has been placed on the property, the requester must submit 
+a request for a Letter of Map Revision Based on Fill (LOMR-F) using the MT-1 application forms so that DHS-FEMA may 
+determine whether the structure or property should be removed from the SFHA. To obtain a copy of the MT-1 application 
+forms package, interested parties should visit DHS-FEMA’s Flood Maps website at 
+https://www.fema.gov/flood-
+maps/change-your-flood-zone/paper-application-forms/mt-1 or call the DHS-FEMA Mapping and Insurance eXchange, toll 
+free, at 1-877-FEMA MAP (1-877-336-2627). 
+ 
+Number 2 - Legal Description of Property 
+ 
+The requester must describe the property by referring to the recorded deed or plat map. The description may consist of a 
+lot number and subdivision name, a parcel number, a tract number, or any other information provided in the deed or plat 
+to identify the property. It is not necessary to reproduce a lengthy description of the property as it appears in the Deed. In 
+addition, the requester should enter the street address (911 type) for the property if one is available. 
+ 
+Number 3 - Structure or Property That Is Subject of Request 
+ 
+DHS-FEMA will make a LOMA determination for a structure or a parcel of land. The requester must select the one for which 
+they would like DHS-FEMA to make a determination. If the request is for a structure, the requester must provide the date of 
+construction in this section. Date of construction information usually may be obtained from real estate settlement 
+documents, the property developer, or the local government office where real estate and/or land development 
+transactions are recorded. If the request is for a portion of a parcel, a certified metes and bounds description and map of 
+the area to be removed, certified by a licensed land surveyor or registered professional engineer, are 
+required. The metes 
+and bounds description must cover the specific area to be removed, and it must be tied to an identifiable starting point. If 
+the description is for a legally recorded lot or parcel, the metes and bounds description should commence or begin at the 
+lot or parcel corner. Metes and bounds descriptions must not intersect or coincide with the footprint of an existing 
+structure. Please see the example below for the preferred format of metes and bounds descriptions. 
+ 
+BEGINNING at the northeast lot corner; thence S16°42’22”E, 100.00 feet; thence S33°14’40”W, 145.92 
+feet; thence S89°13’29”W, 156.01 feet; thence N16°42’22”W, 223.14 feet; thence 210.49 feet along a 
+curve to the left having a radius of 542.00 feet to the POINT OF BEGINNING 
+ 
+DHS-FEMA encourages the submission of metes and bounds descriptions in digital format on a CD. This may help expedite 
+the processing of your request. 
+ 
+Signature 
+ 
+The requester must provide his or her name, mailing address, and telephone number in the space provided. The requester 
+also must sign and date, where indicated, to certify the accuracy of the information provided in Section A of the form. A 
+Licensed Land Surveyor, Registered Professional Engineer, or other designated agent may sign this form for the requester 
+when submitting on behalf of the requester. Providing an email address is optional, however, providing one will make it 
+easier for DHS-FEMA to contact you if necessary and may facilitate the processing of your request. 
+ 
+ 
+  
+===== PAGE 5 =====
+Instructions MT-EZ Form    5 
+General Instructions – Section B 
+ 
+A Licensed Land Surveyor or Registered Professional Engineer (authorized by law to certify the information requested) must 
+complete Section B unless an NFIP Elevation Certificate has already been completed for the property. If the request is to 
+remove the structure, and an Elevation Certificate has been completed, the Elevation Certificate may be submitted in lieu of 
+Section B of the MT-EZ form. If the request is to remove the entire legally recorded property, the lowest lot elevation must 
+be provided in Section B. If the request is to remove a portion of the legally recorded property, the lowest elevation within 
+the described portion must be provided in Section B. 
+ 
+Before completing Section B, the surveyor or engineer must obtain the effective FIRM panel, effective Flood Boundary and 
+Floodway Map (FBFM) panel (if printed), and Flood Insurance Study (FIS) report that cover the area in which the property is 
+located. These can be obtained from the community map repository, or digital copies may be available on the MSC. The 
+engineer or surveyor should visit https://msc.fema.gov/portal. (For some communities, the effective NFIP map may be an 
+FHBM, not a FIRM. In such cases, the engineer or surveyor should obtain and use the FHBM.)  
+ 
+Surveyors and engineers who do not have Internet access should contact the FMIX by calling 1-877-FEMA MAP (1-877-336-
+2627).  
+ 
+Specific Instructions – Section B 
+ 
+Determination Requested For 
+ 
+The surveyor or engineer must identify what is to be removed from the SFHA. The surveyor or engineer must provide the 
+required elevation information as described on the form. 
+ 
+Number 1 – Property Information 
+ 
+The surveyor or engineer must provide a brief description of the property by referring to the recorded deed or plat map. 
+The description may consist of a lot number and subdivision name, a parcel number, a tract number, or any other 
+information provided in the deed or plat to identify the property. It is not necessary to reproduce a lengthy description of 
+the property as it appears in the Deed. 
+ 
+Number 2 - Structure Information 
+ 
+The surveyor or engineer must provide the street address for the property (911 type), if one is available, or the name of 
+road providing access. 
+ 
+If the request involves or will involve a structure, the surveyor or engineer must provide the type of construction. 
+ 
+• Crawl Space – The bottom floor is below the first floor, is enclosed by solid and partial perimeter walls, and may be 
+above ground level (grade) on one or more sides. Spaces below ground level on all sides must meet the 
+requirements of FEMA Technical Bulletin 11-01. Spaces with a bottom floor elevation more than 2.0 feet below the 
+Lowest Adjacent Exterior Grade (LAG) elevation will be classified as a basement. 
+• Slab on Grade – The bottom floor is at or above ground level (grade) on at least one side. 
+• Basement/Enclosure – The bottom floor (basement or underground garage) is below ground level (grade) on all 
+sides. See Crawl Space above. 
+• Other – All other structure types not listed above including, but not limited to split levels, structures on piers, 
+mobile homes, etc. Please be as detailed as possible. 
+ 
+Number 3 – Geographic Coordinate Data 
+ 
+The surveyor or engineer must provide the latitude and longitude of the property in decimal degrees to the nearest fifth 
+decimal place (00.00000), and indicate the appropriate horizontal datum, WGS 84, NAD 83 or NAD 27. 
+ 
+  
+===== PAGE 6 =====
+Instructions MT-EZ Form    6 
+Number 4 - Flood Insurance Rate Map Information 
+ 
+In the first box, the surveyor or engineer must provide the six-digit NFIP community number as it appears in the Title Block 
+of the FIRM (or FHBM) panel that shows the area where the property is located. In the second box, the surveyor or 
+engineer must provide the map panel number. For additional information on reading FIRM panels interested parties may 
+consult the tutorial “How to Read a FIRM” on DHS-FEMA’s Flood Maps website at 
+https://www.fema.gov/sites/default/files/2020-07/how-to-read-flood-insurance-rate-map-tutorial.txt.  
+ 
+ 
+ 
+ 
+In the third box, the surveyor or engineer should provide the BFE, if available. FEMA will verify the BFE during the review 
+process. In the fourth box, the surveyor or engineer must provide the source of the BFE. The surveyor or engineer may 
+obtain the BFE by locating the property on the effective FIRM for the community in which the property is located. Upon 
+locating the property on the FIRM, the engineer or surveyor should determine the type of flooding and the flood zone 
+where the property is located. The summary below provides guidance as to how to determine the BFE as a result of the 
+flooding type and flood zone determination.  
+• Riverine Flooding Systems (Zones AE or A1-A30) – Consult the FIS report for the community in which the property 
+is located. Locate the flood profile for the flooding source by name. Estimate the property’s location along the 
+flood profile and interpolate the BFE using the 100-year flood profile line. 
+• Lacustrine (Stillwater) Flooding Systems – Consult the FIS report for the community in which the property is 
+located. Locate the Summary of Stillwater Elevations table. Locate the flooding source, by name, and use the BFE 
+listed in the table. The flooding source’s BFE is normally shown to the nearest 0.1 foot. If the flooding source is not 
+listed in the Summary of Stillwater Elevations table, use the BFE as shown on the FIRM. 
+• Coastal Flooding Systems (Zones AE or A1-A30 and VE or V1-V30) – Obtain and use the whole foot BFE from the 
+effective FIRM Panel.  (Any structure/parcel of land located seaward of the landward toe of the primary frontal 
+dune may not be removed from a Zone VE or V1-V30.) 
+
+===== PAGE 7 =====
+Instructions MT-EZ Form    7 
+• Zone A Flooding – If the property is located in Zone A, an area of approximate flooding with no BFEs determined, 
+determine a BFE. Consult with a Federal, State, or local government agency to determine if that agency has 
+developed a BFE. Such agencies include the U.S. Army Corps of Engineers; the U.S. Geological Survey; the State’s 
+Department of Natural Resources, Department of Environmental Quality, or Department of Transportation; or the 
+local Planning and Zoning Department. If one has been developed, all supporting data and calculations used to 
+develop the BFE must be submitted. If a BFE has not previously been developed, consult DHS-FEMA 265, Managing 
+Floodplain Development in Approximate Zone A Areas, A Guide for Obtaining and Developing Base (100-Year) Flood 
+Elevations, available on the DHS-FEMA website 
+https://www.fema.gov/sites/default/files/documents/fema_approx-zone-a-guide.pdf. This publication is an 
+excellent resource that details the appropriate methods for determining BFEs in SFHAs designated Zone A. To 
+obtain additional information about developing BFEs, contact the DHS-FEMA Map Information eXchange, toll free, 
+at 1-877-FEMA MAP (1-877-336-2627). If the property is greater than 50 lots or 5 acres, whichever is the lesser, the 
+engineer or surveyor must determine a BFE in accordance with Paragraph 60.3(b)(3) of the NFIP regulations, 
+available online at https://www.govinfo.gov/content/pkg/CFR-2012-title44-vol1/pdf/CFR-2012-title44-vol1-sec60-
+3.pdf. 
+• Shallow Flooding (Zone AH) – For a property located in Zone AH, locate the Summary of Stillwater Elevations table 
+in the FIS report. Identify the flooding source, by name, and use the BFE listed in the table. If no Summary of 
+Stillwater Elevations table exists, use the BFE shown on the FIRM. If different elevations appear within the same 
+SFHA, the BFE is obtained by linear interpolation between two adjacent BFE lines.  
+• Shallow/Sheet Flooding (Zone AO) – For a property located in Zone AO, the characteristics of the Zone AO area 
+shown on the NFIP map will determine the appropriate methodology to be used to develop the BFE for the 
+property. If the flooding is conveyed by the street, provide the highest top of curb or crown of street elevation 
+(whichever is higher) along the property line and add this to the depth of flooding. The lowest adjacent grade 
+elevation must be above the curb or street elevation by an amount equal to or greater than the depth of flooding 
+shown on the NFIP map. If the entire property is inundated by the SFHA and the flow is not conveyed by the street, 
+add the depth of flooding to the average surrounding grade. If the property is partially inundated by the SFHA and 
+the street does not convey the flow, add the depth of flooding to the lowest lot elevation. Along with the 
+information required for one of the above-mentioned methods, provide sufficient certified topographic 
+information, including flow paths, to show that the structure is located on high ground relative to the depth 
+indicated on the NFIP map. 
+ 
+Number 5 – Elevation Information 
+ 
+Lowest Adjacent Grade (LAG) to the Structure – For requests involving a structure, provide the LAG elevation (the elevation 
+of the lowest ground touching the structure including attached patios, stairs, deck supports or garages), to the nearest 0.1 
+foot. If the FIRM shows BFEs in meters, the accuracy of the LAG elevation must be to the nearest 0.1 meter.  
+ 
+Lowest Lot Elevation – For requests involving property, or a portion thereof, not a structure, provide the lowest lot 
+elevation to the nearest 0.1 foot. If the FIRM shows BFEs in meters, the accuracy of the lowest lot elevation must be to the 
+nearest 0.1 meter. If the BFE varies across the property, please provide a certified site plan showing the range of elevations 
+across the property. 
+ 
+Elevation Datum – Provide the elevation datum (e.g., National Geodetic Vertical Datum of 1929, North American Vertical 
+Datum of 1988 or other specified) for which the property elevations shown on the form are referenced. If the datum being 
+referenced is different than the datum used to produce the effective FIS, provide the datum conversion. Please note that 
+Mean Sea Level Datum is used within the Commonwealth of Puerto Rico and Local Tidal Datum is used within the U.S. 
+Virgin Islands. 
+ 
+Subsidence or Uplift – Land subsidence is the lowering of the ground as a result of water, oil, gas extraction, as well as other 
+phenomena such as soil compaction, decomposition of organic material, and tectonic movement. Periodically, the National 
+Geodetic Survey relevels some benchmarks to determine new elevations above the National Geodetic Vertical Datum of 
+1929 or above the North American Vertical Datum of 1988; however, not all benchmarks are releveled each time. 
+ 
+===== PAGE 8 =====
+Instructions MT-EZ Form    8 
+Check “yes” if the area of the property is in an area of subsidence or uplift, and provide the date of the current releveling; 
+check “no” if the area of the property is not in an area of subsidence or uplift. In areas experiencing ground subsidence 
+(e.g., Harris County, Texas, and Incorporated Areas); the most recently adjusted Elevation Reference Mark (ERM) must be 
+used for accurate ground and structure elevations. Consult the effective FIS report for the community where the property is 
+located or the local floodplain administrator for the most current ERM data. 
+ 
+In general, the effects of subsidence can be accounted for by determining ground and structure elevations using benchmark 
+elevations with the same releveling date as the benchmarks used to develop the BFEs on the FIRM. Benchmark releveling 
+dates may be different for different flooding sources. No adjustment is necessary to the BFEs on the FIRM. 
+ 
+Certification (by a Licensed Land Surveyor, Registered Professional Engineer, or Architect) 
+ 
+The certifier must provide his or her name, license number and expiration date, his or her company name, telephone 
+number and, if applicable, his or her fax number and email address. The certifier’s seal, if available, may be provided here. 
+The certifier must sign and date the Elevation Form, where indicated, to certify the accuracy of the information provided. 
+Not all states authorize architects and engineers to certify elevation information. Consult the state board of registration for 
+more information. 
+ 
+Submitting the Package to DHS-FEMA 
+ 
+In addition to the completed MT-EZ form, all requests must include one copy of the subdivision plat map (with recordation 
+data and stamp of the Recorder’s Office) or a copy of the property deed (with recordation data and stamp of the Recorder’s 
+Office), accompanied by a tax assessor’s map or other suitable map showing the surveyed location of the property with 
+respect to local streets and watercourses; a copy of the effective FIRM panel; and a map scale and North arrow for all maps 
+submitted. Please do not submit original documents. Please retain a copy of all submitted documents for your records. 
+ 
+DHS-FEMA encourages electronic submissions through the Online LOMC Tool at https://hazards.fema.gov
+. This new tool is 
+a convenient way for applicants to upload all information and supporting documentation and check the status of their 
+request online.  Users can submit requests through this tool instead of filing the paper form via mail. 
+ 
+However, for requests submitted via mail, DHS-FEMA encourages the submission of all required data in digital format (e.g., 
+scanned documents on a CD).  Please submit all application forms and data to support a request for a flood zone 
+determination to the address listed below. Incomplete submissions will result in processing delays.  
+ 
+LOMC CLEARINGHOUSE 
+3601 EISENHOWER AVENUE, SUITE 500 
+ALEXANDRIA, VA 22304-6426 
+ 
+Interested parties who have any additional questions about the LOMA request process may consult the DHS-FEMA Flood 
+Maps website at https://www.fema.gov/flood-maps/change-your-flood-zone/loma-lomr-f or call the DHS-FEMA Mapping 
+and Insurance eXchange, toll free, at 1-877-FEMA MAP (1-877-336-2627). For information on the status of a particular 
+LOMA request, interested parties may also consult DHS-FEMA’s Mapping Information Platform (MIP) at 
+https://hazards.fema.gov. 
+ 
+ 
+ 
