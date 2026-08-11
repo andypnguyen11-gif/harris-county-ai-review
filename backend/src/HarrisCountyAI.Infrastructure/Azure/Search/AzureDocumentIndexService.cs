@@ -14,16 +14,30 @@ public sealed class AzureDocumentIndexService : IDocumentIndexService
 {
     private readonly ISearchIndexGateway _gateway;
     private readonly SearchOptions _options;
+    private readonly RerankingOptions _rerankingOptions;
 
-    public AzureDocumentIndexService(ISearchIndexGateway gateway, IOptions<SearchOptions> options)
+    public AzureDocumentIndexService(
+        ISearchIndexGateway gateway,
+        IOptions<SearchOptions> options,
+        IOptions<RerankingOptions>? rerankingOptions = null)
     {
         _gateway = gateway;
         _options = options.Value;
+        _rerankingOptions = rerankingOptions?.Value ?? new RerankingOptions();
     }
 
+    /// <summary>
+    /// Deploys the index schema. The semantic ranking configuration is
+    /// included only when reranking is enabled, because deploying it to a
+    /// service tier without semantic ranker fails; enabling it later is an
+    /// in-place index update, not a re-creation.
+    /// </summary>
     public async Task EnsureIndexAsync(CancellationToken cancellationToken = default)
         => await _gateway.CreateOrUpdateIndexAsync(
-            SearchIndexDefinition.Build(_options.IndexName), cancellationToken);
+            SearchIndexDefinition.Build(
+                _options.IndexName,
+                includeSemanticRanking: _rerankingOptions.Enabled),
+            cancellationToken);
 
     public async Task IndexAsync(IReadOnlyList<IndexableChunk> chunks, CancellationToken cancellationToken = default)
     {

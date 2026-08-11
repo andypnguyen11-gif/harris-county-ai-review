@@ -26,4 +26,15 @@ public sealed record ChunkSearchQuery
 
     /// <summary>Maximum number of results to return.</summary>
     public required int Size { get; init; }
+
+    /// <summary>
+    /// When true, the service reranks results with its semantic ranker and
+    /// reports reranker scores. Requires <see cref="SearchText"/> and a
+    /// <see cref="SemanticConfigurationName"/>, and a service tier that
+    /// supports semantic ranking.
+    /// </summary>
+    public bool UseSemanticRanking { get; init; }
+
+    /// <summary>Semantic configuration to rank with; required when <see cref="UseSemanticRanking"/> is true.</summary>
+    public string? SemanticConfigurationName { get; init; }
 }

@@ -123,6 +123,36 @@ public class SearchIndexDefinitionTests
     }
 
     [Fact]
+    public void Build_Omits_The_Semantic_Configuration_By_Default()
+    {
+        Assert.Null(BuildIndex().SemanticSearch);
+    }
+
+    [Fact]
+    public void Build_Can_Include_A_Semantic_Configuration_Over_Title_And_Text()
+    {
+        var index = SearchIndexDefinition.Build("test-index", includeSemanticRanking: true);
+
+        Assert.NotNull(index.SemanticSearch);
+        var configuration = Assert.Single(index.SemanticSearch.Configurations);
+        Assert.Equal(SearchIndexDefinition.SemanticConfigurationName, configuration.Name);
+        Assert.Equal("title", configuration.PrioritizedFields.TitleField?.FieldName);
+        var contentField = Assert.Single(configuration.PrioritizedFields.ContentFields);
+        Assert.Equal("text", contentField.FieldName);
+    }
+
+    [Fact]
+    public void Semantic_Configuration_Does_Not_Change_The_Field_Schema()
+    {
+        var plain = BuildIndex();
+        var semantic = SearchIndexDefinition.Build("test-index", includeSemanticRanking: true);
+
+        Assert.Equal(
+            plain.Fields.Select(f => f.Name),
+            semantic.Fields.Select(f => f.Name));
+    }
+
+    [Fact]
     public void CaseId_Is_Filterable_To_Separate_Case_Evidence_From_The_Corpus()
     {
         Assert.True(Field("caseId").IsFilterable);

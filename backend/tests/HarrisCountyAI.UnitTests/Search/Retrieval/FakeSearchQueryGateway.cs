@@ -16,11 +16,16 @@ public sealed class FakeSearchQueryGateway : ISearchQueryGateway
     /// <summary>Hits returned by <see cref="SearchAsync"/>.</summary>
     public IReadOnlyList<ChunkSearchHit> HitsToReturn { get; set; } = [];
 
+    /// <summary>When set, <see cref="SearchAsync"/> throws instead of returning hits.</summary>
+    public Exception? ExceptionToThrow { get; set; }
+
     public Task<IReadOnlyList<ChunkSearchHit>> SearchAsync(
         ChunkSearchQuery query,
         CancellationToken cancellationToken)
     {
         ExecutedQueries.Add(query);
-        return Task.FromResult(HitsToReturn);
+        return ExceptionToThrow is null
+            ? Task.FromResult(HitsToReturn)
+            : Task.FromException<IReadOnlyList<ChunkSearchHit>>(ExceptionToThrow);
     }
 }
