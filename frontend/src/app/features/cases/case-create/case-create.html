@@ -1,0 +1,58 @@
+<div class="page-header">
+  <div>
+    <h1>Create case</h1>
+    <p class="page-header__subtitle">
+      Start a new permit application review case. Documents can be uploaded after the case is
+      created.
+    </p>
+  </div>
+</div>
+
+<form class="card create-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+  @if (submitError()) {
+    <div class="form-error-banner" role="alert">
+      The case could not be created. Verify the API is running and try again.
+    </div>
+  }
+
+  <div class="form-field">
+    <label for="case-name">Case name</label>
+    <input
+      id="case-name"
+      type="text"
+      formControlName="name"
+      autocomplete="off"
+      placeholder="e.g. Smith Residence — 4021 Cypress Creek Rd"
+      [attr.aria-invalid]="showNameError()"
+      [attr.aria-describedby]="showNameError() ? 'case-name-error' : null"
+    />
+    @if (showNameError()) {
+      <span class="form-field__error" id="case-name-error">
+        @if (nameControl.hasError('required')) {
+          Case name is required.
+        } @else if (nameControl.hasError('maxlength')) {
+          Case name must be 200 characters or fewer.
+        }
+      </span>
+    }
+  </div>
+
+  <div class="form-field">
+    <label for="workflow-type">Workflow type</label>
+    <select id="workflow-type" formControlName="workflowType">
+      @for (option of workflowOptions; track option.value) {
+        <option [value]="option.value">{{ option.label }}</option>
+      }
+    </select>
+    <span class="form-field__hint">
+      Additional workflow types will be available in a future release.
+    </span>
+  </div>
+
+  <div class="create-form__actions">
+    <button type="submit" class="btn btn--primary" [disabled]="submitting()">
+      {{ submitting() ? 'Creating…' : 'Create case' }}
+    </button>
+    <a class="btn btn--secondary" routerLink="/cases">Cancel</a>
+  </div>
+</form>

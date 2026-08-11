@@ -1,0 +1,131 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 0 0 4px 4px;
+
+  &:focus {
+    top: 0;
+  }
+}
+
+.app-header {
+  background: var(--color-primary);
+  color: #fff;
+  border-bottom: 4px solid var(--color-accent);
+
+  &__inner {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    color: #fff;
+    text-decoration: none;
+  }
+
+  &__seal {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    border: 2px solid var(--color-accent);
+    font-weight: 700;
+    font-size: 0.875rem;
+    letter-spacing: 0.05em;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &__brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+  }
+
+  &__brand-title {
+    font-weight: 600;
+    font-size: 1.0625rem;
+  }
+
+  &__brand-subtitle {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.75);
+  }
+}
+
+.app-nav {
+  display: flex;
+  gap: 0.25rem;
+  align-self: stretch;
+
+  &__link {
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    border-bottom: 3px solid transparent;
+
+    &:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &--active {
+      color: #fff;
+      border-bottom-color: var(--color-accent);
+    }
+  }
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.app-footer {
+  background: var(--color-surface-muted);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+
+  &__inner {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+
+    p {
+      margin: 0;
+    }
+  }
+}

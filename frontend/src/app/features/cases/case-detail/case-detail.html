@@ -1,0 +1,67 @@
+@if (loading()) {
+  <div class="state-panel" role="status">
+    <p>Loading case…</p>
+  </div>
+} @else if (error()) {
+  <div class="state-panel state-panel--error" role="alert">
+    <h2>Unable to load case</h2>
+    <p>The case could not be retrieved. It may not exist, or the API may be unavailable.</p>
+    <button type="button" class="btn btn--secondary" (click)="load()">Retry</button>
+  </div>
+} @else if (caseItem(); as c) {
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a routerLink="/cases">Cases</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ c.caseNumber }}</span>
+  </nav>
+
+  <div class="page-header">
+    <div>
+      <h1>{{ c.name }}</h1>
+      <p class="page-header__subtitle">Case {{ c.caseNumber }}</p>
+    </div>
+    <app-status-badge [status]="c.status" />
+  </div>
+
+  <section class="card detail-meta" aria-labelledby="meta-heading">
+    <h2 id="meta-heading">Case information</h2>
+    <dl class="detail-meta__grid">
+      <div>
+        <dt>Case number</dt>
+        <dd>{{ c.caseNumber }}</dd>
+      </div>
+      <div>
+        <dt>Workflow type</dt>
+        <dd>{{ workflowTypeLabels[c.workflowType] }}</dd>
+      </div>
+      <div>
+        <dt>Created</dt>
+        <dd>{{ c.createdAt | date: 'medium' }}</dd>
+      </div>
+      <div>
+        <dt>Last updated</dt>
+        <dd>{{ c.updatedAt | date: 'medium' }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="card detail-section" aria-labelledby="documents-heading">
+    <h2 id="documents-heading">Documents</h2>
+    <div class="detail-section__placeholder">
+      <p>Document upload and review will be available in an upcoming release.</p>
+      <p class="detail-section__note">
+        Submitted permit application documents for this case will appear here.
+      </p>
+    </div>
+  </section>
+
+  <section class="card detail-section" aria-labelledby="validation-heading">
+    <h2 id="validation-heading">Validation</h2>
+    <div class="detail-section__placeholder">
+      <p>Automated validation results will be available in an upcoming release.</p>
+      <p class="detail-section__note">
+        Completeness checks against Harris County requirements will appear here.
+      </p>
+    </div>
+  </section>
+}

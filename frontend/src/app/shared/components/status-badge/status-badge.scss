@@ -1,0 +1,40 @@
+.status-badge {
+  display: inline-block;
+  padding: 0.1875rem 0.625rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+
+  &--new {
+    background: #eef2f7;
+    border-color: #c3cfdb;
+    color: #33475b;
+  }
+
+  &--processing {
+    background: #fdf3e0;
+    border-color: #ecd096;
+    color: #7a5410;
+  }
+
+  &--readyforreview {
+    background: #e7f0fa;
+    border-color: #aecbea;
+    color: #1c4e80;
+  }
+
+  &--inreview {
+    background: #f0eafa;
+    border-color: #cbb8ec;
+    color: #4b2d83;
+  }
+
+  &--completed {
+    background: #e8f3ec;
+    border-color: #abd4ba;
+    color: #1e6b3a;
+  }
+}
