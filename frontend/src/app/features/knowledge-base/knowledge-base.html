@@ -1,0 +1,219 @@
+<div class="page-header">
+  <div>
+    <h1>Knowledge base</h1>
+    <p class="page-header__subtitle">
+      Manage the Harris County reference corpus used to answer requirement questions.
+    </p>
+  </div>
+</div>
+
+<section class="card upload-form-section" aria-labelledby="upload-heading">
+  <h2 id="upload-heading">Add reference document</h2>
+
+  <form class="upload-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+    @if (submitError()) {
+      <div class="form-error-banner" role="alert">
+        The document could not be uploaded. Verify the API is running and try again.
+      </div>
+    }
+
+    <div class="form-field">
+      <label for="kb-file">File</label>
+      <input
+        #fileInput
+        id="kb-file"
+        type="file"
+        (change)="onFileSelected($event)"
+        [attr.aria-invalid]="fileMissing()"
+        [attr.aria-describedby]="fileMissing() ? 'kb-file-error' : null"
+      />
+      @if (fileMissing()) {
+        <span class="form-field__error" id="kb-file-error">A file is required.</span>
+      }
+    </div>
+
+    <div class="upload-form__grid">
+      <div class="form-field">
+        <label for="kb-title">Title</label>
+        <input
+          id="kb-title"
+          type="text"
+          formControlName="title"
+          autocomplete="off"
+          placeholder="e.g. Floodplain Management Regulations"
+          [attr.aria-invalid]="showFieldError('title')"
+        />
+        @if (showFieldError('title')) {
+          <span class="form-field__error">Title is required.</span>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="kb-department">Department</label>
+        <input
+          id="kb-department"
+          type="text"
+          formControlName="department"
+          autocomplete="off"
+          placeholder="e.g. Harris County Engineering"
+          [attr.aria-invalid]="showFieldError('department')"
+        />
+        @if (showFieldError('department')) {
+          <span class="form-field__error">Department is required.</span>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="kb-permit-type">Permit type</label>
+        <input
+          id="kb-permit-type"
+          type="text"
+          formControlName="permitType"
+          autocomplete="off"
+          placeholder="e.g. FloodplainDevelopmentPermit"
+          [attr.aria-invalid]="showFieldError('permitType')"
+        />
+        @if (showFieldError('permitType')) {
+          <span class="form-field__error">Permit type is required.</span>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="kb-document-type">Document type</label>
+        <input
+          id="kb-document-type"
+          type="text"
+          formControlName="documentType"
+          autocomplete="off"
+          placeholder="e.g. Regulation"
+          [attr.aria-invalid]="showFieldError('documentType')"
+        />
+        @if (showFieldError('documentType')) {
+          <span class="form-field__error">Document type is required.</span>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="kb-version">Version <span class="optional">(optional)</span></label>
+        <input
+          id="kb-version"
+          type="text"
+          formControlName="version"
+          autocomplete="off"
+          placeholder="e.g. 2024 Edition"
+        />
+      </div>
+
+      <div class="form-field">
+        <label for="kb-effective-date">Effective date <span class="optional">(optional)</span></label>
+        <input id="kb-effective-date" type="date" formControlName="effectiveDate" />
+      </div>
+
+      <div class="form-field upload-form__grid-wide">
+        <label for="kb-source-url">Source URL <span class="optional">(optional)</span></label>
+        <input
+          id="kb-source-url"
+          type="url"
+          formControlName="sourceUrl"
+          autocomplete="off"
+          placeholder="e.g. https://www.hcfcd.org/..."
+        />
+      </div>
+    </div>
+
+    <div class="upload-form__actions">
+      <button type="submit" class="btn btn--primary" [disabled]="submitting()">
+        {{ submitting() ? 'Uploading…' : 'Upload document' }}
+      </button>
+    </div>
+  </form>
+</section>
+
+<section class="document-list-section" aria-labelledby="documents-heading">
+  <div class="document-list-section__header">
+    <h2 id="documents-heading">Reference documents</h2>
+    <label class="include-deactivated">
+      <input
+        type="checkbox"
+        [checked]="includeDeactivated()"
+        (change)="onIncludeDeactivatedChange($event)"
+      />
+      Show deactivated documents
+    </label>
+  </div>
+
+  @if (deactivateError()) {
+    <div class="form-error-banner" role="alert">
+      The document could not be deactivated. Try again.
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="state-panel" role="status">
+      <p>Loading reference documents…</p>
+    </div>
+  } @else if (error()) {
+    <div class="state-panel state-panel--error" role="alert">
+      <h3>Unable to load reference documents</h3>
+      <p>The document list could not be retrieved. Verify the API is running and try again.</p>
+      <button type="button" class="btn btn--secondary" (click)="load()">Retry</button>
+    </div>
+  } @else if (documents().length === 0) {
+    <div class="state-panel">
+      <h3>No reference documents yet</h3>
+      <p>Upload the first Harris County reference document to build the corpus.</p>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Title</th>
+            <th scope="col">Department</th>
+            <th scope="col">Permit type</th>
+            <th scope="col">Document type</th>
+            <th scope="col">Effective date</th>
+            <th scope="col">Status</th>
+            <th scope="col">Ingestion status</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (document of documents(); track document.id) {
+            <tr [class.row--deactivated]="isDeactivated(document)">
+              <td>
+                <span class="document-title">{{ document.title }}</span>
+                <span class="document-filename">{{ document.fileName }}</span>
+              </td>
+              <td>{{ document.department }}</td>
+              <td>{{ document.permitType }}</td>
+              <td>{{ document.documentType }}</td>
+              <td>{{ document.effectiveDate ? (document.effectiveDate | date: 'mediumDate') : '—' }}</td>
+              <td>{{ isDeactivated(document) ? 'Deactivated' : 'Active' }}</td>
+              <td>
+                <span
+                  class="ingestion-badge"
+                  [class]="'ingestion-badge ingestion-badge--' + document.ingestionStatus.toLowerCase()"
+                >
+                  {{ ingestionStatusLabels[document.ingestionStatus] }}
+                </span>
+              </td>
+              <td class="actions-cell">
+                @if (!isDeactivated(document)) {
+                  <button
+                    type="button"
+                    class="btn btn--secondary btn--small"
+                    (click)="deactivate(document)"
+                    [disabled]="deactivatingId() === document.id"
+                  >
+                    {{ deactivatingId() === document.id ? 'Deactivating…' : 'Deactivate' }}
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

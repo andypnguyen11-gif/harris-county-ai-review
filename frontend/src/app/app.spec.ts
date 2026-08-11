@@ -29,7 +29,7 @@ describe('App', () => {
     const navLinks = Array.from(compiled.querySelectorAll('nav.app-nav a')).map((a) =>
       a.textContent?.trim(),
     );
-    expect(navLinks).toEqual(['Dashboard', 'Cases']);
+    expect(navLinks).toEqual(['Dashboard', 'Cases', 'Knowledge Base']);
   });
 
   it('renders a router outlet and footer', async () => {

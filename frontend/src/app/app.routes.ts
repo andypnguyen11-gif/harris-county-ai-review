@@ -25,6 +25,12 @@ export const routes: Routes = [
       import('./features/cases/case-detail/case-detail').then((m) => m.CaseDetail),
   },
   {
+    path: 'knowledge-base',
+    title: 'Knowledge Base | Harris County AI Document Review',
+    loadComponent: () =>
+      import('./features/knowledge-base/knowledge-base').then((m) => m.KnowledgeBase),
+  },
+  {
     path: '**',
     redirectTo: '',
   },
