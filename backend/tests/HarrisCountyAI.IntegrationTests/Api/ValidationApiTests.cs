@@ -17,7 +17,7 @@ public class ValidationApiTests : IClassFixture<SqlServerTestDatabase>, IDisposa
     {
         _database = database;
         _factory = new TestApplicationFactory { ConnectionStringOverride = database.ConnectionString };
-        _client = _factory.CreateClient();
+        _client = _factory.CreateClient().WithToken(TestAuthentication.CreateToken(roles: ["Reviewer"]));
     }
 
     public void Dispose()

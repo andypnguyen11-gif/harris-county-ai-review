@@ -1,0 +1,41 @@
+<div class="page-header">
+  <div>
+    <h1>Sign in</h1>
+    <p class="page-header__subtitle">
+      Sign in to review permit applications. Access to each case, document, and answer is
+      authorized by the API on every request.
+    </p>
+  </div>
+</div>
+
+<form class="card sign-in-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+  @if (errorMessage(); as message) {
+    <div class="form-error-banner" role="alert">{{ message }}</div>
+  }
+
+  <div class="form-field">
+    <label for="sign-in-username">Username</label>
+    <input
+      id="sign-in-username"
+      type="text"
+      formControlName="username"
+      autocomplete="username"
+      [attr.aria-invalid]="showUsernameError()"
+      [attr.aria-describedby]="showUsernameError() ? 'sign-in-username-error' : 'sign-in-username-hint'"
+    />
+    @if (showUsernameError()) {
+      <span class="form-field__error" id="sign-in-username-error">Username is required.</span>
+    } @else {
+      <span class="form-field__hint" id="sign-in-username-hint">
+        Local development accounts: <code>dev.reviewer</code> (case review) and
+        <code>dev.admin</code> (adds knowledge base administration).
+      </span>
+    }
+  </div>
+
+  <div class="sign-in-form__actions">
+    <button type="submit" class="btn btn--primary" [disabled]="submitting()">
+      {{ submitting() ? 'Signing in…' : 'Sign in' }}
+    </button>
+  </div>
+</form>

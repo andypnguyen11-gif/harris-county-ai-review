@@ -32,7 +32,7 @@ public class DocumentsApiTests : IClassFixture<SqlServerTestDatabase>, IAsyncLif
         _database = database;
         _containerName = $"test-docs-api-{Guid.NewGuid():N}"[..40];
         _factory = CreateFactory();
-        _client = _factory.CreateClient();
+        _client = _factory.CreateClient().WithToken(TestAuthentication.CreateToken(roles: ["Reviewer"]));
     }
 
     public Task InitializeAsync() => Task.CompletedTask;
@@ -184,7 +184,7 @@ public class DocumentsApiTests : IClassFixture<SqlServerTestDatabase>, IAsyncLif
     public async Task Post_With_Oversized_File_Returns_400_ProblemDetails()
     {
         var factory = CreateFactory(maxFileSizeBytes: PdfBytes.Length - 1);
-        using var client = factory.CreateClient();
+        using var client = factory.CreateClient().WithToken(TestAuthentication.CreateToken(roles: ["Reviewer"]));
 
         var createCase = await client.PostAsJsonAsync("/api/cases", new
         {
