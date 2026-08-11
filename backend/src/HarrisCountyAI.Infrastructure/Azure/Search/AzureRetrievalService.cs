@@ -19,10 +19,13 @@ namespace HarrisCountyAI.Infrastructure.Azure.Search;
 /// numbers) that pure vector similarity blurs.
 /// </summary>
 /// <remarks>
-/// Every query this service issues carries the corpus filter
-/// <c>sourceType eq 'KnowledgeBase'</c>. That filter is not optional and not
-/// caller-controlled — it is what keeps case-uploaded documents out of corpus
-/// retrieval (see docs/architecture/rag-architecture.md).
+/// Every query this service issues carries a mandatory scope filter. County
+/// requests get the corpus filter <c>sourceType eq 'KnowledgeBase'</c>, which
+/// keeps case-uploaded documents out of corpus retrieval; case requests
+/// require a case id and get <c>sourceType eq 'CaseDocument' and caseId eq
+/// '&lt;id&gt;'</c>, which keeps the corpus and every other case out of case
+/// retrieval. Neither filter is optional or caller-controlled (see
+/// docs/architecture/rag-architecture.md).
 /// </remarks>
 public sealed class AzureRetrievalService : IRetrievalService
 {
@@ -72,6 +75,14 @@ public sealed class AzureRetrievalService : IRetrievalService
                 $"TopK must be between 1 and {RetrievalRequest.MaxTopK}.");
         }
 
+        if (request.Scope == SourceType.Case && (request.CaseId is null || request.CaseId == Guid.Empty))
+        {
+            throw new ArgumentException(
+                "Case-scoped retrieval requires a case id; without one the query cannot be "
+                + "isolated to a single case.",
+                nameof(request));
+        }
+
         var topK = request.TopK ?? _options.DefaultTopK;
 
         // With reranking active, retrieve a wider candidate pool for the
@@ -88,11 +99,12 @@ public sealed class AzureRetrievalService : IRetrievalService
             throw new InvalidOperationException("The embedding service returned no embedding for the query.");
         }
 
+        var scopeFilter = BuildFilter(request);
         var query = new ChunkSearchQuery
         {
             SearchText = _options.Mode == RetrievalMode.Hybrid ? request.Query : null,
             Vector = embeddings[0].Vector,
-            Filter = BuildCorpusFilter(request),
+            Filter = scopeFilter,
             Size = searchSize,
         };
 
@@ -111,8 +123,9 @@ public sealed class AzureRetrievalService : IRetrievalService
         }
 
         _logger.LogInformation(
-            "Corpus retrieval ({Mode}) returned {ChunkCount} of {RequestedCount} requested chunks "
+            "{Scope} retrieval ({Mode}) returned {ChunkCount} of {RequestedCount} requested chunks "
             + "(scores {TopScore:F4}..{LowScore:F4}; embedding {EmbeddingMs} ms, search {SearchMs} ms).",
+            request.Scope,
             _options.Mode,
             chunks.Count,
             searchSize,
@@ -135,9 +148,29 @@ public sealed class AzureRetrievalService : IRetrievalService
                 Query = request.Query,
                 Candidates = chunks,
                 TopN = topK,
+                ScopeFilter = scopeFilter,
             },
             cancellationToken);
     }
+
+    /// <summary>
+    /// Builds the mandatory OData scope filter for a retrieval request:
+    /// the corpus filter for county requests, the case filter for
+    /// case-scoped requests.
+    /// </summary>
+    internal static string BuildFilter(RetrievalRequest request)
+        => request.Scope == SourceType.Case ? BuildCaseFilter(request) : BuildCorpusFilter(request);
+
+    /// <summary>
+    /// Builds the OData filter for a case-scoped query: only chunks tagged
+    /// <see cref="IndexSourceTypes.CaseDocument"/> that belong to exactly the
+    /// requested case. Both clauses are mandatory — this is the isolation
+    /// boundary that keeps one case's evidence out of every other case's
+    /// answers.
+    /// </summary>
+    internal static string BuildCaseFilter(RetrievalRequest request)
+        => $"{SearchIndexDefinition.Fields.SourceType} eq '{IndexSourceTypes.CaseDocument}'"
+            + $" and {SearchIndexDefinition.Fields.CaseId} eq '{request.CaseId!.Value:D}'";
 
     /// <summary>
     /// Builds the OData filter for a corpus query. Always scopes to

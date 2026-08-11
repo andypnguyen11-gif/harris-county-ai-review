@@ -2,8 +2,8 @@
   <div>
     <h1>Ask a question</h1>
     <p class="page-header__subtitle">
-      Ask what Harris County requires. Answers come only from the reference corpus and cite
-      their sources.
+      Ask what Harris County requires, or what an applicant submitted to a case. Answers come
+      only from the selected source and cite their evidence.
     </p>
   </div>
 </div>
@@ -12,6 +12,73 @@
   <h2 id="question-heading" class="visually-hidden">Your question</h2>
 
   <form class="question-form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+    <fieldset class="scope-fieldset">
+      <legend class="scope-fieldset__legend">Ask about</legend>
+      <div class="scope-options">
+        <label class="scope-option" for="qa-scope-county">
+          <input
+            type="radio"
+            id="qa-scope-county"
+            name="qa-scope"
+            value="County"
+            [checked]="scope() === 'County'"
+            (change)="setScope('County')"
+          />
+          <span>
+            <span class="scope-option__label">{{ scopeLabels['County'] }}</span>
+            <span class="scope-option__hint">What does Harris County require?</span>
+          </span>
+        </label>
+        <label class="scope-option" for="qa-scope-case">
+          <input
+            type="radio"
+            id="qa-scope-case"
+            name="qa-scope"
+            value="Case"
+            [checked]="scope() === 'Case'"
+            (change)="setScope('Case')"
+          />
+          <span>
+            <span class="scope-option__label">{{ scopeLabels['Case'] }}</span>
+            <span class="scope-option__hint">What did the applicant submit?</span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
+    @if (scope() === 'Case') {
+      <div class="form-field">
+        <label for="qa-case">Case</label>
+        @if (casesLoading()) {
+          <p class="case-picker-note" role="status">Loading cases…</p>
+        } @else if (casesError()) {
+          <p class="form-field__error" role="alert">
+            The case list could not be loaded.
+            <button type="button" class="btn btn--secondary btn--small" (click)="loadCases()">
+              Retry
+            </button>
+          </p>
+        } @else {
+          <select
+            id="qa-case"
+            formControlName="caseId"
+            [attr.aria-invalid]="caseRequiredError()"
+            [attr.aria-describedby]="caseRequiredError() ? 'qa-case-error' : null"
+          >
+            <option value="">Select a case…</option>
+            @for (caseItem of cases() ?? []; track caseItem.id) {
+              <option [value]="caseItem.id">{{ caseItem.caseNumber }} — {{ caseItem.name }}</option>
+            }
+          </select>
+          @if (caseRequiredError()) {
+            <span class="form-field__error" id="qa-case-error">
+              Select the case the question is about.
+            </span>
+          }
+        }
+      </div>
+    }
+
     <div class="form-field">
       <label for="qa-question">Question</label>
       <textarea
@@ -19,7 +86,11 @@
         formControlName="question"
         rows="3"
         [attr.maxlength]="maxQuestionLength"
-        placeholder="e.g. What documents must a floodplain development permit application include?"
+        [placeholder]="
+          scope() === 'Case'
+            ? 'e.g. Who signed this application? Did the applicant submit a drainage plan?'
+            : 'e.g. What documents must a floodplain development permit application include?'
+        "
         [attr.aria-invalid]="showQuestionError()"
         [attr.aria-describedby]="showQuestionError() ? 'qa-question-error' : null"
       ></textarea>
@@ -38,7 +109,11 @@
 
 @if (asking()) {
   <div class="state-panel" role="status">
-    <p>Searching the Harris County reference corpus…</p>
+    @if (askedScope() === 'Case') {
+      <p>Searching the case's submitted documents…</p>
+    } @else {
+      <p>Searching the Harris County reference corpus…</p>
+    }
   </div>
 } @else if (askError()) {
   <div class="state-panel state-panel--error" role="alert">
@@ -87,10 +162,18 @@
       <div class="card insufficient-evidence" role="status">
         <h3>Not enough evidence to answer</h3>
         <p>{{ answer.answer }}</p>
-        <p class="insufficient-evidence__hint">
-          The assistant only answers from the Harris County reference corpus. Try rephrasing the
-          question, or ask an administrator to add the relevant reference document.
-        </p>
+        @if (askedScope() === 'Case') {
+          <p class="insufficient-evidence__hint">
+            The assistant only answers from the selected case's uploaded documents. Try
+            rephrasing the question, or check that the relevant document was uploaded and
+            processed.
+          </p>
+        } @else {
+          <p class="insufficient-evidence__hint">
+            The assistant only answers from the Harris County reference corpus. Try rephrasing
+            the question, or ask an administrator to add the relevant reference document.
+          </p>
+        }
       </div>
     }
   </section>

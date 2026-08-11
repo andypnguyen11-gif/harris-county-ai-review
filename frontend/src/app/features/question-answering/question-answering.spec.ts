@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 
 import { QuestionResponse } from '../../core/models/question-answer.model';
+import { CaseService } from '../../core/services/case.service';
 import { QuestionAnsweringService } from '../../core/services/question-answering.service';
 import { makeCitation, makeQuestionResponse } from '../../testing/question-answer-fixtures';
 import { QuestionAnswering } from './question-answering';
@@ -13,7 +14,10 @@ describe('QuestionAnswering', () => {
   async function setup(): Promise<void> {
     TestBed.configureTestingModule({
       imports: [QuestionAnswering],
-      providers: [{ provide: QuestionAnsweringService, useValue: { ask } }],
+      providers: [
+        { provide: QuestionAnsweringService, useValue: { ask } },
+        { provide: CaseService, useValue: { getCases: vi.fn(() => of([])) } },
+      ],
     });
     fixture = TestBed.createComponent(QuestionAnswering);
     await fixture.whenStable();

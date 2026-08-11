@@ -103,25 +103,28 @@ public sealed class AzureSemanticRerankingService : IRerankingService
     /// <summary>
     /// Builds the semantic query that rescores exactly the candidate chunks:
     /// keyword-only (the candidates were already vector-matched), scoped by a
-    /// <c>search.in</c> filter over their chunk ids plus the mandatory corpus
-    /// filter.
+    /// <c>search.in</c> filter over their chunk ids plus the mandatory scope
+    /// filter the candidates were retrieved under (the corpus filter when the
+    /// request does not carry one).
     /// </summary>
     internal ChunkSearchQuery BuildRerankQuery(RerankingRequest request) => new()
     {
         SearchText = request.Query,
         Vector = null,
-        Filter = BuildCandidateFilter(request.Candidates),
+        Filter = BuildCandidateFilter(request),
         Size = request.Candidates.Count,
         UseSemanticRanking = true,
         SemanticConfigurationName = _options.SemanticConfigurationName,
     };
 
-    internal static string BuildCandidateFilter(IReadOnlyList<RetrievedChunk> candidates)
+    internal static string BuildCandidateFilter(RerankingRequest request)
     {
-        var ids = string.Join(",", candidates.Select(candidate =>
+        var ids = string.Join(",", request.Candidates.Select(candidate =>
             AzureRetrievalService.EscapeODataString(candidate.ChunkId)));
-        return $"{SearchIndexDefinition.Fields.SourceType} eq '{IndexSourceTypes.KnowledgeBase}'"
-            + $" and search.in({SearchIndexDefinition.Fields.ChunkId}, '{ids}', ',')";
+        var scopeFilter = string.IsNullOrWhiteSpace(request.ScopeFilter)
+            ? $"{SearchIndexDefinition.Fields.SourceType} eq '{IndexSourceTypes.KnowledgeBase}'"
+            : request.ScopeFilter;
+        return $"{scopeFilter} and search.in({SearchIndexDefinition.Fields.ChunkId}, '{ids}', ',')";
     }
 
     /// <summary>

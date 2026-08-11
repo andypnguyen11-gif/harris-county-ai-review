@@ -1,14 +1,22 @@
 import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { MAX_QUESTION_LENGTH, QuestionResponse } from '../../core/models/question-answer.model';
+import { Case } from '../../core/models/case.model';
+import {
+  MAX_QUESTION_LENGTH,
+  QUESTION_SCOPE_LABELS,
+  QuestionResponse,
+  QuestionScope,
+} from '../../core/models/question-answer.model';
+import { CaseService } from '../../core/services/case.service';
 import { QuestionAnsweringService } from '../../core/services/question-answering.service';
 
 /**
  * Lets reviewers ask natural-language questions of the Harris County
- * reference corpus. Answers are grounded: an answered question lists the
- * corpus sources it cites, and when the corpus lacks evidence the page shows
- * an explicit insufficient-evidence state instead of an answer.
+ * reference corpus, or — scoped to one case — of the documents an applicant
+ * submitted. Answers are grounded: an answered question lists the sources it
+ * cites, and when the evidence is lacking the page shows an explicit
+ * insufficient-evidence state instead of an answer.
  */
 @Component({
   selector: 'app-question-answering',
@@ -19,22 +27,57 @@ import { QuestionAnsweringService } from '../../core/services/question-answering
 export class QuestionAnswering {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly questionAnsweringService = inject(QuestionAnsweringService);
+  private readonly caseService = inject(CaseService);
 
   protected readonly maxQuestionLength = MAX_QUESTION_LENGTH;
+  protected readonly scopeLabels = QUESTION_SCOPE_LABELS;
 
   protected readonly asking = signal(false);
   protected readonly askError = signal(false);
   protected readonly response = signal<QuestionResponse | null>(null);
   /** The question the current response answers, kept for display after the box is edited. */
   protected readonly askedQuestion = signal('');
+  /** The scope the current response was answered under. */
+  protected readonly askedScope = signal<QuestionScope>('County');
+
+  protected readonly scope = signal<QuestionScope>('County');
+  /** Cases available for the Case scope; null until first loaded. */
+  protected readonly cases = signal<Case[] | null>(null);
+  protected readonly casesLoading = signal(false);
+  protected readonly casesError = signal(false);
+  protected readonly caseRequiredError = signal(false);
 
   protected readonly form = this.formBuilder.group({
     question: ['', [Validators.required, Validators.maxLength(MAX_QUESTION_LENGTH)]],
+    caseId: [''],
   });
 
   protected showQuestionError(): boolean {
     const control = this.form.controls.question;
     return control.invalid && (control.touched || control.dirty);
+  }
+
+  protected setScope(scope: QuestionScope): void {
+    this.scope.set(scope);
+    this.caseRequiredError.set(false);
+    if (scope === 'Case' && this.cases() === null && !this.casesLoading()) {
+      this.loadCases();
+    }
+  }
+
+  protected loadCases(): void {
+    this.casesLoading.set(true);
+    this.casesError.set(false);
+    this.caseService.getCases().subscribe({
+      next: (cases) => {
+        this.cases.set(cases);
+        this.casesLoading.set(false);
+      },
+      error: () => {
+        this.casesError.set(true);
+        this.casesLoading.set(false);
+      },
+    });
   }
 
   protected onSubmit(): void {
@@ -44,12 +87,26 @@ export class QuestionAnswering {
       return;
     }
 
+    const scope = this.scope();
+    const caseId = this.form.controls.caseId.value;
+    if (scope === 'Case' && !caseId) {
+      this.caseRequiredError.set(true);
+      return;
+    }
+
     this.asking.set(true);
     this.askError.set(false);
+    this.caseRequiredError.set(false);
     this.response.set(null);
     this.askedQuestion.set(question);
+    this.askedScope.set(scope);
 
-    this.questionAnsweringService.ask(question).subscribe({
+    const request =
+      scope === 'Case'
+        ? this.questionAnsweringService.ask(question, { scope: 'Case', caseId })
+        : this.questionAnsweringService.ask(question);
+
+    request.subscribe({
       next: (response) => {
         this.response.set(response);
         this.asking.set(false);
