@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
 
 namespace HarrisCountyAI.IntegrationTests;
 
@@ -18,16 +17,14 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        var settings = new Dictionary<string, string?>
-        {
-            ["Database:ApplyMigrationsAtStartup"] = "false",
-        };
+        // UseSetting flows into the host configuration before Program.cs runs,
+        // so values read during service registration (e.g. the connection string)
+        // pick up the overrides.
+        builder.UseSetting("Database:ApplyMigrationsAtStartup", "false");
 
         if (ConnectionStringOverride is not null)
         {
-            settings["ConnectionStrings:Database"] = ConnectionStringOverride;
+            builder.UseSetting("ConnectionStrings:Database", ConnectionStringOverride);
         }
-
-        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
     }
 }
