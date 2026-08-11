@@ -1,0 +1,100 @@
+using HarrisCountyAI.Application.Documents;
+using HarrisCountyAI.Application.Documents.Extraction;
+using HarrisCountyAI.Domain.Entities;
+using HarrisCountyAI.Domain.Enums;
+
+namespace HarrisCountyAI.UnitTests.Documents.Extraction;
+
+/// <summary>In-memory <see cref="IDocumentRepository"/> that records the status persisted at each save.</summary>
+public sealed class FakeDocumentRepository : IDocumentRepository
+{
+    private readonly Dictionary<Guid, Document> _documents = [];
+
+    public List<DocumentProcessingStatus> SavedStatuses { get; } = [];
+
+    public int SaveChangesCallCount { get; private set; }
+
+    public void Add(Document document) => _documents[document.Id] = document;
+
+    public Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_documents.TryGetValue(id, out var document) ? document : null);
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        SaveChangesCallCount++;
+        SavedStatuses.AddRange(_documents.Values.Select(d => d.ProcessingStatus));
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>In-memory <see cref="IDocumentStorageService"/> serving canned blob content.</summary>
+public sealed class FakeDocumentStorageService : IDocumentStorageService
+{
+    private readonly Dictionary<(DocumentStorageContainer, string), byte[]> _blobs = [];
+
+    public Exception? DownloadException { get; set; }
+
+    public List<string> DownloadedPaths { get; } = [];
+
+    public void AddBlob(DocumentStorageContainer container, string blobPath, byte[] content) =>
+        _blobs[(container, blobPath)] = content;
+
+    public Task<string> UploadAsync(DocumentStorageContainer container, string blobPath, string contentType, Stream content, CancellationToken cancellationToken = default)
+    {
+        using var buffer = new MemoryStream();
+        content.CopyTo(buffer);
+        _blobs[(container, blobPath)] = buffer.ToArray();
+        return Task.FromResult(blobPath);
+    }
+
+    public Task<Stream> DownloadAsync(DocumentStorageContainer container, string blobPath, CancellationToken cancellationToken = default)
+    {
+        DownloadedPaths.Add(blobPath);
+
+        if (DownloadException is not null)
+        {
+            throw DownloadException;
+        }
+
+        if (!_blobs.TryGetValue((container, blobPath), out var content))
+        {
+            throw new FileNotFoundException($"Blob '{blobPath}' was not found.", blobPath);
+        }
+
+        return Task.FromResult<Stream>(new MemoryStream(content));
+    }
+
+    public Task<bool> DeleteAsync(DocumentStorageContainer container, string blobPath, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_blobs.Remove((container, blobPath)));
+
+    public Task<bool> ExistsAsync(DocumentStorageContainer container, string blobPath, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_blobs.ContainsKey((container, blobPath)));
+}
+
+/// <summary>Canned <see cref="IDocumentExtractionService"/>.</summary>
+public sealed class FakeDocumentExtractionService : IDocumentExtractionService
+{
+    public Exception? ExtractException { get; set; }
+
+    public Guid? LastDocumentId { get; private set; }
+
+    public Task<ExtractedDocument> ExtractAsync(Guid documentId, Stream content, CancellationToken cancellationToken)
+    {
+        LastDocumentId = documentId;
+
+        if (ExtractException is not null)
+        {
+            throw ExtractException;
+        }
+
+        return Task.FromResult(new ExtractedDocument
+        {
+            DocumentId = documentId,
+            Pages = [new ExtractedPage { PageNumber = 1, Text = "Fake page text" }],
+            KeyValuePairs = [new ExtractedField { Key = "Applicant Name:", Value = "Jane Doe", Confidence = 0.9, PageNumber = 1 }],
+            RawText = "Fake page text",
+            ModelId = "fake-model",
+            ExtractedAt = DateTime.UtcNow,
+        });
+    }
+}

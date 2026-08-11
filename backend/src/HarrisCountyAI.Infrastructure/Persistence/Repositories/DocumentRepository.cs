@@ -17,6 +17,9 @@ public sealed class DocumentRepository : IDocumentRepository
         _context.Documents.SingleOrDefaultAsync(
             d => d.Id == documentId && d.CaseId == caseId, cancellationToken);
 
+    public Task<Document?> GetByIdAsync(Guid documentId, CancellationToken cancellationToken = default) =>
+        _context.Documents.SingleOrDefaultAsync(d => d.Id == documentId, cancellationToken);
+
     public async Task<IReadOnlyList<Document>> GetByCaseIdAsync(Guid caseId, CancellationToken cancellationToken = default) =>
         await _context.Documents
             .Where(d => d.CaseId == caseId)
