@@ -1,6 +1,7 @@
 using HarrisCountyAI.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HarrisCountyAI.IntegrationTests;
@@ -23,6 +24,19 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
     /// maximum file size). Keys are relative to the BlobStorage section.
     /// </summary>
     public Dictionary<string, string> BlobStorageOverrides { get; } = [];
+
+    /// <summary>
+    /// Additional host configuration values, e.g. test-specific blob container
+    /// names. Populate before the first client is created.
+    /// </summary>
+    public Dictionary<string, string?> SettingOverrides { get; } = [];
+
+    /// <summary>
+    /// Extra service registrations applied after the application's own,
+    /// e.g. registrations not yet wired into the production composition root.
+    /// Set before the first client is created.
+    /// </summary>
+    public Action<IServiceCollection>? TestServices { get; set; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -52,6 +66,11 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
             builder.UseSetting($"BlobStorage:{key}", value);
         }
 
+        foreach (var (key, value) in SettingOverrides)
+        {
+            builder.UseSetting(key, value);
+        }
+
         // Document and validation report persistence are registered via their
         // own extensions; the composition-root wiring mirrors these calls.
         builder.ConfigureServices(services =>
@@ -59,5 +78,10 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
             services.AddDocumentPersistence();
             services.AddValidationReports();
         });
+
+        if (TestServices is not null)
+        {
+            builder.ConfigureTestServices(TestServices);
+        }
     }
 }

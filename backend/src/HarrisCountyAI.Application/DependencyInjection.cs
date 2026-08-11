@@ -4,6 +4,9 @@ using HarrisCountyAI.Application.Cases.GetCases;
 using HarrisCountyAI.Application.Cases.UpdateCase;
 using HarrisCountyAI.Application.Documents;
 using HarrisCountyAI.Application.Documents.Normalization;
+using HarrisCountyAI.Application.KnowledgeBase.DeactivateKnowledgeDocument;
+using HarrisCountyAI.Application.KnowledgeBase.GetKnowledgeDocuments;
+using HarrisCountyAI.Application.KnowledgeBase.UploadKnowledgeDocument;
 using HarrisCountyAI.Application.Validation;
 using HarrisCountyAI.Application.Validation.Semantic;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +24,10 @@ public static class DependencyInjection
         services.AddDocumentHandlers();
         services.AddValidation();
         services.AddSemanticValidation();
+
+        services.AddScoped<UploadKnowledgeDocumentHandler>();
+        services.AddScoped<GetKnowledgeDocumentsHandler>();
+        services.AddScoped<DeactivateKnowledgeDocumentHandler>();
 
         services.AddSingleton<IDocumentNormalizationService, DocumentNormalizationService>();
 

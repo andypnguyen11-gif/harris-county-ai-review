@@ -28,6 +28,26 @@ public class DocumentBlobPathBuilderTests
         Assert.Equal($"{caseId:D}/{documentId:D}_site-plan-rev-2.pdf", path);
     }
 
+    [Fact]
+    public void ForKnowledgeDocument_Builds_Knowledge_Prefixed_Path()
+    {
+        var documentId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+
+        var path = DocumentBlobPathBuilder.ForKnowledgeDocument(documentId, "regulations.pdf");
+
+        Assert.Equal("knowledge/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee_regulations.pdf", path);
+    }
+
+    [Fact]
+    public void ForKnowledgeDocument_Sanitizes_The_FileName()
+    {
+        var documentId = Guid.NewGuid();
+
+        var path = DocumentBlobPathBuilder.ForKnowledgeDocument(documentId, "fee schedule (2026).pdf");
+
+        Assert.Equal($"knowledge/{documentId:D}_fee-schedule-2026.pdf", path);
+    }
+
     [Theory]
     [InlineData("permit.pdf", "permit.pdf")]
     [InlineData("Permit Application.pdf", "Permit-Application.pdf")]

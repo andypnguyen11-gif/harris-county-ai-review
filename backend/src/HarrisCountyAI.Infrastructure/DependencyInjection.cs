@@ -1,4 +1,5 @@
 using HarrisCountyAI.Application.Cases;
+using HarrisCountyAI.Application.KnowledgeBase;
 using HarrisCountyAI.Infrastructure.Azure.BlobStorage;
 using HarrisCountyAI.Infrastructure.Azure.DocumentIntelligence;
 using HarrisCountyAI.Infrastructure.Azure.LanguageModels;
@@ -19,6 +20,7 @@ public static class DependencyInjection
 
         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<ICaseRepository, CaseRepository>();
+        services.AddScoped<IKnowledgeDocumentRepository, KnowledgeDocumentRepository>();
         services.AddDocumentPersistence();
         services.AddValidationReports();
         services.AddBlobStorage(configuration);
