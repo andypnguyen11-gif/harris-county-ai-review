@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Search\Chunking\TestData\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\HarrisCountyAI.Application\HarrisCountyAI.Application.csproj" />
     <ProjectReference Include="..\..\src\HarrisCountyAI.Domain\HarrisCountyAI.Domain.csproj" />
     <ProjectReference Include="..\..\src\HarrisCountyAI.Infrastructure\HarrisCountyAI.Infrastructure.csproj" />
