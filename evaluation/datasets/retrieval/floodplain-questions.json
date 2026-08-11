@@ -1,0 +1,104 @@
+{
+  "description": "Retrieval evaluation questions for the Harris County floodplain permit corpus. Each question lists the corpus source a good retrieval should surface; a run scores a mode (vector-only vs hybrid, with or without reranking) by whether an expected source appears in the top K results. See docs/architecture/rag-architecture.md for the methodology.",
+  "version": 1,
+  "questions": [
+    {
+      "id": "section-01",
+      "category": "section-number",
+      "question": "What does Section 4.2 of the Harris County floodplain regulations require?",
+      "expectedSources": [
+        { "title": "Regulations of Harris County for Floodplain Management", "section": "Section 4.2" }
+      ]
+    },
+    {
+      "id": "section-02",
+      "category": "section-number",
+      "question": "What are the permit application requirements in Section 6 of the floodplain management regulations?",
+      "expectedSources": [
+        { "title": "Regulations of Harris County for Floodplain Management", "section": "Section 6" }
+      ]
+    },
+    {
+      "id": "section-03",
+      "category": "section-number",
+      "question": "Which activities does Section 5.1 prohibit in the floodway?",
+      "expectedSources": [
+        { "title": "Regulations of Harris County for Floodplain Management", "section": "Section 5.1" }
+      ]
+    },
+    {
+      "id": "form-01",
+      "category": "form-number",
+      "question": "When should an applicant use Form MT-EZ instead of the full MT-1 application?",
+      "expectedSources": [
+        { "title": "MT-EZ Application Form Instructions", "section": "General Background Information" }
+      ]
+    },
+    {
+      "id": "form-02",
+      "category": "form-number",
+      "question": "What information goes on the FEMA Elevation Certificate?",
+      "expectedSources": [
+        { "title": "FEMA Elevation Certificate Instructions", "section": null }
+      ]
+    },
+    {
+      "id": "form-03",
+      "category": "form-number",
+      "question": "Is a LOMA required before a floodplain development permit is issued?",
+      "expectedSources": [
+        { "title": "MT-EZ Application Form Instructions", "section": null },
+        { "title": "Regulations of Harris County for Floodplain Management", "section": null }
+      ]
+    },
+    {
+      "id": "semantic-01",
+      "category": "semantic",
+      "question": "Can I build a storage shed on my property if part of it is in the floodplain?",
+      "expectedSources": [
+        { "title": "Regulations of Harris County for Floodplain Management", "section": null }
+      ]
+    },
+    {
+      "id": "semantic-02",
+      "category": "semantic",
+      "question": "How high above the flood level does the lowest floor of a new house have to be?",
+      "expectedSources": [
+        { "title": "Regulations of Harris County for Floodplain Management", "section": null }
+      ]
+    },
+    {
+      "id": "semantic-03",
+      "category": "semantic",
+      "question": "What paperwork do I need to include when I apply for permission to build near a bayou?",
+      "expectedSources": [
+        { "title": "Regulations of Harris County for Floodplain Management", "section": null }
+      ]
+    },
+    {
+      "id": "semantic-04",
+      "category": "semantic",
+      "question": "Who decides whether my land is inside the 100-year flood zone?",
+      "expectedSources": [
+        { "title": "FEMA Elevation Certificate Instructions", "section": null },
+        { "title": "Regulations of Harris County for Floodplain Management", "section": null }
+      ]
+    },
+    {
+      "id": "semantic-05",
+      "category": "semantic",
+      "question": "What happens if my project changes after the floodplain permit was approved?",
+      "expectedSources": [
+        { "title": "Regulations of Harris County for Floodplain Management", "section": null }
+      ]
+    },
+    {
+      "id": "mixed-01",
+      "category": "mixed",
+      "question": "Does Section 7 say anything about drainage studies for site development?",
+      "expectedSources": [
+        { "title": "Regulations of Harris County for Floodplain Management", "section": "Section 7" }
+      ]
+    }
+  ]
+}

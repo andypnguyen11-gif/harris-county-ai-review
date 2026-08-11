@@ -1,16 +1,21 @@
+using System.Diagnostics;
 using Azure.Search.Documents.Models;
 using HarrisCountyAI.Application.Search.Embeddings;
 using HarrisCountyAI.Application.Search.Indexing;
 using HarrisCountyAI.Application.Search.Retrieval;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace HarrisCountyAI.Infrastructure.Azure.Search;
 
 /// <summary>
 /// <see cref="IRetrievalService"/> backed by Azure AI Search: embeds the query,
-/// runs a vector similarity search over the chunk index, and maps the hits back
-/// to <see cref="RetrievedChunk"/> values.
+/// runs a hybrid (keyword + vector) search over the chunk index, and maps the
+/// hits back to <see cref="RetrievedChunk"/> values. The query mode and default
+/// result count come from <see cref="RetrievalOptions"/>; hybrid is the default
+/// because keyword matching catches exact identifiers (section numbers, form
+/// numbers) that pure vector similarity blurs.
 /// </summary>
 /// <remarks>
 /// Every query this service issues carries the corpus filter
@@ -22,11 +27,13 @@ public sealed class AzureRetrievalService : IRetrievalService
 {
     private readonly ISearchQueryGateway _gateway;
     private readonly IEmbeddingService _embeddingService;
+    private readonly RetrievalOptions _options;
     private readonly ILogger<AzureRetrievalService> _logger;
 
     public AzureRetrievalService(
         ISearchQueryGateway gateway,
         IEmbeddingService embeddingService,
+        IOptions<RetrievalOptions>? options = null,
         ILogger<AzureRetrievalService>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(gateway);
@@ -34,6 +41,7 @@ public sealed class AzureRetrievalService : IRetrievalService
 
         _gateway = gateway;
         _embeddingService = embeddingService;
+        _options = options?.Value ?? new RetrievalOptions();
         _logger = logger ?? NullLogger<AzureRetrievalService>.Instance;
     }
 
@@ -55,7 +63,11 @@ public sealed class AzureRetrievalService : IRetrievalService
                 $"TopK must be between 1 and {RetrievalRequest.MaxTopK}.");
         }
 
+        var topK = request.TopK ?? _options.DefaultTopK;
+
+        var embeddingStopwatch = Stopwatch.StartNew();
         var embeddings = await _embeddingService.EmbedAsync([request.Query], cancellationToken);
+        embeddingStopwatch.Stop();
         if (embeddings.Count == 0)
         {
             throw new InvalidOperationException("The embedding service returned no embedding for the query.");
@@ -63,12 +75,16 @@ public sealed class AzureRetrievalService : IRetrievalService
 
         var query = new ChunkSearchQuery
         {
+            SearchText = _options.Mode == RetrievalMode.Hybrid ? request.Query : null,
             Vector = embeddings[0].Vector,
             Filter = BuildCorpusFilter(request),
-            Size = request.TopK,
+            Size = topK,
         };
 
+        var searchStopwatch = Stopwatch.StartNew();
         var hits = await _gateway.SearchAsync(query, cancellationToken);
+        searchStopwatch.Stop();
+
         var chunks = new List<RetrievedChunk>(hits.Count);
         foreach (var hit in hits)
         {
@@ -80,9 +96,15 @@ public sealed class AzureRetrievalService : IRetrievalService
         }
 
         _logger.LogInformation(
-            "Corpus retrieval returned {ChunkCount} of {RequestedCount} requested chunks.",
+            "Corpus retrieval ({Mode}) returned {ChunkCount} of {RequestedCount} requested chunks "
+            + "(scores {TopScore:F4}..{LowScore:F4}; embedding {EmbeddingMs} ms, search {SearchMs} ms).",
+            _options.Mode,
             chunks.Count,
-            request.TopK);
+            topK,
+            chunks.Count > 0 ? chunks[0].Score : 0d,
+            chunks.Count > 0 ? chunks[^1].Score : 0d,
+            embeddingStopwatch.ElapsedMilliseconds,
+            searchStopwatch.ElapsedMilliseconds);
 
         return chunks;
     }

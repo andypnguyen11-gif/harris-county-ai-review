@@ -1,6 +1,6 @@
-# RAG Architecture: The Search Index
+# RAG Architecture: Indexing and Retrieval
 
-This document describes the Azure AI Search index that backs retrieval — its schema, its vector configuration, and the guarantee that keeps case evidence and the Harris County reference corpus separate. See [`system-overview.md`](system-overview.md) for the wider architecture.
+This document describes the Azure AI Search index that backs retrieval — its schema, its vector configuration, the guarantee that keeps case evidence and the Harris County reference corpus separate — and the retrieval strategy that queries it. See [`system-overview.md`](system-overview.md) for the wider architecture.
 
 ## One Index, Two Corpora
 
@@ -79,3 +79,35 @@ Filters combine with vector queries natively in Azure AI Search (pre-filtered ve
 - **`DeleteDocumentAsync(documentId)`** — finds every chunk whose `documentId` matches and deletes them by key. Re-indexing a document is delete-then-index, which also removes stale chunks when a document shrinks.
 
 The Azure SDK is wrapped behind a thin `ISearchIndexGateway` seam so the mapping and delete logic are unit-testable without a live service; an integration test (skipped unless `SEARCH_ENDPOINT` is configured) deploys the schema against the real service and round-trips a sample chunk.
+
+## Retrieval Strategy
+
+Corpus retrieval (`AzureRetrievalService`, behind the `IRetrievalService` seam) issues **hybrid queries** by default: the raw question goes to the service as keyword search text *and* as a 1536-dimension embedding for vector search, in a single request. Azure AI Search runs both legs and fuses their rankings with Reciprocal Rank Fusion (RRF), so a chunk that ranks well on either leg surfaces in the merged result.
+
+Why hybrid instead of vector-only:
+
+- **Keyword search wins on exact identifiers.** Section numbers ("Section 4.2"), form numbers ("MT-EZ", "Elevation Certificate"), and regulatory references are near-opaque to embeddings — semantically, "Section 4.2" and "Section 5.1" are almost the same vector — but are trivially matched by the inverted index over `text` and `title`.
+- **Vector search wins on paraphrase.** "Can I build a shed behind my house?" shares almost no vocabulary with "accessory structures in the regulatory floodplain", but their embeddings are close.
+- County permit questions arrive in both shapes, often mixed in one question.
+
+Configuration (the `Retrieval` section, every setting defaulted):
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `Retrieval:Mode` | `Hybrid` | `Hybrid` or `VectorOnly`; `VectorOnly` exists for A/B comparison |
+| `Retrieval:DefaultTopK` | 5 | Result count when a `RetrievalRequest` does not specify `TopK` |
+
+Callers can still set `TopK` per request (1–50); the corpus `sourceType` filter applies identically in both modes because Azure AI Search pre-filters the keyword and vector legs alike.
+
+Every retrieval logs its metrics — mode, requested and returned counts, top/bottom relevance scores, embedding and search durations — so retrieval quality and latency can be watched without logging question text.
+
+### Comparing vector-only and hybrid retrieval
+
+The evaluation dataset at [`evaluation/datasets/retrieval/floodplain-questions.json`](../../evaluation/datasets/retrieval/floodplain-questions.json) holds floodplain-permit questions in three categories — `section-number`, `form-number`, and `semantic` — each with the corpus source(s) a good retrieval should surface. The comparison methodology:
+
+1. Ingest the reference corpus into the index (knowledge-base upload flow).
+2. For each dataset question, run retrieval once with `Retrieval:Mode = VectorOnly` and once with `Hybrid` (the debug endpoint `POST /api/debug/retrieval` returns raw chunks with scores).
+3. Score each run per category: **hit rate** (an expected source appears in the top K, matching on title and — when given — section) and **MRR** (reciprocal rank of the first expected source).
+4. Hybrid should at minimum match vector-only on `semantic` questions and beat it on `section-number` / `form-number` questions; a regression in any category blocks the retrieval change.
+
+The dataset is deliberately small and curated; it exists to catch relative regressions between retrieval modes, not to benchmark absolute quality. Automated execution of this comparison is planned for the evaluation-harness PR.

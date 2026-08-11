@@ -25,6 +25,16 @@ public static class RetrievalServiceCollectionExtensions
     {
         services.AddEmbeddingService(configuration);
 
+        services.AddOptions<RetrievalOptions>()
+            .Bind(configuration.GetSection(RetrievalOptions.SectionName))
+            .Validate(
+                options => options.DefaultTopK is >= 1 and <= RetrievalRequest.MaxTopK,
+                $"{RetrievalOptions.SectionName}:{nameof(RetrievalOptions.DefaultTopK)} must be between 1 and {RetrievalRequest.MaxTopK}.")
+            .Validate(
+                options => Enum.IsDefined(options.Mode),
+                $"{RetrievalOptions.SectionName}:{nameof(RetrievalOptions.Mode)} must be one of: {string.Join(", ", Enum.GetNames<RetrievalMode>())}.")
+            .ValidateOnStart();
+
         services.TryAddSingleton<ISearchQueryGateway, AzureSearchQueryGateway>();
         services.TryAddSingleton<IRetrievalService, AzureRetrievalService>();
 
