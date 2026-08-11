@@ -56,6 +56,11 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("LanguageModel:ApiKey", "integration-test-key");
         builder.UseSetting("LanguageModel:Deployment", "integration-test-deployment");
 
+        // Search options are validated at startup; tests never call the real
+        // service, so any well-formed values satisfy validation.
+        builder.UseSetting("Search:Endpoint", "https://search.test.invalid");
+        builder.UseSetting("Search:ApiKey", "integration-test-key");
+
         if (ConnectionStringOverride is not null)
         {
             builder.UseSetting("ConnectionStrings:Database", ConnectionStringOverride);

@@ -3,6 +3,7 @@ using HarrisCountyAI.Application.KnowledgeBase;
 using HarrisCountyAI.Infrastructure.Azure.BlobStorage;
 using HarrisCountyAI.Infrastructure.Azure.DocumentIntelligence;
 using HarrisCountyAI.Infrastructure.Azure.LanguageModels;
+using HarrisCountyAI.Infrastructure.Azure.Search;
 using HarrisCountyAI.Infrastructure.Persistence;
 using HarrisCountyAI.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,7 @@ public static class DependencyInjection
         services.AddBlobStorage(configuration);
         services.AddDocumentIntelligence(configuration);
         services.AddLanguageModel(configuration);
+        services.AddSearchIndexing(configuration);
 
         return services;
     }
