@@ -1,0 +1,82 @@
+.question-form-section {
+  margin-bottom: 1.5rem;
+}
+
+.question-form {
+  textarea {
+    resize: vertical;
+    width: 100%;
+  }
+}
+
+.question-form__actions {
+  margin-top: 0.75rem;
+}
+
+.asked-question {
+  color: #5b6470;
+  font-style: italic;
+  margin: 0 0 0.75rem;
+}
+
+.answer-text {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin: 0 0 1rem;
+  white-space: pre-line;
+}
+
+.citations-heading {
+  border-top: 1px solid #e3e6ea;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.5rem;
+  padding-top: 0.75rem;
+  text-transform: uppercase;
+}
+
+.citations {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.citation {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.citation__number {
+  color: #5b6470;
+  font-variant-numeric: tabular-nums;
+}
+
+.citation__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+}
+
+.citation__title {
+  font-weight: 600;
+}
+
+.citation__section,
+.citation__page {
+  color: #5b6470;
+}
+
+.insufficient-evidence {
+  border-left: 4px solid #b7791f;
+
+  h3 {
+    margin-top: 0;
+  }
+}
+
+.insufficient-evidence__hint {
+  color: #5b6470;
+  margin-bottom: 0;
+}
