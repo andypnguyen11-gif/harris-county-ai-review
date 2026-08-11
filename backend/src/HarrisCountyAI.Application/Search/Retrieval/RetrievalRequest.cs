@@ -17,8 +17,12 @@ public sealed record RetrievalRequest
     /// <summary>Natural-language query to retrieve passages for.</summary>
     public required string Query { get; init; }
 
-    /// <summary>Number of chunks to retrieve, between 1 and <see cref="MaxTopK"/>.</summary>
-    public int TopK { get; init; } = DefaultTopK;
+    /// <summary>
+    /// Number of chunks to retrieve, between 1 and <see cref="MaxTopK"/>.
+    /// Null lets the retrieval service apply its configured default
+    /// (<see cref="DefaultTopK"/> unless configuration overrides it).
+    /// </summary>
+    public int? TopK { get; init; }
 
     /// <summary>Restricts results to one county department when set.</summary>
     public string? Department { get; init; }

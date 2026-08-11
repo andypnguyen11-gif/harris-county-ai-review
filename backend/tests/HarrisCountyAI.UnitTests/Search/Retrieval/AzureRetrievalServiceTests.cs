@@ -1,6 +1,7 @@
 using Azure.Search.Documents.Models;
 using HarrisCountyAI.Application.Search.Retrieval;
 using HarrisCountyAI.Infrastructure.Azure.Search;
+using Microsoft.Extensions.Options;
 
 namespace HarrisCountyAI.UnitTests.Search.Retrieval;
 
@@ -15,9 +16,12 @@ public class AzureRetrievalServiceTests
         _service = new AzureRetrievalService(_gateway, _embeddingService);
     }
 
+    private AzureRetrievalService ServiceWith(RetrievalOptions options)
+        => new(_gateway, _embeddingService, Options.Create(options));
+
     private static RetrievalRequest Request(
         string query = "What documents must a floodplain permit include?",
-        int topK = RetrievalRequest.DefaultTopK,
+        int? topK = RetrievalRequest.DefaultTopK,
         string? department = null,
         string? permitType = null,
         string? documentType = null) => new()
@@ -90,12 +94,63 @@ public class AzureRetrievalServiceTests
         Assert.Equal([0.5f, 0.25f], _gateway.LastQuery.Vector);
     }
 
+    [Theory]
+    [InlineData("What does Section 4.2 of the floodplain regulations require?")]
+    [InlineData("Where do I submit Form MT-EZ?")]
+    [InlineData("Can I build a storage shed in the floodplain?")]
+    public async Task Hybrid_Queries_Carry_Both_The_Search_Text_And_The_Vector(string query)
+    {
+        await _service.RetrieveAsync(Request(query: query));
+
+        Assert.Equal(query, _gateway.LastQuery!.SearchText);
+        Assert.NotNull(_gateway.LastQuery.Vector);
+    }
+
+    [Fact]
+    public async Task VectorOnly_Mode_Sends_No_Search_Text()
+    {
+        var service = ServiceWith(new RetrievalOptions { Mode = RetrievalMode.VectorOnly });
+
+        await service.RetrieveAsync(Request(query: "elevation certificate requirements"));
+
+        Assert.Null(_gateway.LastQuery!.SearchText);
+        Assert.NotNull(_gateway.LastQuery.Vector);
+    }
+
     [Fact]
     public async Task Passes_TopK_As_The_Query_Size()
     {
         await _service.RetrieveAsync(Request(topK: 12));
 
         Assert.Equal(12, _gateway.LastQuery!.Size);
+    }
+
+    [Fact]
+    public async Task Null_TopK_Falls_Back_To_The_Configured_Default()
+    {
+        var service = ServiceWith(new RetrievalOptions { DefaultTopK = 9 });
+
+        await service.RetrieveAsync(Request(topK: null));
+
+        Assert.Equal(9, _gateway.LastQuery!.Size);
+    }
+
+    [Fact]
+    public async Task Null_TopK_Without_Options_Uses_The_Built_In_Default()
+    {
+        await _service.RetrieveAsync(Request(topK: null));
+
+        Assert.Equal(RetrievalRequest.DefaultTopK, _gateway.LastQuery!.Size);
+    }
+
+    [Fact]
+    public async Task Explicit_TopK_Overrides_The_Configured_Default()
+    {
+        var service = ServiceWith(new RetrievalOptions { DefaultTopK = 9 });
+
+        await service.RetrieveAsync(Request(topK: 2));
+
+        Assert.Equal(2, _gateway.LastQuery!.Size);
     }
 
     [Fact]
