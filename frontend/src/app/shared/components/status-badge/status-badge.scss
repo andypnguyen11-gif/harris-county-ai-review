@@ -74,4 +74,41 @@
     border-color: #efb2ab;
     color: #8f2a1d;
   }
+
+  // Validation statuses.
+  &--complete {
+    background: #e8f3ec;
+    border-color: #abd4ba;
+    color: #1e6b3a;
+  }
+
+  &--missing {
+    background: #fbe9e7;
+    border-color: #efb2ab;
+    color: #8f2a1d;
+  }
+
+  &--invalid {
+    background: #fbe9e7;
+    border-color: #efb2ab;
+    color: #8f2a1d;
+  }
+
+  &--potentiallyincomplete {
+    background: #fdf3e0;
+    border-color: #ecd096;
+    color: #7a5410;
+  }
+
+  &--needshumanreview {
+    background: #f0eafa;
+    border-color: #cbb8ec;
+    color: #4b2d83;
+  }
+
+  &--unabletodetermine {
+    background: #eef2f7;
+    border-color: #c3cfdb;
+    color: #33475b;
+  }
 }

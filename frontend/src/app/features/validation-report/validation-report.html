@@ -1,0 +1,85 @@
+@if (loading()) {
+  <div class="report-placeholder" role="status">
+    <p>Loading validation report…</p>
+  </div>
+} @else if (loadError()) {
+  <div class="report-placeholder" role="alert">
+    <p>The validation report could not be loaded.</p>
+    <button type="button" class="btn btn--secondary" (click)="loadLatest()">Retry</button>
+  </div>
+} @else {
+  <div class="report-toolbar">
+    @if (report(); as r) {
+      <p class="report-toolbar__meta">Last run {{ r.createdAt | date: 'medium' }}</p>
+    } @else {
+      <p class="report-toolbar__meta">This case has not been validated yet.</p>
+    }
+    <button type="button" class="btn btn--primary" (click)="run()" [disabled]="running()">
+      @if (running()) {
+        Running validation…
+      } @else if (report()) {
+        Re-run validation
+      } @else {
+        Run validation
+      }
+    </button>
+  </div>
+
+  @if (runError()) {
+    <p class="report-run-error" role="alert">
+      Validation could not be run. Check that the API is available and try again.
+    </p>
+  }
+
+  @if (report(); as r) {
+    <div class="report-summary" aria-label="Validation summary">
+      <span class="report-summary__stat report-summary__stat--complete">
+        {{ summary().complete }} complete
+      </span>
+      <span class="report-summary__stat report-summary__stat--issues">
+        {{ summary().issues }} {{ summary().issues === 1 ? 'issue' : 'issues' }}
+      </span>
+      <span class="report-summary__stat report-summary__stat--review">
+        {{ summary().review }} for review
+      </span>
+      <span class="report-summary__stat">{{ summary().total }} checks</span>
+    </div>
+
+    @for (group of groups(); track group.label) {
+      <section class="report-group">
+        <h3 class="report-group__title">{{ group.label }}</h3>
+        <ul class="report-items">
+          @for (item of group.items; track item.id) {
+            <li class="report-item">
+              <div class="report-item__header">
+                <span class="report-item__requirement">{{ item.requirement }}</span>
+                <app-status-badge [status]="item.status" />
+                <span
+                  class="validation-type"
+                  [class.validation-type--semantic]="item.validationType === 'Semantic'"
+                  title="How this result was produced"
+                >
+                  {{ validationTypeLabels[item.validationType] }}
+                </span>
+              </div>
+              @if (item.extractedValue) {
+                <p class="report-item__value">{{ item.extractedValue }}</p>
+              }
+              <p class="report-item__message">{{ item.message }}</p>
+              @if (item.pageNumber) {
+                <p class="report-item__reference">Page {{ item.pageNumber }}</p>
+              }
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  } @else {
+    <div class="report-placeholder">
+      <p>No validation report yet.</p>
+      <p class="report-placeholder__note">
+        Run validation to check the uploaded documents against Harris County requirements.
+      </p>
+    </div>
+  }
+}

@@ -5,12 +5,17 @@ import {
   DOCUMENT_PROCESSING_STATUS_LABELS,
   DocumentProcessingStatus,
 } from '../../../core/models/document.model';
+import {
+  VALIDATION_STATUS_LABELS,
+  ValidationStatus,
+} from '../../../core/models/validation.model';
 
-export type BadgeStatus = CaseStatus | DocumentProcessingStatus;
+export type BadgeStatus = CaseStatus | DocumentProcessingStatus | ValidationStatus;
 
 const BADGE_LABELS: Record<BadgeStatus, string> = {
   ...CASE_STATUS_LABELS,
   ...DOCUMENT_PROCESSING_STATUS_LABELS,
+  ...VALIDATION_STATUS_LABELS,
 };
 
 @Component({
