@@ -36,6 +36,12 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("DocumentIntelligence:Endpoint", "https://document-intelligence.test.invalid");
         builder.UseSetting("DocumentIntelligence:ApiKey", "integration-test-key");
 
+        // Language model options are validated at startup; tests never call the
+        // real service, so any well-formed values satisfy validation.
+        builder.UseSetting("LanguageModel:Endpoint", "https://language-model.test.invalid");
+        builder.UseSetting("LanguageModel:ApiKey", "integration-test-key");
+        builder.UseSetting("LanguageModel:Deployment", "integration-test-deployment");
+
         if (ConnectionStringOverride is not null)
         {
             builder.UseSetting("ConnectionStrings:Database", ConnectionStringOverride);

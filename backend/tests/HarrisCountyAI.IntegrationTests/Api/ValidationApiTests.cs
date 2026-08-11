@@ -127,7 +127,15 @@ public class ValidationApiTests : IClassFixture<SqlServerTestDatabase>, IDisposa
             StringComparison.OrdinalIgnoreCase);
 
         var items = root.GetProperty("items").EnumerateArray().ToList();
-        Assert.Equal(14, items.Count);
+        Assert.Equal(16, items.Count);
+
+        // The two semantic rules run through the same report; neither applies to
+        // this submission (no narrative description, no Accessory Building/Other
+        // box), so both resolve deterministically without a model call.
+        var semanticItems = items.Where(i => i.GetProperty("validationType").GetString() == "Semantic").ToList();
+        Assert.Equal(2, semanticItems.Count);
+        Assert.All(semanticItems, i => Assert.Equal("Complete", i.GetProperty("status").GetString()));
+        Assert.All(semanticItems, i => Assert.StartsWith("Not applicable", i.GetProperty("message").GetString()));
 
         // The application itself was extracted, so its rules pass with evidence.
         var ownerName = items.Single(i => i.GetProperty("requirement").GetString() == "Owner name");
@@ -216,7 +224,7 @@ public class ValidationApiTests : IClassFixture<SqlServerTestDatabase>, IDisposa
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(reportId, body.RootElement.GetProperty("id").GetGuid());
         Assert.Equal(caseId, body.RootElement.GetProperty("caseId").GetGuid());
-        Assert.Equal(14, body.RootElement.GetProperty("items").GetArrayLength());
+        Assert.Equal(16, body.RootElement.GetProperty("items").GetArrayLength());
     }
 
     [Fact]
