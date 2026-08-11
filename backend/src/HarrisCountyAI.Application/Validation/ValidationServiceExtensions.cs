@@ -1,0 +1,22 @@
+using HarrisCountyAI.Application.Validation.GetValidationReport;
+using HarrisCountyAI.Application.Validation.RunValidation;
+using HarrisCountyAI.Application.Validation.Workflows;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace HarrisCountyAI.Application.Validation;
+
+/// <summary>Service registration for the validation services, workflows, and use-case handlers.</summary>
+public static class ValidationServiceExtensions
+{
+    public static IServiceCollection AddValidation(this IServiceCollection services)
+    {
+        services.AddScoped<DocumentValidationService>();
+        services.AddSingleton<IWorkflowDefinition, FloodplainDevelopmentPermitWorkflow>();
+
+        services.AddScoped<RunValidationHandler>();
+        services.AddScoped<GetLatestValidationReportHandler>();
+        services.AddScoped<GetValidationReportHandler>();
+
+        return services;
+    }
+}

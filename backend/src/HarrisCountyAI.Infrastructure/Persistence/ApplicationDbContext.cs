@@ -17,6 +17,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<NormalizedDocument> NormalizedDocuments => Set<NormalizedDocument>();
 
+    public DbSet<ValidationReport> ValidationReports => Set<ValidationReport>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);

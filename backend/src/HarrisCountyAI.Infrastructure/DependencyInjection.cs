@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<ICaseRepository, CaseRepository>();
         services.AddDocumentPersistence();
+        services.AddValidationReports();
         services.AddBlobStorage(configuration);
         services.AddDocumentIntelligence(configuration);
 
