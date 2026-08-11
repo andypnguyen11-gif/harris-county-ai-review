@@ -31,6 +31,11 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
         // pick up the overrides.
         builder.UseSetting("Database:ApplyMigrationsAtStartup", "false");
 
+        // Document Intelligence options are validated at startup; tests never
+        // call the real service, so any well-formed values satisfy validation.
+        builder.UseSetting("DocumentIntelligence:Endpoint", "https://document-intelligence.test.invalid");
+        builder.UseSetting("DocumentIntelligence:ApiKey", "integration-test-key");
+
         if (ConnectionStringOverride is not null)
         {
             builder.UseSetting("ConnectionStrings:Database", ConnectionStringOverride);
