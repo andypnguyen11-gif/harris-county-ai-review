@@ -1,6 +1,17 @@
 /** Longest accepted question, mirroring the API's limit. */
 export const MAX_QUESTION_LENGTH = 1000;
 
+/**
+ * What a question is asked of: the Harris County reference corpus, or the
+ * documents uploaded to one specific case. Mirrors the API's QuestionScope.
+ */
+export type QuestionScope = 'County' | 'Case';
+
+export const QUESTION_SCOPE_LABELS: Record<QuestionScope, string> = {
+  County: 'County requirements',
+  Case: 'Case documents',
+};
+
 /** How a question-answering attempt concluded. Mirrors the API's QuestionAnswerOutcome. */
 export type QuestionAnswerOutcome = 'Answered' | 'InsufficientEvidence' | 'Failed';
 

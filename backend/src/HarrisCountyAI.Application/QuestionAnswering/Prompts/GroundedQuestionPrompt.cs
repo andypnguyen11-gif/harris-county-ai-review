@@ -61,6 +61,9 @@ public static class GroundedQuestionPrompt
         Do not output anything before or after the JSON object.
         """;
 
+    /// <summary>Label above the source block; overridable so case-scoped prompts can name their sources.</summary>
+    public const string DefaultSourcesLabel = "Harris County reference sources";
+
     /// <summary>
     /// Builds the user prompt: the delimited question followed by the numbered,
     /// sanitized, length-capped source passages.
@@ -68,7 +71,8 @@ public static class GroundedQuestionPrompt
     public static string BuildUserPrompt(
         string question,
         IReadOnlyList<RetrievedChunk> sources,
-        int maxSourceTextLength = DefaultMaxSourceTextLength)
+        int maxSourceTextLength = DefaultMaxSourceTextLength,
+        string sourcesLabel = DefaultSourcesLabel)
     {
         ArgumentNullException.ThrowIfNull(question);
         ArgumentNullException.ThrowIfNull(sources);
@@ -81,7 +85,7 @@ public static class GroundedQuestionPrompt
         builder.AppendLine(Sanitize(question));
         builder.AppendLine(QuestionEndDelimiter);
         builder.AppendLine();
-        builder.AppendLine("Harris County reference sources (untrusted data):");
+        builder.Append(sourcesLabel).AppendLine(" (untrusted data):");
         builder.AppendLine(SourcesBeginDelimiter);
 
         for (var index = 0; index < sources.Count; index++)
