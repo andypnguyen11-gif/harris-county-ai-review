@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using HarrisCountyAI.Application.Documents.Indexing;
 using HarrisCountyAI.Application.Documents.Normalization;
 using HarrisCountyAI.Domain.Entities;
 using HarrisCountyAI.Domain.Enums;
@@ -12,7 +13,11 @@ namespace HarrisCountyAI.Application.Documents.Extraction;
 /// from blob storage, runs extraction (marking the document
 /// <see cref="DocumentProcessingStatus.Extracted"/>), normalizes and persists
 /// the result (marking it <see cref="DocumentProcessingStatus.Normalized"/>),
-/// or marks it <see cref="DocumentProcessingStatus.Failed"/> on error.
+/// or marks it <see cref="DocumentProcessingStatus.Failed"/> on error. When a
+/// case-document indexing service is available, the normalized text is then
+/// indexed for search; an indexing failure is logged but never fails the
+/// processing pipeline, because validation and review only depend on the
+/// persisted normalized snapshot.
 /// </summary>
 public class DocumentProcessingService : IDocumentProcessingService
 {
@@ -22,6 +27,7 @@ public class DocumentProcessingService : IDocumentProcessingService
     private readonly IDocumentNormalizationService _normalizationService;
     private readonly INormalizedDocumentRepository _normalizedDocumentRepository;
     private readonly ILogger<DocumentProcessingService> _logger;
+    private readonly ICaseDocumentIndexingService? _caseDocumentIndexing;
 
     public DocumentProcessingService(
         IDocumentRepository documentRepository,
@@ -29,7 +35,8 @@ public class DocumentProcessingService : IDocumentProcessingService
         IDocumentExtractionService extractionService,
         IDocumentNormalizationService normalizationService,
         INormalizedDocumentRepository normalizedDocumentRepository,
-        ILogger<DocumentProcessingService> logger)
+        ILogger<DocumentProcessingService> logger,
+        ICaseDocumentIndexingService? caseDocumentIndexing = null)
     {
         _documentRepository = documentRepository;
         _documentStorage = documentStorage;
@@ -37,6 +44,7 @@ public class DocumentProcessingService : IDocumentProcessingService
         _normalizationService = normalizationService;
         _normalizedDocumentRepository = normalizedDocumentRepository;
         _logger = logger;
+        _caseDocumentIndexing = caseDocumentIndexing;
     }
 
     public async Task<NormalizedDocument> ProcessAsync(Guid documentId, CancellationToken cancellationToken = default)
@@ -56,6 +64,8 @@ public class DocumentProcessingService : IDocumentProcessingService
             await _normalizedDocumentRepository.AddAsync(normalized, cancellationToken);
             await _normalizedDocumentRepository.SaveChangesAsync(cancellationToken);
             await SetStatusAsync(document, DocumentProcessingStatus.Normalized, cancellationToken);
+
+            await IndexForSearchAsync(document, cancellationToken);
 
             _logger.LogInformation(
                 "Processed document {DocumentId} ({FileName}) in {ElapsedMilliseconds} ms: {PageCount} pages, {FieldCount} fields.",
@@ -80,6 +90,38 @@ public class DocumentProcessingService : IDocumentProcessingService
                 stopwatch.ElapsedMilliseconds);
 
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Indexes the document's normalized text for search. Deliberately
+    /// fail-open: the snapshot is already persisted and validation must keep
+    /// working when the search service is unavailable, so an indexing failure
+    /// is logged and swallowed. Reprocessing the document re-indexes it.
+    /// </summary>
+    private async Task IndexForSearchAsync(Document document, CancellationToken cancellationToken)
+    {
+        if (_caseDocumentIndexing is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _caseDocumentIndexing.IndexAsync(document.Id, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Indexing case document {DocumentId} ({FileName}) for search failed; "
+                + "the document remains processed and can be re-indexed by reprocessing it.",
+                document.Id,
+                document.FileName);
         }
     }
 
