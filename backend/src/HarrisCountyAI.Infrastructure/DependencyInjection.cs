@@ -17,6 +17,7 @@ public static class DependencyInjection
 
         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<ICaseRepository, CaseRepository>();
+        services.AddDocumentPersistence();
         services.AddBlobStorage(configuration);
 
         return services;
