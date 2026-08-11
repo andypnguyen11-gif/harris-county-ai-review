@@ -1,3 +1,5 @@
+using HarrisCountyAI.Application.Search.Retrieval;
+
 namespace HarrisCountyAI.Application.QuestionAnswering;
 
 /// <summary>
@@ -8,6 +10,14 @@ public sealed record Citation
 {
     /// <summary>The source number the answer cites (1-based, as shown to the model).</summary>
     public required int Number { get; init; }
+
+    /// <summary>
+    /// Which corpus the cited passage came from: the Harris County reference
+    /// corpus, or the case's uploaded documents. Set from the scope the
+    /// passage was retrieved under, so a reviewer can always tell "what the
+    /// county requires" from "what the applicant submitted".
+    /// </summary>
+    public required SourceType Source { get; init; }
 
     /// <summary>Search-index key of the cited chunk.</summary>
     public required string ChunkId { get; init; }

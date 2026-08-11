@@ -6,7 +6,8 @@ namespace HarrisCountyAI.Application.QuestionAnswering;
 public static class QuestionAnsweringServiceExtensions
 {
     /// <summary>
-    /// Registers <see cref="IQuestionAnsweringService"/>. Requires
+    /// Registers <see cref="IQuestionAnsweringService"/> and, since it shares
+    /// the same dependencies, the dual-source comparison path. Requires
     /// <c>IRetrievalService</c> (see
     /// <c>RetrievalServiceCollectionExtensions.AddCorpusRetrieval</c> in
     /// Infrastructure) and <c>ILanguageModelService</c> (already wired by
@@ -18,6 +19,7 @@ public static class QuestionAnsweringServiceExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.TryAddScoped<IQuestionAnsweringService, QuestionAnsweringService>();
+        services.AddDualSourceQuestionAnswering();
         return services;
     }
 }

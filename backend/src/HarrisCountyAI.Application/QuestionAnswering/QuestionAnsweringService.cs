@@ -79,21 +79,33 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
             throw new ArgumentException("The question must not be empty.", nameof(request));
         }
 
+        if (request.Scope == QuestionScope.Both)
+        {
+            // Both is answered by the dual-source path, which retrieves each
+            // corpus separately; routing it here would silently collapse it to
+            // a single scope, so refuse rather than answer half the question.
+            throw new ArgumentException(
+                "A question scoped to Both must be answered by IDualSourceQuestionAnsweringService.",
+                nameof(request));
+        }
+
         if (request.Scope == QuestionScope.Case && (request.CaseId is null || request.CaseId == Guid.Empty))
         {
             throw new ArgumentException(
                 "A case-scoped question requires the id of the case it is about.", nameof(request));
         }
 
-        var profile = request.Scope == QuestionScope.Case ? CaseProfile : CountyProfile;
+        var isCaseScoped = request.Scope == QuestionScope.Case;
+        var profile = isCaseScoped ? CaseProfile : CountyProfile;
+        var sourceType = isCaseScoped ? SourceType.Case : SourceType.County;
 
         var sources = await _retrievalService.RetrieveAsync(
             new RetrievalRequest
             {
                 Query = request.Question,
                 TopK = request.TopK,
-                Scope = request.Scope == QuestionScope.Case ? SourceType.Case : SourceType.County,
-                CaseId = request.Scope == QuestionScope.Case ? request.CaseId : null,
+                Scope = sourceType,
+                CaseId = isCaseScoped ? request.CaseId : null,
             },
             cancellationToken);
 
@@ -137,7 +149,8 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
                 profile);
         }
 
-        var result = ParseResponse(response, sources, profile);
+        var evidence = sources.Select(chunk => new EvidenceSource(sourceType, chunk)).ToList();
+        var result = ParseResponse(response, evidence, profile);
         _logger.LogInformation(
             "{Scope} Q&A concluded {Outcome} with {CitationCount} citations from {SourceCount} sources "
             + "(deployment {Deployment}, prompt {PromptVersion}).",
@@ -152,7 +165,7 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
 
     private QuestionResponse ParseResponse(
         ModelResponse response,
-        IReadOnlyList<RetrievedChunk> sources,
+        IReadOnlyList<EvidenceSource> sources,
         ScopeProfile profile)
     {
         var json = ExtractJsonObject(response.Content);
@@ -207,11 +220,11 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
     private QuestionResponse BuildAnsweredResponse(
         JsonElement root,
         string answer,
-        IReadOnlyList<RetrievedChunk> sources,
+        IReadOnlyList<EvidenceSource> sources,
         string modelDeployment,
         ScopeProfile profile)
     {
-        var citations = ResolveCitations(root, sources);
+        var citations = CitationResolver.Resolve(root, sources);
 
         if (string.IsNullOrWhiteSpace(answer) || citations.Count == 0)
         {
@@ -240,49 +253,6 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
             PromptVersion = profile.PromptVersion,
             ModelDeployment = modelDeployment,
         };
-    }
-
-    /// <summary>
-    /// Maps the model's cited source numbers back to the retrieved chunks,
-    /// ignoring duplicates, non-numbers, and numbers outside 1..N.
-    /// </summary>
-    private static IReadOnlyList<Citation> ResolveCitations(
-        JsonElement root,
-        IReadOnlyList<RetrievedChunk> sources)
-    {
-        if (!root.TryGetProperty("citations", out var citationsElement)
-            || citationsElement.ValueKind != JsonValueKind.Array)
-        {
-            return [];
-        }
-
-        var citations = new List<Citation>();
-        var seen = new HashSet<int>();
-        foreach (var element in citationsElement.EnumerateArray())
-        {
-            if (element.ValueKind != JsonValueKind.Number
-                || !element.TryGetInt32(out var number)
-                || number < 1
-                || number > sources.Count
-                || !seen.Add(number))
-            {
-                continue;
-            }
-
-            var source = sources[number - 1];
-            citations.Add(new Citation
-            {
-                Number = number,
-                ChunkId = source.ChunkId,
-                DocumentId = source.DocumentId,
-                Title = source.Title,
-                Section = source.Section,
-                Page = source.Page,
-                SourceUrl = source.SourceUrl,
-            });
-        }
-
-        return citations;
     }
 
     private static string ReadAnswer(JsonElement root)

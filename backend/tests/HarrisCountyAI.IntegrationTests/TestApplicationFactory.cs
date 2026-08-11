@@ -2,6 +2,7 @@ using HarrisCountyAI.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HarrisCountyAI.IntegrationTests;
@@ -38,8 +39,60 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
     /// </summary>
     public Action<IServiceCollection>? TestServices { get; set; }
 
+    /// <summary>
+    /// The local-development settings the suite runs against — the SQL Server
+    /// and Azurite endpoints from docker compose — read from the copy of
+    /// appsettings.Development.json in the test output directory and replayed
+    /// into the host configuration.
+    /// </summary>
+    /// <remarks>
+    /// The application discovers its own appsettings files through a physical
+    /// file provider rooted at whatever content root the host resolves, and
+    /// only loads the Development file when the ambient environment says
+    /// Development. Neither holds reliably under a test host: the file
+    /// provider silently returns nothing when the repository lives beneath a
+    /// dot-directory (a git worktree under <c>.claude/</c>, for instance), and
+    /// the environment depends on the shell that launched the run. Reading the
+    /// file directly and pushing its values through <c>UseSetting</c> — which
+    /// does reach the host configuration before Program.cs reads it — makes
+    /// the suite behave the same wherever it runs. Per-test overrides are
+    /// applied afterwards and still win.
+    /// </remarks>
+    private static readonly IReadOnlyList<KeyValuePair<string, string>> LocalDevelopmentSettings =
+        LoadLocalDevelopmentSettings();
+
+    private static IReadOnlyList<KeyValuePair<string, string>> LoadLocalDevelopmentSettings()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "appsettings.Development.json");
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+
+        // AddJsonStream, not AddJsonFile: the stream is opened here, so the
+        // configuration provider never consults a file provider that might
+        // refuse to serve the path.
+        using var stream = File.OpenRead(path);
+        var configuration = new ConfigurationBuilder().AddJsonStream(stream).Build();
+        return
+        [
+            .. configuration.AsEnumerable()
+                .Where(entry => entry.Value is not null)
+                .Select(entry => new KeyValuePair<string, string>(entry.Key, entry.Value!)),
+        ];
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Keeps app.Environment.IsDevelopment() true, matching how the suite
+        // has always run, without relying on the launching shell's environment.
+        builder.UseEnvironment("Development");
+
+        foreach (var (key, value) in LocalDevelopmentSettings)
+        {
+            builder.UseSetting(key, value);
+        }
+
         // UseSetting flows into the host configuration before Program.cs runs,
         // so values read during service registration (e.g. the connection string)
         // pick up the overrides.
