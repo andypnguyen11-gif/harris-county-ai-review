@@ -27,10 +27,11 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      # /warnaserror- keeps compiler warnings informational; the job fails only on
-      # build errors or test failures.
+      # TreatWarningsAsErrors=false keeps compiler warnings informational; the job
+      # fails only on build errors or test failures. (MSBuild rejects the
+      # /warnaserror- switch form on Linux runners.)
       - name: Build
-        run: dotnet build --no-restore /warnaserror-
+        run: dotnet build --no-restore -p:TreatWarningsAsErrors=false
 
       - name: Test
         # trx files are auto-named so each test project keeps its own results file.
