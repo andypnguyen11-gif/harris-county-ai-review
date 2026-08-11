@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { Case } from '../../core/models/case.model';
+import { CitationTarget } from '../../core/models/citation-target.model';
 import {
   MAX_QUESTION_LENGTH,
   QUESTION_SCOPE_LABELS,
@@ -10,6 +11,8 @@ import {
 } from '../../core/models/question-answer.model';
 import { CaseService } from '../../core/services/case.service';
 import { QuestionAnsweringService } from '../../core/services/question-answering.service';
+import { Citation } from '../../shared/components/citation/citation';
+import { DocumentViewer } from '../document-viewer/document-viewer';
 
 /**
  * Lets reviewers ask natural-language questions of the Harris County
@@ -17,10 +20,13 @@ import { QuestionAnsweringService } from '../../core/services/question-answering
  * submitted. Answers are grounded: an answered question lists the sources it
  * cites, and when the evidence is lacking the page shows an explicit
  * insufficient-evidence state instead of an answer.
+ *
+ * Citations are verifiable rather than decorative: each names the corpus it
+ * came from and opens the source document in the viewer, at the cited page.
  */
 @Component({
   selector: 'app-question-answering',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, Citation, DocumentViewer],
   templateUrl: './question-answering.html',
   styleUrl: './question-answering.scss',
 })
@@ -39,6 +45,10 @@ export class QuestionAnswering {
   protected readonly askedQuestion = signal('');
   /** The scope the current response was answered under. */
   protected readonly askedScope = signal<QuestionScope>('County');
+  /** The case the current response was answered against; needed to open its citations. */
+  protected readonly askedCaseId = signal<string | null>(null);
+  /** The cited source the viewer is showing, or null when it is closed. */
+  protected readonly viewerTarget = signal<CitationTarget | null>(null);
 
   protected readonly scope = signal<QuestionScope>('County');
   /** Cases available for the Case scope; null until first loaded. */
@@ -100,6 +110,9 @@ export class QuestionAnswering {
     this.response.set(null);
     this.askedQuestion.set(question);
     this.askedScope.set(scope);
+    this.askedCaseId.set(scope === 'Case' ? caseId : null);
+    // A new answer means new sources; whatever was open no longer belongs.
+    this.viewerTarget.set(null);
 
     const request =
       scope === 'Case'
@@ -116,5 +129,13 @@ export class QuestionAnswering {
         this.asking.set(false);
       },
     });
+  }
+
+  protected openSource(target: CitationTarget): void {
+    this.viewerTarget.set(target);
+  }
+
+  protected closeSource(): void {
+    this.viewerTarget.set(null);
   }
 }

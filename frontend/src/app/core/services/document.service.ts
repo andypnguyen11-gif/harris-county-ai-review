@@ -47,6 +47,18 @@ export class DocumentService {
     return this.http.get<CaseDocument>(`${this.baseUrl}/${caseId}/documents/${documentId}`);
   }
 
+  /**
+   * Fetches a case document's stored file for in-place viewing. Requested as a
+   * blob rather than linked to directly so the request carries the app's
+   * normal HTTP context, and so a missing file surfaces as an error the
+   * viewer can explain rather than a broken frame.
+   */
+  getDocumentContent(caseId: string, documentId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${caseId}/documents/${documentId}/content`, {
+      responseType: 'blob',
+    });
+  }
+
   private toUploadEvent(event: HttpEvent<CaseDocument>): DocumentUploadEvent | null {
     switch (event.type) {
       case HttpEventType.UploadProgress:

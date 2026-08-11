@@ -1,4 +1,5 @@
 using HarrisCountyAI.Application.Documents.GetDocument;
+using HarrisCountyAI.Application.Documents.GetDocumentContent;
 using HarrisCountyAI.Application.Documents.GetDocuments;
 using HarrisCountyAI.Application.Documents.Indexing;
 using HarrisCountyAI.Application.Documents.UploadDocument;
@@ -14,6 +15,7 @@ public static class DocumentHandlerServiceExtensions
         services.AddScoped<UploadDocumentHandler>();
         services.AddScoped<GetDocumentsHandler>();
         services.AddScoped<GetDocumentHandler>();
+        services.AddScoped<GetDocumentContentHandler>();
         services.AddCaseDocumentIndexing();
 
         return services;

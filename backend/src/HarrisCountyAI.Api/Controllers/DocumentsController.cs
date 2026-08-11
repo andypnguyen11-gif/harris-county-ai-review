@@ -1,6 +1,7 @@
 using HarrisCountyAI.Api.Contracts.Documents;
 using HarrisCountyAI.Application.Documents;
 using HarrisCountyAI.Application.Documents.GetDocument;
+using HarrisCountyAI.Application.Documents.GetDocumentContent;
 using HarrisCountyAI.Application.Documents.GetDocuments;
 using HarrisCountyAI.Application.Documents.UploadDocument;
 using HarrisCountyAI.Domain.Enums;
@@ -24,15 +25,18 @@ public class DocumentsController : ControllerBase
     private readonly UploadDocumentHandler _uploadDocument;
     private readonly GetDocumentsHandler _getDocuments;
     private readonly GetDocumentHandler _getDocument;
+    private readonly GetDocumentContentHandler _getDocumentContent;
 
     public DocumentsController(
         UploadDocumentHandler uploadDocument,
         GetDocumentsHandler getDocuments,
-        GetDocumentHandler getDocument)
+        GetDocumentHandler getDocument,
+        GetDocumentContentHandler getDocumentContent)
     {
         _uploadDocument = uploadDocument;
         _getDocuments = getDocuments;
         _getDocument = getDocument;
+        _getDocumentContent = getDocumentContent;
     }
 
     [HttpPost]
@@ -120,5 +124,44 @@ public class DocumentsController : ControllerBase
     {
         var document = await _getDocument.HandleAsync(caseId, documentId, cancellationToken);
         return document is null ? NotFound() : Ok(document);
+    }
+
+    /// <summary>
+    /// Streams the document's stored file so a reviewer can read it in place,
+    /// inline rather than as a download. The whole file is served in one
+    /// response — the blob stream is not seekable, so range requests are not
+    /// supported, and the viewer navigates to a cited page client-side after
+    /// loading. Scoped to the case in the route, so a document id alone never
+    /// reaches another case's file. A document whose
+    /// stored file has gone missing returns 404 with a distinct explanation,
+    /// which the viewer surfaces as "the file is unavailable" rather than
+    /// "no such document".
+    /// </summary>
+    [HttpGet("{documentId:guid}/content")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetContent(Guid caseId, Guid documentId, CancellationToken cancellationToken)
+    {
+        var result = await _getDocumentContent.HandleAsync(caseId, documentId, cancellationToken);
+
+        switch (result.Outcome)
+        {
+            case DocumentContentOutcome.DocumentNotFound:
+                return Problem(
+                    title: "The document was not found.",
+                    detail: "No document with that id belongs to this case.",
+                    statusCode: StatusCodes.Status404NotFound);
+
+            case DocumentContentOutcome.FileUnavailable:
+                return Problem(
+                    title: "The document file is unavailable.",
+                    detail: "The document exists, but its stored file could not be read.",
+                    statusCode: StatusCodes.Status404NotFound);
+
+            default:
+                // Inline: the viewer renders the file rather than downloading it.
+                Response.Headers.ContentDisposition = $"inline; filename=\"{result.FileName}\"";
+                return File(result.Content!, result.ContentType!);
+        }
     }
 }

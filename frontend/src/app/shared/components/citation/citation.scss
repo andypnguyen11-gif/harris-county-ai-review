@@ -1,0 +1,69 @@
+:host {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+:host(:last-of-type) {
+  border-bottom: none;
+}
+
+.citation__number {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: #6b7280;
+}
+
+.citation__details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.citation__title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.citation__section,
+.citation__page {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/*
+ * The two sources are deliberately not interchangeable, so they do not look
+ * interchangeable: county requirements read as authority, applicant
+ * submissions as evidence under review.
+ */
+.citation__source {
+  flex: 0 0 auto;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.citation__source--county {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.citation__source--case {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.citation__view {
+  flex: 0 0 auto;
+}

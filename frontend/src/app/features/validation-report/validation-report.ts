@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 
+import { CitationTarget } from '../../core/models/citation-target.model';
 import { DOCUMENT_TYPE_LABELS } from '../../core/models/document.model';
 import {
   VALIDATION_TYPE_LABELS,
@@ -10,6 +11,7 @@ import {
 } from '../../core/models/validation.model';
 import { ValidationService } from '../../core/services/validation.service';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
+import { DocumentViewer } from '../document-viewer/document-viewer';
 
 /** Rule results that concern the same document, in workflow rule order. */
 export interface ValidationGroup {
@@ -27,7 +29,7 @@ const PACKAGE_GROUP_LABEL = 'Submission package';
  */
 @Component({
   selector: 'app-validation-report',
-  imports: [DatePipe, StatusBadge],
+  imports: [DatePipe, StatusBadge, DocumentViewer],
   templateUrl: './validation-report.html',
   styleUrl: './validation-report.scss',
 })
@@ -41,6 +43,8 @@ export class ValidationReportPanel implements OnInit {
   protected readonly loadError = signal(false);
   protected readonly running = signal(false);
   protected readonly runError = signal(false);
+  /** The evidence document the viewer is showing, or null when it is closed. */
+  protected readonly viewerTarget = signal<CitationTarget | null>(null);
 
   protected readonly validationTypeLabels = VALIDATION_TYPE_LABELS;
 
@@ -121,5 +125,30 @@ export class ValidationReportPanel implements OnInit {
         this.running.set(false);
       },
     });
+  }
+
+  /**
+   * Opens the submitted document a finding was based on, at the page it was
+   * found on. Always a case document — validation reports are about what this
+   * applicant submitted, never about the county corpus.
+   */
+  protected openEvidence(item: ValidationReportItem): void {
+    if (!item.documentId) {
+      return;
+    }
+
+    this.viewerTarget.set({
+      source: 'Case',
+      caseId: this.caseId(),
+      documentId: item.documentId,
+      title: item.documentType ? DOCUMENT_TYPE_LABELS[item.documentType] : item.requirement,
+      section: item.requirement,
+      page: item.pageNumber,
+      sourceUrl: null,
+    });
+  }
+
+  protected closeEvidence(): void {
+    this.viewerTarget.set(null);
   }
 }

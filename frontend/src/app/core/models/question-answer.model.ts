@@ -15,10 +15,24 @@ export const QUESTION_SCOPE_LABELS: Record<QuestionScope, string> = {
 /** How a question-answering attempt concluded. Mirrors the API's QuestionAnswerOutcome. */
 export type QuestionAnswerOutcome = 'Answered' | 'InsufficientEvidence' | 'Failed';
 
+/**
+ * Which corpus a cited passage came from. Mirrors the API's SourceType, and
+ * is the distinction a reviewer must never lose: County text states what
+ * Harris County requires, Case text states only what the applicant submitted.
+ */
+export type CitationSource = 'County' | 'Case';
+
+export const CITATION_SOURCE_LABELS: Record<CitationSource, string> = {
+  County: 'County requirement',
+  Case: 'Applicant submission',
+};
+
 /** Mirrors the API's Citation: one corpus source the answer is grounded in. */
 export interface Citation {
   /** The source number the answer cites (1-based). */
   number: number;
+  /** The corpus the passage was retrieved from. */
+  source: CitationSource;
   chunkId: string;
   documentId: string;
   title: string;
