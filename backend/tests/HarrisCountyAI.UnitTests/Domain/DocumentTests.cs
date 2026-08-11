@@ -26,6 +26,27 @@ public class DocumentTests
     }
 
     [Fact]
+    public void Create_With_Explicit_Id_Uses_That_Id()
+    {
+        var id = Guid.NewGuid();
+
+        var document = Document.Create(id, CaseId, "file.pdf", "path/file.pdf", DocumentType.SitePlan);
+
+        Assert.Equal(id, document.Id);
+        Assert.Equal(CaseId, document.CaseId);
+        Assert.Equal(DocumentProcessingStatus.Pending, document.ProcessingStatus);
+    }
+
+    [Fact]
+    public void Create_Rejects_Empty_Id()
+    {
+        var exception = Assert.Throws<ArgumentException>(
+            () => Document.Create(Guid.Empty, CaseId, "file.pdf", "path/file.pdf", DocumentType.Other));
+
+        Assert.Equal("id", exception.ParamName);
+    }
+
+    [Fact]
     public void Create_Rejects_Empty_CaseId()
     {
         var exception = Assert.Throws<ArgumentException>(

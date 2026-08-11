@@ -32,7 +32,19 @@ public class Document
     public DateTime CreatedAt { get; private set; }
 
     public static Document Create(Guid caseId, string fileName, string blobPath, DocumentType documentType)
+        => Create(Guid.NewGuid(), caseId, fileName, blobPath, documentType);
+
+    /// <summary>
+    /// Creates a document with a caller-supplied id, for flows that need the id
+    /// before construction (e.g. to build the blob path the file is uploaded to).
+    /// </summary>
+    public static Document Create(Guid id, Guid caseId, string fileName, string blobPath, DocumentType documentType)
     {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("Document id is required.", nameof(id));
+        }
+
         if (caseId == Guid.Empty)
         {
             throw new ArgumentException("Case id is required.", nameof(caseId));
@@ -48,7 +60,7 @@ public class Document
             throw new ArgumentException("Blob path is required.", nameof(blobPath));
         }
 
-        return new Document(Guid.NewGuid(), caseId, fileName.Trim(), blobPath.Trim(), documentType, DocumentProcessingStatus.Pending, DateTime.UtcNow);
+        return new Document(id, caseId, fileName.Trim(), blobPath.Trim(), documentType, DocumentProcessingStatus.Pending, DateTime.UtcNow);
     }
 
     public void SetProcessingStatus(DocumentProcessingStatus status)
