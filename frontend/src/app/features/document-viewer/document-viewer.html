@@ -1,0 +1,102 @@
+@if (target(); as source) {
+  <section class="card document-viewer" aria-labelledby="document-viewer-heading">
+    <header class="document-viewer__header">
+      <div class="document-viewer__identity">
+        <span
+          class="document-viewer__source"
+          [class.document-viewer__source--county]="source.source === 'County'"
+          [class.document-viewer__source--case]="source.source === 'Case'"
+          >{{ sourceLabels[source.source] }}</span
+        >
+        <h3 id="document-viewer-heading" class="document-viewer__title">{{ source.title }}</h3>
+        <p class="document-viewer__meta">
+          @if (source.section) {
+            <span class="document-viewer__section">{{ source.section }}</span>
+          }
+          @if (source.page !== null) {
+            <span class="document-viewer__page">Page {{ source.page }}</span>
+          }
+        </p>
+      </div>
+
+      <button type="button" class="btn btn--secondary btn--small" (click)="close()">Close</button>
+    </header>
+
+    @switch (state()) {
+      @case ('loading') {
+        <div class="state-panel" role="status">
+          <p>Loading the document…</p>
+        </div>
+      }
+
+      @case ('rendered') {
+        <iframe
+          class="document-viewer__frame"
+          [src]="fileUrl()"
+          [title]="'Document: ' + source.title"
+        ></iframe>
+        <p class="document-viewer__hint">
+          @if (source.page !== null) {
+            Opened at page {{ source.page }}. If your browser's viewer does not jump there
+            automatically, scroll to page {{ source.page }}.
+          } @else {
+            This citation does not name a page.
+          }
+        </p>
+      }
+
+      @case ('external') {
+        <div class="document-viewer__external">
+          <p>
+            This is a Harris County reference document. It is published by the county rather than
+            stored with this case.
+          </p>
+          @if (externalUrl(); as url) {
+            <a class="btn btn--primary" [href]="url" target="_blank" rel="noopener noreferrer">
+              @if (source.page !== null) {
+                Open page {{ source.page }} on hcfcd.org
+              } @else {
+                Open the county document
+              }
+            </a>
+          } @else {
+            <p class="document-viewer__note" role="status">
+              No public link is recorded for this document. Ask an administrator for the source
+              file.
+            </p>
+          }
+        </div>
+      }
+
+      @case ('unavailable') {
+        <div class="state-panel state-panel--error" role="alert">
+          <h4>The document file is unavailable</h4>
+          @if (source.source === 'Case' && !source.caseId) {
+            <p>
+              This citation is not linked to a case, so its file cannot be opened from here. Open
+              the case and view the document from its document list.
+            </p>
+          } @else {
+            <p>
+              The citation refers to a document whose stored file could not be read. It may have
+              been removed, or it may still be processing.
+            </p>
+            <button type="button" class="btn btn--secondary btn--small" (click)="retry()">
+              Try again
+            </button>
+          }
+        </div>
+      }
+
+      @case ('error') {
+        <div class="state-panel state-panel--error" role="alert">
+          <h4>The document could not be loaded</h4>
+          <p>Something went wrong fetching the file. Verify the API is running and try again.</p>
+          <button type="button" class="btn btn--secondary btn--small" (click)="retry()">
+            Try again
+          </button>
+        </div>
+      }
+    }
+  </section>
+}

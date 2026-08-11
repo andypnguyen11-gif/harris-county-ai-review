@@ -1,0 +1,33 @@
+<span class="citation__number" aria-hidden="true">[{{ citation().number }}]</span>
+
+<span class="citation__details">
+  <span [class]="sourceClass()">{{ sourceLabels[citation().source] }}</span>
+
+  @if (citation().sourceUrl) {
+    <a
+      class="citation__title"
+      [href]="citation().sourceUrl"
+      target="_blank"
+      rel="noopener noreferrer"
+      >{{ citation().title }}</a
+    >
+  } @else {
+    <span class="citation__title">{{ citation().title }}</span>
+  }
+
+  @if (citation().section) {
+    <span class="citation__section">{{ citation().section }}</span>
+  }
+  @if (citation().page !== null) {
+    <span class="citation__page">Page {{ citation().page }}</span>
+  }
+</span>
+
+<button
+  type="button"
+  class="btn btn--secondary btn--small citation__view"
+  (click)="onView()"
+  [attr.aria-label]="viewLabel() + ' of ' + citation().title"
+>
+  {{ viewLabel() }}
+</button>

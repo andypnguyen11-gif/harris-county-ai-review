@@ -6,6 +6,7 @@ export function makeCitation(overrides: Partial<Citation> = {}): Citation {
   sequence += 1;
   return {
     number: 1,
+    source: 'County',
     chunkId: `chunk-${sequence}`,
     documentId: `40000000-0000-0000-0000-${String(sequence).padStart(12, '0')}`,
     title: 'Floodplain Regulations',

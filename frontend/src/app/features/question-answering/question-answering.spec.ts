@@ -184,6 +184,61 @@ describe('QuestionAnswering', () => {
     expect(el().querySelector('.answer-card')).toBeNull();
   });
 
+  describe('citation navigation', () => {
+    function viewButtons(): HTMLButtonElement[] {
+      return [...el().querySelectorAll<HTMLButtonElement>('.citation__view')];
+    }
+
+    it('labels each citation with the corpus it came from', async () => {
+      ask = vi.fn(() =>
+        of(
+          makeQuestionResponse({
+            citations: [
+              makeCitation({ number: 1, source: 'County' }),
+              makeCitation({ number: 2, source: 'Case', sourceUrl: null }),
+            ],
+          }),
+        ),
+      );
+      await setup();
+      setQuestion('What is required?');
+
+      await submit();
+
+      const badges = [...el().querySelectorAll('.citation__source')];
+      expect(badges[0].textContent).toContain('County requirement');
+      expect(badges[1].textContent).toContain('Applicant submission');
+    });
+
+    it('opens the viewer when a citation is viewed', async () => {
+      await setup();
+      setQuestion('What is required?');
+      await submit();
+      expect(el().querySelector('.document-viewer')).toBeNull();
+
+      viewButtons()[0].click();
+      await fixture.whenStable();
+
+      const viewer = el().querySelector('.document-viewer');
+      expect(viewer?.textContent).toContain('Floodplain Regulations');
+      expect(viewer?.textContent).toContain('Page 17');
+    });
+
+    it('closes the viewer when a new question is asked', async () => {
+      await setup();
+      setQuestion('What is required?');
+      await submit();
+      viewButtons()[0].click();
+      await fixture.whenStable();
+      expect(el().querySelector('.document-viewer')).not.toBeNull();
+
+      setQuestion('What else is required?');
+      await submit();
+
+      expect(el().querySelector('.document-viewer')).toBeNull();
+    });
+  });
+
   it('clears a previous error when a new question succeeds', async () => {
     ask = vi.fn(() => throwError(() => new Error('boom')));
     await setup();

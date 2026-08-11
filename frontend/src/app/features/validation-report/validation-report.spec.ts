@@ -222,4 +222,71 @@ describe('ValidationReportPanel', () => {
     expect(el.textContent).toContain('Validation could not be run.');
     expect(el.textContent).toContain('No validation report yet.');
   });
+
+  describe('evidence viewer', () => {
+    function viewButton(fixture: Awaited<ReturnType<typeof render>>): HTMLButtonElement | undefined {
+      return [...element(fixture).querySelectorAll('button')].find((button) =>
+        button.textContent?.trim().startsWith('View'),
+      );
+    }
+
+    it('offers to open the source document for a finding that names one', async () => {
+      getLatestReport = vi.fn(() =>
+        of(
+          makeValidationReport({
+            items: [
+              makeValidationItem({
+                requirement: 'Applicant signature',
+                documentId: 'doc-7',
+                documentType: 'PermitApplication',
+                pageNumber: 3,
+              }),
+            ],
+          }),
+        ),
+      );
+      const fixture = await render();
+
+      expect(viewButton(fixture)?.textContent).toContain('View page 3');
+    });
+
+    it('offers no viewer for a finding with no source document', async () => {
+      getLatestReport = vi.fn(() =>
+        of(makeValidationReport({ items: [makeValidationItem({ documentId: null })] })),
+      );
+      const fixture = await render();
+
+      expect(viewButton(fixture)).toBeUndefined();
+    });
+
+    it('opens the evidence as a case document at the cited page', async () => {
+      getLatestReport = vi.fn(() =>
+        of(
+          makeValidationReport({
+            items: [
+              makeValidationItem({
+                requirement: 'Applicant signature',
+                documentId: 'doc-7',
+                documentType: 'PermitApplication',
+                pageNumber: 3,
+              }),
+            ],
+          }),
+        ),
+      );
+      const fixture = await render();
+
+      viewButton(fixture)!.click();
+      await fixture.whenStable();
+
+      const viewer = element(fixture).querySelector('.document-viewer');
+      expect(viewer).not.toBeNull();
+      // Validation findings are always about what the applicant submitted.
+      expect(viewer?.querySelector('.document-viewer__source')?.textContent).toContain(
+        'Applicant submission',
+      );
+      expect(viewer?.textContent).toContain('Permit Application');
+      expect(viewer?.textContent).toContain('Page 3');
+    });
+  });
 });

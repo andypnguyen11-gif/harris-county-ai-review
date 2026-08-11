@@ -311,4 +311,48 @@ public class DocumentsApiTests : IClassFixture<SqlServerTestDatabase>, IAsyncLif
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Get_Content_Streams_The_Stored_File_For_Inline_Viewing()
+    {
+        var caseId = await CreateCaseAsync();
+        var uploaded = await UploadAsync(caseId, "site-plan.pdf");
+        var documentId = uploaded.GetProperty("id").GetGuid();
+
+        var response = await _client.GetAsync($"/api/cases/{caseId}/documents/{documentId}/content");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/pdf", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(PdfBytes, await response.Content.ReadAsByteArrayAsync());
+
+        // Inline, so the viewer renders the file rather than downloading it.
+        var disposition = response.Content.Headers.ContentDisposition;
+        Assert.Equal("inline", disposition?.DispositionType);
+        Assert.Contains("site-plan.pdf", disposition?.ToString());
+    }
+
+    [Fact]
+    public async Task Get_Content_Returns_404_For_An_Unknown_Document()
+    {
+        var caseId = await CreateCaseAsync();
+
+        var response = await _client.GetAsync($"/api/cases/{caseId}/documents/{Guid.NewGuid()}/content");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Contains("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task Get_Content_Does_Not_Serve_Another_Cases_Document()
+    {
+        var firstCaseId = await CreateCaseAsync();
+        var secondCaseId = await CreateCaseAsync();
+        var uploaded = await UploadAsync(firstCaseId);
+        var documentId = uploaded.GetProperty("id").GetGuid();
+
+        var response = await _client.GetAsync(
+            $"/api/cases/{secondCaseId}/documents/{documentId}/content");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }

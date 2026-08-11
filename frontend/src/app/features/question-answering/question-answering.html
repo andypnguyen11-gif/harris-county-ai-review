@@ -133,31 +133,18 @@
         <h3 class="citations-heading">Sources</h3>
         <ol class="citations">
           @for (citation of answer.citations; track citation.number) {
-            <li class="citation">
-              <span class="citation__number" aria-hidden="true">[{{ citation.number }}]</span>
-              <span class="citation__details">
-                @if (citation.sourceUrl) {
-                  <a
-                    class="citation__title"
-                    [href]="citation.sourceUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >{{ citation.title }}</a
-                  >
-                } @else {
-                  <span class="citation__title">{{ citation.title }}</span>
-                }
-                @if (citation.section) {
-                  <span class="citation__section">{{ citation.section }}</span>
-                }
-                @if (citation.page !== null) {
-                  <span class="citation__page">Page {{ citation.page }}</span>
-                }
-              </span>
+            <li class="citations__item">
+              <app-citation
+                [citation]="citation"
+                [caseId]="askedCaseId()"
+                (view)="openSource($event)"
+              />
             </li>
           }
         </ol>
       </div>
+
+      <app-document-viewer [target]="viewerTarget()" (closed)="closeSource()" />
     } @else {
       <div class="card insufficient-evidence" role="status">
         <h3>Not enough evidence to answer</h3>
