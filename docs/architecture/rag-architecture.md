@@ -101,6 +101,32 @@ Callers can still set `TopK` per request (1–50); the corpus `sourceType` filte
 
 Every retrieval logs its metrics — mode, requested and returned counts, top/bottom relevance scores, embedding and search durations — so retrieval quality and latency can be watched without logging question text.
 
+### Semantic reranking
+
+When enabled, retrieval adds a reranking stage on top of hybrid search:
+
+```text
+Hybrid search  →  candidate pool (Reranking:CandidatePoolSize, default 20)
+      ↓
+Azure semantic ranking (IRerankingService / AzureSemanticRerankingService)
+      ↓
+Best TopK chunks (callers keep asking for 3–5) into the answer context
+```
+
+The reranker re-issues the question as a semantic keyword query scoped to exactly the candidate chunks (a `search.in` filter over their ids, always combined with the corpus `sourceType` filter), and reorders the candidates by the reranker scores Azure reports. Each reranked chunk carries its score in `RetrievedChunk.RerankerScore` (0–4; null when not reranked); the original hybrid relevance score is kept alongside.
+
+Configuration (the `Reranking` section, every setting defaulted):
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `Reranking:Enabled` | `false` | Turns reranking on; also adds the semantic configuration (`chunk-semantic`, ranking over `title` + `text`) to the index on the next `EnsureIndexAsync` |
+| `Reranking:SemanticConfigurationName` | `chunk-semantic` | Semantic configuration to rank with |
+| `Reranking:CandidatePoolSize` | 20 | Hybrid candidates retrieved for the reranker (1–50; Azure rescoring caps at 50) |
+
+Reranking **fails open**: semantic ranker is a service-tier capability the free tier lacks, so it is off by default, the index only carries the semantic configuration when it is on (adding it later is an in-place index update — no re-creation or re-indexing), and any semantic-query failure at runtime logs a warning and falls back to plain hybrid order. The application never depends on the reranker being available.
+
+The before/after comparison uses the same dataset and methodology as the vector-vs-hybrid comparison below, toggling `Reranking:Enabled` instead of `Retrieval:Mode`.
+
 ### Comparing vector-only and hybrid retrieval
 
 The evaluation dataset at [`evaluation/datasets/retrieval/floodplain-questions.json`](../../evaluation/datasets/retrieval/floodplain-questions.json) holds floodplain-permit questions in three categories — `section-number`, `form-number`, and `semantic` — each with the corpus source(s) a good retrieval should surface. The comparison methodology:

@@ -54,6 +54,31 @@ public class AzureDocumentIndexServiceTests
     }
 
     [Fact]
+    public async Task EnsureIndexAsync_Omits_The_Semantic_Configuration_By_Default()
+    {
+        await _service.EnsureIndexAsync();
+
+        var index = Assert.Single(_gateway.CreatedOrUpdatedIndexes);
+        Assert.Null(index.SemanticSearch);
+    }
+
+    [Fact]
+    public async Task EnsureIndexAsync_Includes_The_Semantic_Configuration_When_Reranking_Is_Enabled()
+    {
+        var service = new AzureDocumentIndexService(
+            _gateway,
+            Options.Create(new SearchOptions { IndexName = "unit-test-index" }),
+            Options.Create(new RerankingOptions { Enabled = true }));
+
+        await service.EnsureIndexAsync();
+
+        var index = Assert.Single(_gateway.CreatedOrUpdatedIndexes);
+        Assert.NotNull(index.SemanticSearch);
+        var configuration = Assert.Single(index.SemanticSearch.Configurations);
+        Assert.Equal(SearchIndexDefinition.SemanticConfigurationName, configuration.Name);
+    }
+
+    [Fact]
     public async Task IndexAsync_Maps_Chunk_Fields_Onto_The_Index_Schema()
     {
         var documentId = Guid.NewGuid();

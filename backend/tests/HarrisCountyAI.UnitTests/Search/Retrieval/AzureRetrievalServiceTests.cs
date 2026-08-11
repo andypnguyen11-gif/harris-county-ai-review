@@ -1,6 +1,7 @@
 using Azure.Search.Documents.Models;
 using HarrisCountyAI.Application.Search.Retrieval;
 using HarrisCountyAI.Infrastructure.Azure.Search;
+using HarrisCountyAI.UnitTests.Search.Reranking;
 using Microsoft.Extensions.Options;
 
 namespace HarrisCountyAI.UnitTests.Search.Retrieval;
@@ -273,5 +274,109 @@ public class AzureRetrievalServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RetrieveAsync(Request()));
 
         Assert.Empty(_gateway.ExecutedQueries);
+    }
+
+    private AzureRetrievalService ServiceWithReranking(
+        FakeRerankingService reranking,
+        RerankingOptions? options = null)
+        => new(
+            _gateway,
+            _embeddingService,
+            rerankingService: reranking,
+            rerankingOptions: Options.Create(options ?? new RerankingOptions { Enabled = true }));
+
+    private static ChunkSearchHit Hit(string chunkId)
+        => new(ChunkDocument(chunkId: chunkId), 0.9);
+
+    [Fact]
+    public async Task Reranking_Widens_The_Search_To_The_Candidate_Pool_Size()
+    {
+        var service = ServiceWithReranking(
+            new FakeRerankingService(),
+            new RerankingOptions { Enabled = true, CandidatePoolSize = 20 });
+
+        await service.RetrieveAsync(Request(topK: 5));
+
+        Assert.Equal(20, _gateway.LastQuery!.Size);
+    }
+
+    [Fact]
+    public async Task Reranking_Pool_Never_Shrinks_Below_The_Requested_TopK()
+    {
+        var service = ServiceWithReranking(
+            new FakeRerankingService(),
+            new RerankingOptions { Enabled = true, CandidatePoolSize = 3 });
+
+        await service.RetrieveAsync(Request(topK: 10));
+
+        Assert.Equal(10, _gateway.LastQuery!.Size);
+    }
+
+    [Fact]
+    public async Task Reranking_Receives_The_Query_The_Candidates_And_The_Requested_TopK()
+    {
+        var reranking = new FakeRerankingService();
+        var service = ServiceWithReranking(reranking);
+        _gateway.HitsToReturn = [Hit("a"), Hit("b"), Hit("c")];
+
+        await service.RetrieveAsync(Request(query: "elevation rules", topK: 2));
+
+        var request = Assert.Single(reranking.ReceivedRequests);
+        Assert.Equal("elevation rules", request.Query);
+        Assert.Equal(["a", "b", "c"], request.Candidates.Select(chunk => chunk.ChunkId));
+        Assert.Equal(2, request.TopN);
+    }
+
+    [Fact]
+    public async Task Reranking_Determines_The_Final_Order_And_Count()
+    {
+        var service = ServiceWithReranking(new FakeRerankingService());
+        _gateway.HitsToReturn = [Hit("a"), Hit("b"), Hit("c")];
+
+        var chunks = await service.RetrieveAsync(Request(topK: 2));
+
+        // The fake reranker reverses and trims, proving its output is returned.
+        Assert.Equal(["c", "b"], chunks.Select(chunk => chunk.ChunkId));
+    }
+
+    [Fact]
+    public async Task Disabled_Reranking_Keeps_The_Plain_Hybrid_Pipeline()
+    {
+        var reranking = new FakeRerankingService();
+        var service = ServiceWithReranking(reranking, new RerankingOptions { Enabled = false });
+        _gateway.HitsToReturn = [Hit("a"), Hit("b")];
+
+        var chunks = await service.RetrieveAsync(Request(topK: 5));
+
+        Assert.Equal(5, _gateway.LastQuery!.Size);
+        Assert.Equal(["a", "b"], chunks.Select(chunk => chunk.ChunkId));
+        Assert.Empty(reranking.ReceivedRequests);
+    }
+
+    [Fact]
+    public async Task Reranking_Is_Skipped_When_No_Reranker_Is_Registered()
+    {
+        var service = new AzureRetrievalService(
+            _gateway,
+            _embeddingService,
+            rerankingOptions: Options.Create(new RerankingOptions { Enabled = true }));
+        _gateway.HitsToReturn = [Hit("a")];
+
+        var chunks = await service.RetrieveAsync(Request(topK: 5));
+
+        Assert.Equal(5, _gateway.LastQuery!.Size);
+        Assert.Equal(["a"], chunks.Select(chunk => chunk.ChunkId));
+    }
+
+    [Fact]
+    public async Task Reranking_Is_Skipped_When_Retrieval_Finds_Nothing()
+    {
+        var reranking = new FakeRerankingService();
+        var service = ServiceWithReranking(reranking);
+
+        var chunks = await service.RetrieveAsync(Request());
+
+        Assert.Empty(chunks);
+        Assert.Empty(reranking.ReceivedRequests);
     }
 }

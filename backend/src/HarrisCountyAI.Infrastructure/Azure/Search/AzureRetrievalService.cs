@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Azure.Search.Documents.Models;
 using HarrisCountyAI.Application.Search.Embeddings;
 using HarrisCountyAI.Application.Search.Indexing;
+using HarrisCountyAI.Application.Search.Reranking;
 using HarrisCountyAI.Application.Search.Retrieval;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -28,13 +29,17 @@ public sealed class AzureRetrievalService : IRetrievalService
     private readonly ISearchQueryGateway _gateway;
     private readonly IEmbeddingService _embeddingService;
     private readonly RetrievalOptions _options;
+    private readonly IRerankingService? _rerankingService;
+    private readonly RerankingOptions _rerankingOptions;
     private readonly ILogger<AzureRetrievalService> _logger;
 
     public AzureRetrievalService(
         ISearchQueryGateway gateway,
         IEmbeddingService embeddingService,
         IOptions<RetrievalOptions>? options = null,
-        ILogger<AzureRetrievalService>? logger = null)
+        ILogger<AzureRetrievalService>? logger = null,
+        IRerankingService? rerankingService = null,
+        IOptions<RerankingOptions>? rerankingOptions = null)
     {
         ArgumentNullException.ThrowIfNull(gateway);
         ArgumentNullException.ThrowIfNull(embeddingService);
@@ -42,8 +47,12 @@ public sealed class AzureRetrievalService : IRetrievalService
         _gateway = gateway;
         _embeddingService = embeddingService;
         _options = options?.Value ?? new RetrievalOptions();
+        _rerankingService = rerankingService;
+        _rerankingOptions = rerankingOptions?.Value ?? new RerankingOptions();
         _logger = logger ?? NullLogger<AzureRetrievalService>.Instance;
     }
+
+    private bool RerankingActive => _rerankingService is not null && _rerankingOptions.Enabled;
 
     public async Task<IReadOnlyList<RetrievedChunk>> RetrieveAsync(
         RetrievalRequest request,
@@ -65,6 +74,12 @@ public sealed class AzureRetrievalService : IRetrievalService
 
         var topK = request.TopK ?? _options.DefaultTopK;
 
+        // With reranking active, retrieve a wider candidate pool for the
+        // reranker to reorder; without it, retrieve exactly what was asked for.
+        var searchSize = RerankingActive
+            ? Math.Clamp(_rerankingOptions.CandidatePoolSize, topK, RetrievalRequest.MaxTopK)
+            : topK;
+
         var embeddingStopwatch = Stopwatch.StartNew();
         var embeddings = await _embeddingService.EmbedAsync([request.Query], cancellationToken);
         embeddingStopwatch.Stop();
@@ -78,7 +93,7 @@ public sealed class AzureRetrievalService : IRetrievalService
             SearchText = _options.Mode == RetrievalMode.Hybrid ? request.Query : null,
             Vector = embeddings[0].Vector,
             Filter = BuildCorpusFilter(request),
-            Size = topK,
+            Size = searchSize,
         };
 
         var searchStopwatch = Stopwatch.StartNew();
@@ -100,13 +115,28 @@ public sealed class AzureRetrievalService : IRetrievalService
             + "(scores {TopScore:F4}..{LowScore:F4}; embedding {EmbeddingMs} ms, search {SearchMs} ms).",
             _options.Mode,
             chunks.Count,
-            topK,
+            searchSize,
             chunks.Count > 0 ? chunks[0].Score : 0d,
             chunks.Count > 0 ? chunks[^1].Score : 0d,
             embeddingStopwatch.ElapsedMilliseconds,
             searchStopwatch.ElapsedMilliseconds);
 
-        return chunks;
+        if (!RerankingActive || chunks.Count == 0)
+        {
+            return chunks;
+        }
+
+        // The reranking service fails open: on any reranking problem it
+        // returns the leading candidates in hybrid order, so retrieval never
+        // fails because of the reranker.
+        return await _rerankingService!.RerankAsync(
+            new RerankingRequest
+            {
+                Query = request.Query,
+                Candidates = chunks,
+                TopN = topK,
+            },
+            cancellationToken);
     }
 
     /// <summary>

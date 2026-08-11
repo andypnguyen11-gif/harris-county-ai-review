@@ -19,6 +19,9 @@ public static class SearchIndexDefinition
     /// <summary>Name of the vector search profile applied to the embedding field.</summary>
     public const string VectorProfileName = "chunk-vector-profile";
 
+    /// <summary>Name of the semantic ranking configuration.</summary>
+    public const string SemanticConfigurationName = "chunk-semantic";
+
     /// <summary>Analyzer used for the searchable text fields.</summary>
     public static readonly LexicalAnalyzerName TextAnalyzer = LexicalAnalyzerName.StandardLucene;
 
@@ -41,8 +44,39 @@ public static class SearchIndexDefinition
         public const string CaseId = "caseId";
     }
 
-    /// <summary>Builds the full index definition under <paramref name="indexName"/>.</summary>
-    public static SearchIndex Build(string indexName) => new(indexName)
+    /// <summary>
+    /// Builds the full index definition under <paramref name="indexName"/>.
+    /// The semantic ranking configuration is included only on request because
+    /// semantic ranker is a service-tier capability: deploying the
+    /// configuration to a service without it (e.g. the free tier) fails, so
+    /// the index carries it only when reranking is enabled. Adding the
+    /// configuration later is an in-place index update — no re-creation or
+    /// re-indexing required.
+    /// </summary>
+    public static SearchIndex Build(string indexName, bool includeSemanticRanking = false)
+    {
+        var index = BuildCore(indexName);
+        if (includeSemanticRanking)
+        {
+            index.SemanticSearch = new SemanticSearch
+            {
+                Configurations =
+                {
+                    new SemanticConfiguration(
+                        SemanticConfigurationName,
+                        new SemanticPrioritizedFields
+                        {
+                            TitleField = new SemanticField(Fields.Title),
+                            ContentFields = { new SemanticField(Fields.Text) },
+                        }),
+                },
+            };
+        }
+
+        return index;
+    }
+
+    private static SearchIndex BuildCore(string indexName) => new(indexName)
     {
         Fields =
         {

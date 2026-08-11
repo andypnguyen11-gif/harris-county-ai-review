@@ -43,12 +43,22 @@ public sealed class AzureSearchQueryGateway : ISearchQueryGateway
             };
         }
 
+        if (query.UseSemanticRanking)
+        {
+            options.QueryType = SearchQueryType.Semantic;
+            options.SemanticSearch = new SemanticSearchOptions
+            {
+                SemanticConfigurationName = query.SemanticConfigurationName,
+            };
+        }
+
         var hits = new List<ChunkSearchHit>();
         var response = await _searchClient.SearchAsync<SearchDocument>(
             query.SearchText, options, cancellationToken);
         await foreach (var result in response.Value.GetResultsAsync())
         {
-            hits.Add(new ChunkSearchHit(result.Document, result.Score));
+            hits.Add(new ChunkSearchHit(
+                result.Document, result.Score, result.SemanticSearch?.RerankerScore));
 
             if (hits.Count >= query.Size)
             {

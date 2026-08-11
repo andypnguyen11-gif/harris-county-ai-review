@@ -41,4 +41,10 @@ public sealed record RetrievedChunk
 
     /// <summary>Relevance score reported by the search service; higher is more relevant.</summary>
     public required double Score { get; init; }
+
+    /// <summary>
+    /// Semantic reranking score (0–4 for Azure semantic ranking; higher is more
+    /// relevant), or null when the chunk was not reranked.
+    /// </summary>
+    public double? RerankerScore { get; init; }
 }

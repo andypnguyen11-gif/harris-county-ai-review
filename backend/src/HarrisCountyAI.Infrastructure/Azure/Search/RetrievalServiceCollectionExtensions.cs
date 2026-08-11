@@ -24,6 +24,7 @@ public static class RetrievalServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.AddEmbeddingService(configuration);
+        services.AddSemanticReranking(configuration);
 
         services.AddOptions<RetrievalOptions>()
             .Bind(configuration.GetSection(RetrievalOptions.SectionName))
