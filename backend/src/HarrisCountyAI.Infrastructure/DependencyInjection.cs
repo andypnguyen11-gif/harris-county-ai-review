@@ -1,4 +1,5 @@
 using HarrisCountyAI.Application.Cases;
+using HarrisCountyAI.Infrastructure.Azure.BlobStorage;
 using HarrisCountyAI.Infrastructure.Persistence;
 using HarrisCountyAI.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,7 @@ public static class DependencyInjection
 
         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<ICaseRepository, CaseRepository>();
+        services.AddBlobStorage(configuration);
 
         return services;
     }
