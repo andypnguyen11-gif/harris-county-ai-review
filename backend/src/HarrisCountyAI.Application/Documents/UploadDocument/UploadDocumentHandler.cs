@@ -1,6 +1,8 @@
 using HarrisCountyAI.Application.Cases;
 using HarrisCountyAI.Domain.Entities;
 using HarrisCountyAI.Domain.Enums;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace HarrisCountyAI.Application.Documents.UploadDocument;
 
@@ -16,17 +18,20 @@ public sealed class UploadDocumentHandler
     private readonly IDocumentRepository _documentRepository;
     private readonly IDocumentStorageService _storageService;
     private readonly DocumentFileValidator _fileValidator;
+    private readonly ILogger<UploadDocumentHandler> _logger;
 
     public UploadDocumentHandler(
         ICaseRepository caseRepository,
         IDocumentRepository documentRepository,
         IDocumentStorageService storageService,
-        DocumentFileValidator fileValidator)
+        DocumentFileValidator fileValidator,
+        ILogger<UploadDocumentHandler>? logger = null)
     {
         _caseRepository = caseRepository;
         _documentRepository = documentRepository;
         _storageService = storageService;
         _fileValidator = fileValidator;
+        _logger = logger ?? NullLogger<UploadDocumentHandler>.Instance;
     }
 
     public async Task<UploadDocumentResult> HandleAsync(UploadDocumentCommand command, CancellationToken cancellationToken = default)
@@ -60,6 +65,14 @@ public sealed class UploadDocumentHandler
 
         await _documentRepository.AddAsync(document, cancellationToken);
         await _documentRepository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Uploaded document {DocumentId} ({FileName}, {FileSizeBytes} bytes, {DocumentType}) to case {CaseId}.",
+            document.Id,
+            document.FileName,
+            command.FileSizeBytes,
+            document.DocumentType,
+            document.CaseId);
 
         return UploadDocumentResult.Uploaded(DocumentDto.FromEntity(document));
     }

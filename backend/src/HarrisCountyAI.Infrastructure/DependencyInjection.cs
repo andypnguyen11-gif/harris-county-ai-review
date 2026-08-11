@@ -1,4 +1,5 @@
 using HarrisCountyAI.Application.Cases;
+using HarrisCountyAI.Application.Common.Telemetry;
 using HarrisCountyAI.Application.KnowledgeBase;
 using HarrisCountyAI.Infrastructure.Azure.BlobStorage;
 using HarrisCountyAI.Infrastructure.Azure.DocumentIntelligence;
@@ -6,6 +7,7 @@ using HarrisCountyAI.Infrastructure.Azure.LanguageModels;
 using HarrisCountyAI.Infrastructure.Azure.Search;
 using HarrisCountyAI.Infrastructure.Persistence;
 using HarrisCountyAI.Infrastructure.Persistence.Repositories;
+using HarrisCountyAI.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,6 +32,7 @@ public static class DependencyInjection
         services.AddEmbeddingService(configuration);
         services.AddSearchIndexing(configuration);
         services.AddCorpusRetrieval(configuration);
+        services.AddSingleton<IAiRequestTelemetryLogger, AiRequestTelemetryLogger>();
 
         return services;
     }
