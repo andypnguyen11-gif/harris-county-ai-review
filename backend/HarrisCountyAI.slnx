@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HarrisCountyAI.Api/HarrisCountyAI.Api.csproj" />
+    <Project Path="src/HarrisCountyAI.Application/HarrisCountyAI.Application.csproj" />
+    <Project Path="src/HarrisCountyAI.Domain/HarrisCountyAI.Domain.csproj" />
+    <Project Path="src/HarrisCountyAI.Infrastructure/HarrisCountyAI.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HarrisCountyAI.ArchitectureTests/HarrisCountyAI.ArchitectureTests.csproj" />
+    <Project Path="tests/HarrisCountyAI.IntegrationTests/HarrisCountyAI.IntegrationTests.csproj" />
+    <Project Path="tests/HarrisCountyAI.UnitTests/HarrisCountyAI.UnitTests.csproj" />
+  </Folder>
+</Solution>
