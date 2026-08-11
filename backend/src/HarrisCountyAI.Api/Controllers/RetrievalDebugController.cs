@@ -1,5 +1,7 @@
+using HarrisCountyAI.Api.Authorization;
 using HarrisCountyAI.Api.Contracts.Retrieval;
 using HarrisCountyAI.Application.Search.Retrieval;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -15,6 +17,7 @@ namespace HarrisCountyAI.Api.Controllers;
 /// </remarks>
 [ApiController]
 [Route("api/debug/retrieval")]
+[Authorize(Policy = AuthorizationPolicies.RequireAdministrator)]
 public class RetrievalDebugController : ControllerBase
 {
     private readonly IRetrievalService _retrievalService;

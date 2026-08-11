@@ -1,5 +1,7 @@
 using HarrisCountyAI.Api.Contracts.Questions;
+using HarrisCountyAI.Api.Authorization;
 using HarrisCountyAI.Application.QuestionAnswering;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -12,6 +14,7 @@ namespace HarrisCountyAI.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/questions")]
+[Authorize(Policy = AuthorizationPolicies.RequireReviewer)]
 public class QuestionsController : ControllerBase
 {
     private readonly IQuestionAnsweringService _questionAnswering;

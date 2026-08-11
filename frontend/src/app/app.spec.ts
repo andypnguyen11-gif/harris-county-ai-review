@@ -29,7 +29,16 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('renders the brand and primary navigation for a signed-in user', async () => {
+  async function navLinksFor(roles: string[]): Promise<(string | undefined)[]> {
+    signInStorage({ roles });
+    await setup();
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const compiled = fixture.nativeElement as HTMLElement;
+    return Array.from(compiled.querySelectorAll('nav.app-nav a')).map((a) => a.textContent?.trim());
+  }
+
+  it('renders the brand and the case-review navigation for a reviewer', async () => {
     signInStorage();
     await setup();
     const fixture = TestBed.createComponent(App);
@@ -43,7 +52,20 @@ describe('App', () => {
     const navLinks = Array.from(compiled.querySelectorAll('nav.app-nav a')).map((a) =>
       a.textContent?.trim(),
     );
-    expect(navLinks).toEqual(['Dashboard', 'Cases', 'Ask a Question', 'Knowledge Base']);
+    expect(navLinks).toEqual(['Dashboard', 'Cases', 'Ask a Question']);
+  });
+
+  it('adds the knowledge base link for an administrator', async () => {
+    expect(await navLinksFor(['Administrator'])).toEqual([
+      'Dashboard',
+      'Cases',
+      'Ask a Question',
+      'Knowledge Base',
+    ]);
+  });
+
+  it('hides the knowledge base link from a reviewer', async () => {
+    expect(await navLinksFor(['Reviewer'])).not.toContain('Knowledge Base');
   });
 
   it('hides the navigation from a signed-out visitor', async () => {

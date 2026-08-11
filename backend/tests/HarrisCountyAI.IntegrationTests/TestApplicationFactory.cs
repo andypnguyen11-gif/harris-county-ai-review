@@ -162,6 +162,12 @@ public class TestApplicationFactory : WebApplicationFactory<Program>
             services.AddValidationReports();
         });
 
+        // Mount the test-only probe controllers so authorization policies can be
+        // exercised against endpoints that do not exist in the application yet.
+        builder.ConfigureTestServices(services =>
+            services.AddControllers().AddApplicationPart(typeof(TestApplicationFactory).Assembly));
+
+        // Applied last so per-test registrations win over everything above.
         if (TestServices is not null)
         {
             builder.ConfigureTestServices(TestServices);

@@ -20,7 +20,8 @@ public class RetrievalDebugApiTests : IDisposable
             // register the service the debug endpoint depends on directly.
             TestServices = services => services.AddSingleton<IRetrievalService>(_retrievalService),
         };
-        _client = _factory.CreateClient();
+        _client = _factory.CreateClient().WithToken(
+            TestAuthentication.CreateToken(TestAuthentication.AdministratorUsername, ["Administrator"]));
     }
 
     public void Dispose()

@@ -4,7 +4,9 @@ using HarrisCountyAI.Application.Documents.GetDocument;
 using HarrisCountyAI.Application.Documents.GetDocumentContent;
 using HarrisCountyAI.Application.Documents.GetDocuments;
 using HarrisCountyAI.Application.Documents.UploadDocument;
+using HarrisCountyAI.Api.Authorization;
 using HarrisCountyAI.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -12,6 +14,7 @@ namespace HarrisCountyAI.Api.Controllers;
 
 [ApiController]
 [Route("api/cases/{caseId:guid}/documents")]
+[Authorize(Policy = AuthorizationPolicies.RequireReviewer)]
 public class DocumentsController : ControllerBase
 {
     /// <summary>

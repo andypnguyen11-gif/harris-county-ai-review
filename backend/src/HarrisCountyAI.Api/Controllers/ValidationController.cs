@@ -1,12 +1,15 @@
 using HarrisCountyAI.Application.Validation;
 using HarrisCountyAI.Application.Validation.GetValidationReport;
+using HarrisCountyAI.Api.Authorization;
 using HarrisCountyAI.Application.Validation.RunValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HarrisCountyAI.Api.Controllers;
 
 [ApiController]
 [Route("api/cases/{caseId:guid}/validation")]
+[Authorize(Policy = AuthorizationPolicies.RequireReviewer)]
 public class ValidationController : ControllerBase
 {
     private readonly RunValidationHandler _runValidation;
