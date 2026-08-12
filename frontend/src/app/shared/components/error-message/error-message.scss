@@ -1,0 +1,32 @@
+:host {
+  display: block;
+}
+
+.error-message__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.error-message__text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The reference id is support's handle on the failure, not something the
+ * reviewer needs to read, so it sits quietly under the message — present when
+ * asked for, never competing with the explanation above it.
+ */
+.error-message__reference {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.error-message__id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  user-select: all;
+  overflow-wrap: anywhere;
+}

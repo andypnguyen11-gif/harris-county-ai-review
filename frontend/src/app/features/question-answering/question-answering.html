@@ -51,13 +51,14 @@
         <label for="qa-case">Case</label>
         @if (casesLoading()) {
           <p class="case-picker-note" role="status">Loading cases…</p>
-        } @else if (casesError()) {
-          <p class="form-field__error" role="alert">
-            The case list could not be loaded.
+        } @else if (casesError(); as casesFailure) {
+          <div class="form-field__error" role="alert">
+            <p>The case list could not be loaded.</p>
+            <app-error-message [error]="casesFailure" [alert]="false" />
             <button type="button" class="btn btn--secondary btn--small" (click)="loadCases()">
               Retry
             </button>
-          </p>
+          </div>
         } @else {
           <select
             id="qa-case"
@@ -115,10 +116,15 @@
       <p>Searching the Harris County reference corpus…</p>
     }
   </div>
-} @else if (askError()) {
+} @else if (askError(); as askFailure) {
   <div class="state-panel state-panel--error" role="alert">
     <h3>The question could not be answered</h3>
-    <p>Something went wrong while answering. Verify the API is running and try again.</p>
+    <app-error-message
+      [error]="askFailure"
+      [alert]="false"
+      [showRetry]="true"
+      (retry)="onSubmit()"
+    />
   </div>
 } @else if (response(); as answer) {
   <section class="answer-section" aria-labelledby="answer-heading">

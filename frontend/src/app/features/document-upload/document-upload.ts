@@ -1,5 +1,6 @@
 import { Component, inject, input, output, signal } from '@angular/core';
 
+import { toApiError } from '../../core/errors/api-error';
 import {
   CaseDocument,
   DEFAULT_DOCUMENT_TYPE,
@@ -116,10 +117,16 @@ export class DocumentUpload {
             this.uploaded.emit(event.document);
           }
         },
-        error: () => {
+        error: (failure: unknown) => {
+          // The API explains blob-storage and validation failures precisely;
+          // the generic sentence is only for failures it could not describe.
+          const apiError = toApiError(failure);
           this.patchItem(current, {
             status: 'error',
-            error: 'Upload failed. Check the file and try again.',
+            error:
+              apiError.kind === 'unknown'
+                ? 'Upload failed. Check the file and try again.'
+                : `Upload failed. ${apiError.message}`,
           });
         },
       });
