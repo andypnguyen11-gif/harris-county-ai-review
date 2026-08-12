@@ -50,6 +50,21 @@ public static class LiveEvaluationHost
         return services.BuildServiceProvider();
     }
 
+    /// <summary>
+    /// Builds a provider with corpus retrieval and the language model, for runs
+    /// that answer questions rather than only retrieving.
+    /// </summary>
+    public static ServiceProvider BuildGenerationProvider()
+    {
+        var services = new ServiceCollection();
+        var configuration = BuildConfiguration();
+        services.AddLogging();
+        services.AddSearchIndexing(configuration);
+        services.AddCorpusRetrieval(configuration);
+        services.AddLanguageModel(configuration);
+        return services.BuildServiceProvider();
+    }
+
     /// <summary>Reads configuration from the environment, with no committed fallbacks.</summary>
     public static IConfiguration BuildConfiguration() =>
         new ConfigurationBuilder().AddEnvironmentVariables().Build();
@@ -61,5 +76,15 @@ public static class LiveEvaluationHost
         var reranking = Environment.GetEnvironmentVariable("Reranking__Enabled") ?? "false";
         var index = Environment.GetEnvironmentVariable("Search__IndexName") ?? "harris-county-chunks";
         return $"live Azure AI Search (index {index}, mode {mode}, reranking {reranking})";
+    }
+
+    /// <summary>
+    /// Describes a generation run's configuration, naming the model deployment
+    /// but never a key or an endpoint host.
+    /// </summary>
+    public static string DescribeGenerationConfiguration()
+    {
+        var deployment = Environment.GetEnvironmentVariable("LanguageModel__Deployment") ?? "(default)";
+        return $"{DescribeRetrievalConfiguration()}, model deployment {deployment}";
     }
 }

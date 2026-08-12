@@ -1,0 +1,1241 @@
+{
+  "reportVersion": 1,
+  "runType": "Fixture",
+  "datasetVersion": 1,
+  "pipelineConfiguration": "offline fixture corpus, scripted answers, real Q\u0026A pipeline",
+  "topK": 5,
+  "supportThreshold": 0.6,
+  "overall": {
+    "questionCount": 18,
+    "outcomeMatchRate": 1,
+    "citationPresenceRate": 1,
+    "citationTitleAccuracy": 1,
+    "meanFactCoverage": 1,
+    "fullFactCoverageRate": 1,
+    "unsupportedClaimRate": 0.1,
+    "answersWithUnsupportedClaimsRate": 0.2
+  },
+  "byCategory": {
+    "answerable": {
+      "questionCount": 15,
+      "outcomeMatchRate": 1,
+      "citationPresenceRate": 1,
+      "citationTitleAccuracy": 1,
+      "meanFactCoverage": 1,
+      "fullFactCoverageRate": 1,
+      "unsupportedClaimRate": 0.1,
+      "answersWithUnsupportedClaimsRate": 0.2
+    },
+    "out-of-scope": {
+      "questionCount": 3,
+      "outcomeMatchRate": 1,
+      "citationPresenceRate": null,
+      "citationTitleAccuracy": null,
+      "meanFactCoverage": null,
+      "fullFactCoverageRate": null,
+      "unsupportedClaimRate": null,
+      "answersWithUnsupportedClaimsRate": null
+    }
+  },
+  "cases": [
+    {
+      "id": "gen-elevation",
+      "category": "answerable",
+      "question": "How high must the lowest floor of a new house be built in the floodplain?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "New construction and substantial improvement of a residential structure must have the lowest floor elevated to at least one foot above the base flood elevation. After construction is complete the permit holder submits an Elevation Certificate documenting the as built elevation of the lowest floor.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.2 Specific Standards for New Construction",
+          "page": 15
+        },
+        {
+          "number": 3,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.3 Duties of the Floodplain Administrator",
+          "page": 10
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9
+        },
+        {
+          "number": 5,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 2 Definitions",
+          "page": 3
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "freeboard",
+          "description": "States the required elevation above the base flood elevation",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "lowest-floor",
+          "description": "Identifies the lowest floor as the measured element",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "New construction and substantial improvement of a residential structure must have the lowest floor elevated to at least one foot above the base flood elevation",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        },
+        {
+          "claim": "After construction is complete the permit holder submits an Elevation Certificate documenting the as built elevation of the lowest floor",
+          "supportScore": 0.9091,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "submits"
+          ]
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-permit-required",
+      "category": "answerable",
+      "question": "Do I need a permit before developing land in a special flood hazard area?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "A floodplain development permit must be obtained before any development begins within an area of special flood hazard. The requirement applies to all areas of special flood hazard in the unincorporated portions of Harris County.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.4 Penalties for Violation",
+          "page": 7
+        },
+        {
+          "number": 2,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.1 Applicability and Basis for Establishing Flood Hazard Areas",
+          "page": 6
+        },
+        {
+          "number": 3,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4 Administration",
+          "page": 8
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "permit-required",
+          "description": "States that a floodplain development permit is required",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "before-work",
+          "description": "States that the permit must be obtained before development begins",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "A floodplain development permit must be obtained before any development begins within an area of special flood hazard",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        },
+        {
+          "claim": "The requirement applies to all areas of special flood hazard in the unincorporated portions of Harris County",
+          "supportScore": 0.8889,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "applies"
+          ]
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-application-contents",
+      "category": "answerable",
+      "question": "What must a floodplain development permit application include?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "The application is made on the form supplied by the county and includes a site plan drawn to scale, the proposed elevation of the lowest floor of all structures, and a description of the extent to which a watercourse will be altered. Where elevation data is required the application also carries the certification of a registered professional engineer or licensed surveyor.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9
+        },
+        {
+          "number": 3,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 6 Submittal Checklist",
+          "page": 18
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.5 Amendments to an Issued Permit",
+          "page": 13
+        },
+        {
+          "number": 5,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.3 Duties of the Floodplain Administrator",
+          "page": 10
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "site-plan",
+          "description": "Requires a site plan",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "elevation-data",
+          "description": "Requires the proposed lowest floor elevation",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "professional-certification",
+          "description": "Requires certification by a licensed professional",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "The application is made on the form supplied by the county and includes a site plan drawn to scale, the proposed elevation of the lowest floor of all structures, and a description of the extent to which a watercourse will be altered",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        },
+        {
+          "claim": "Where elevation data is required the application also carries the certification of a registered professional engineer or licensed surveyor",
+          "supportScore": 0.9,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "carries"
+          ]
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-floodway-fill",
+      "category": "answerable",
+      "question": "Can I place fill in the regulatory floodway to level out my lot?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "Encroachments within the adopted regulatory floodway are prohibited, and fill is named as an encroachment. The only exception is where a registered professional engineer certifies through hydrologic and hydraulic analysis that the proposed encroachment will result in no increase in flood levels during the base flood discharge.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.1 Floodway Encroachment",
+          "page": 14
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 6 Submittal Checklist",
+          "page": 18
+        }
+      ],
+      "evidenceCount": 4,
+      "facts": [
+        {
+          "factId": "prohibited",
+          "description": "States that floodway encroachment is prohibited by default",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "no-rise",
+          "description": "States the no-rise certification exception",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "Encroachments within the adopted regulatory floodway are prohibited, and fill is named as an encroachment",
+          "supportScore": 0.8889,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "named"
+          ]
+        },
+        {
+          "claim": "The only exception is where a registered professional engineer certifies through hydrologic and hydraulic analysis that the proposed encroachment will result in no increase in flood levels during the base flood discharge",
+          "supportScore": 0.9,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "exception",
+            "only"
+          ]
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-substantial-improvement",
+      "category": "answerable",
+      "question": "If I remodel my house and the repairs cost more than half its value, do the flood rules apply to the whole house?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "Work of that scale is a substantial improvement, which the regulations define as any repair, reconstruction, or improvement whose cost equals or exceeds fifty percent of the market value of the structure before the improvement begins. A substantially improved structure is held to the same standards as new construction.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 2 Definitions",
+          "page": 3
+        },
+        {
+          "number": 3,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.1 Applicability and Basis for Establishing Flood Hazard Areas",
+          "page": 6
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.3 Manufactured Homes and Accessory Structures",
+          "page": 16
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "threshold",
+          "description": "States the fifty percent cost threshold",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "market-value",
+          "description": "States that the threshold is measured against market value",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "term",
+          "description": "Names the regulatory term",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "Work of that scale is a substantial improvement, which the regulations define as any repair, reconstruction, or improvement whose cost equals or exceeds fifty percent of the market value of the structure before the improvement begins",
+          "supportScore": 0.8333,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "define",
+            "scale",
+            "work"
+          ]
+        },
+        {
+          "claim": "A substantially improved structure is held to the same standards as new construction",
+          "supportScore": 0.5,
+          "isSupported": false,
+          "unsupportedTokens": [
+            "held",
+            "new",
+            "same",
+            "standards"
+          ]
+        }
+      ],
+      "unsupportedClaims": [
+        "A substantially improved structure is held to the same standards as new construction"
+      ],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-variance-historic",
+      "category": "answerable",
+      "question": "Is there any way to get an exception to the flood elevation requirements for a historic building?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "A variance may be issued for the reconstruction or rehabilitation of a structure listed on a register of historic places, provided the work does not preclude the structure\u0027s continued designation as a historic structure. A variance otherwise requires good and sufficient cause and a determination of exceptional hardship.",
+      "citations": [
+        {
+          "number": 2,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.4 Variance Procedures",
+          "page": 12
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "variance",
+          "description": "Identifies the variance mechanism",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "historic",
+          "description": "States the historic structure provision",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "A variance may be issued for the reconstruction or rehabilitation of a structure listed on a register of historic places, provided the work does not preclude the structure\u0027s continued designation as a historic structure",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        },
+        {
+          "claim": "A variance otherwise requires good and sufficient cause and a determination of exceptional hardship",
+          "supportScore": 0.875,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "otherwise"
+          ]
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-penalties",
+      "category": "answerable",
+      "question": "What are the penalties for building in the floodplain without getting a permit first?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "Developing land in an area of special flood hazard without first obtaining a floodplain development permit is an offense, and each day a violation continues is a separate offense. Civil penalties reach five thousand dollars per calendar day under the Texas Water Code chapter cited in the ordinance. The county may also seek an order to remove the unpermitted work.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.4 Penalties for Violation",
+          "page": 7
+        },
+        {
+          "number": 2,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.5 Amendments to an Issued Permit",
+          "page": 13
+        },
+        {
+          "number": 5,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "offense",
+          "description": "States that unpermitted development is an offense",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "per-day",
+          "description": "States that each day is a separate offense",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "Developing land in an area of special flood hazard without first obtaining a floodplain development permit is an offense, and each day a violation continues is a separate offense",
+          "supportScore": 0.9412,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "developing"
+          ]
+        },
+        {
+          "claim": "Civil penalties reach five thousand dollars per calendar day under the Texas Water Code chapter cited in the ordinance",
+          "supportScore": 0.2143,
+          "isSupported": false,
+          "unsupportedTokens": [
+            "calendar",
+            "chapter",
+            "cited",
+            "code",
+            "dollars",
+            "five",
+            "ordinance",
+            "reach",
+            "texas",
+            "thousand",
+            "water"
+          ]
+        },
+        {
+          "claim": "The county may also seek an order to remove the unpermitted work",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        }
+      ],
+      "unsupportedClaims": [
+        "Civil penalties reach five thousand dollars per calendar day under the Texas Water Code chapter cited in the ordinance"
+      ],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-administrator",
+      "category": "answerable",
+      "question": "Who decides whether my land is inside the 100-year flood zone?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "The Harris County Engineer serves as the Floodplain Administrator and determines whether a parcel lies within the one hundred year flood zone by interpreting the adopted Flood Insurance Rate Map. That determination governs unless the Federal Emergency Management Agency amends it.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.1 Designation of the Floodplain Administrator",
+          "page": 8
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 2 Definitions",
+          "page": 3
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "administrator",
+          "description": "Names the Floodplain Administrator",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "map-basis",
+          "description": "States that the determination interprets the adopted flood map",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "The Harris County Engineer serves as the Floodplain Administrator and determines whether a parcel lies within the one hundred year flood zone by interpreting the adopted Flood Insurance Rate Map",
+          "supportScore": 0.9524,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "serves"
+          ]
+        },
+        {
+          "claim": "That determination governs unless the Federal Emergency Management Agency amends it",
+          "supportScore": 0.875,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "amends"
+          ]
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-elevation-certificate-timing",
+      "category": "answerable",
+      "question": "Do I have to prove my finished floor height after construction is complete, or only before?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "Both. A certificate based on construction drawings or on a building under construction is provisional, and upon completion of construction a new certificate based on finished construction must be submitted so the as built elevation of the lowest floor is on record. The certificate is prepared by a licensed surveyor, engineer, or architect.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3
+        },
+        {
+          "number": 2,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.2 Specific Standards for New Construction",
+          "page": 15
+        },
+        {
+          "number": 3,
+          "source": "County",
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "after-construction",
+          "description": "States that an as-built certificate is required after completion",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "certifier",
+          "description": "Identifies who prepares the certificate",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "A certificate based on construction drawings or on a building under construction is provisional, and upon completion of construction a new certificate based on finished construction must be submitted so the as built elevation of the lowest floor is on record",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        },
+        {
+          "claim": "The certificate is prepared by a licensed surveyor, engineer, or architect",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-ec-section-c",
+      "category": "answerable",
+      "question": "Who is allowed to sign and seal Section C of the Elevation Certificate?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "Section C must be completed by a land surveyor, engineer, or architect authorized by law to certify elevation information in the state where the building is located, and that professional must sign, seal, and date the certificate. A property owner, builder, or insurance agent may not certify Section C.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4
+        },
+        {
+          "number": 2,
+          "source": "County",
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3
+        },
+        {
+          "number": 3,
+          "source": "County",
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "General Instructions",
+          "page": 1
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section D Certification",
+          "page": 5
+        },
+        {
+          "number": 5,
+          "source": "County",
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section A Property Information",
+          "page": 2
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "professional",
+          "description": "Names the professionals permitted to certify Section C",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "seal",
+          "description": "States the sign-and-seal requirement",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "Section C must be completed by a land surveyor, engineer, or architect authorized by law to certify elevation information in the state where the building is located, and that professional must sign, seal, and date the certificate",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        },
+        {
+          "claim": "A property owner, builder, or insurance agent may not certify Section C",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-mtez-when",
+      "category": "answerable",
+      "question": "When should an applicant use Form MT-EZ instead of the full MT-1 application?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "Use MT-EZ for a simple Letter of Map Amendment request covering a single structure or a single parcel of legally recorded land on the basis of natural high ground. Use the full MT-1 package instead when the request involves fill, multiple structures, multiple lots, or a Letter of Map Revision.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "MT-EZ Application Form Instructions",
+          "section": "General Background Information",
+          "page": 1
+        },
+        {
+          "number": 2,
+          "source": "County",
+          "title": "MT-EZ Application Form Instructions",
+          "section": "Required Documentation",
+          "page": 2
+        },
+        {
+          "number": 3,
+          "source": "County",
+          "title": "MT-EZ Application Form Instructions",
+          "section": "Where to Submit and Processing Time",
+          "page": 3
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "MT-EZ Application Form Instructions",
+          "section": "What a Letter of Map Amendment Does",
+          "page": 1
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "simple-request",
+          "description": "States that MT-EZ covers a single structure or parcel",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "high-ground",
+          "description": "States the natural high ground basis",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "Use MT-EZ for a simple Letter of Map Amendment request covering a single structure or a single parcel of legally recorded land on the basis of natural high ground",
+          "supportScore": 0.9474,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "covering"
+          ]
+        },
+        {
+          "claim": "Use the full MT-1 package instead when the request involves fill, multiple structures, multiple lots, or a Letter of Map Revision",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-mtez-documents",
+      "category": "answerable",
+      "question": "What supporting documents must accompany an MT-EZ submission?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "Submit a copy of the effective Flood Insurance Rate Map panel with the property outlined, the recorded deed or plat showing the legal description, and elevation information certified by a licensed land surveyor or registered professional engineer. A request without certified elevation information cannot be processed.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "MT-EZ Application Form Instructions",
+          "section": "General Background Information",
+          "page": 1
+        },
+        {
+          "number": 2,
+          "source": "County",
+          "title": "MT-EZ Application Form Instructions",
+          "section": "Where to Submit and Processing Time",
+          "page": 3
+        },
+        {
+          "number": 3,
+          "source": "County",
+          "title": "MT-EZ Application Form Instructions",
+          "section": "Required Documentation",
+          "page": 2
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "MT-EZ Application Form Instructions",
+          "section": "What a Letter of Map Amendment Does",
+          "page": 1
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "map-panel",
+          "description": "Requires the flood map panel with the property outlined",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "legal-description",
+          "description": "Requires the deed or plat",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "certified-elevation",
+          "description": "Requires certified elevation information",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "Submit a copy of the effective Flood Insurance Rate Map panel with the property outlined, the recorded deed or plat showing the legal description, and elevation information certified by a licensed land surveyor or registered professional engineer",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        },
+        {
+          "claim": "A request without certified elevation information cannot be processed",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-manufactured-home",
+      "category": "answerable",
+      "question": "Do manufactured homes have different flood elevation rules than regular houses?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "Manufactured homes are held to the same elevation standard and to an additional one. They must be elevated on a permanent foundation so the lowest floor is at or above the required elevation, and they must also be securely anchored to resist flotation and lateral movement.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.3 Manufactured Homes and Accessory Structures",
+          "page": 16
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.1 Applicability and Basis for Establishing Flood Hazard Areas",
+          "page": 6
+        },
+        {
+          "number": 5,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 2 Definitions",
+          "page": 3
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "elevated",
+          "description": "States the elevation requirement applies",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "anchored",
+          "description": "States the anchoring requirement specific to manufactured homes",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "Manufactured homes are held to the same elevation standard and to an additional one",
+          "supportScore": 0.5,
+          "isSupported": false,
+          "unsupportedTokens": [
+            "additional",
+            "held",
+            "same",
+            "standard"
+          ]
+        },
+        {
+          "claim": "They must be elevated on a permanent foundation so the lowest floor is at or above the required elevation, and they must also be securely anchored to resist flotation and lateral movement",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        }
+      ],
+      "unsupportedClaims": [
+        "Manufactured homes are held to the same elevation standard and to an additional one"
+      ],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-permit-change",
+      "category": "answerable",
+      "question": "What happens if my project changes after the floodplain permit was approved?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "The permit holder submits a revised site plan and revised elevation data and obtains an amended permit before continuing work. Work performed outside the scope of the approved permit is treated as unpermitted development.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.5 Amendments to an Issued Permit",
+          "page": 13
+        },
+        {
+          "number": 2,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9
+        },
+        {
+          "number": 3,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.4 Penalties for Violation",
+          "page": 7
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4 Administration",
+          "page": 8
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "amend",
+          "description": "States that an amended permit is required",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "unpermitted",
+          "description": "States the consequence of working outside the approved scope",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "The permit holder submits a revised site plan and revised elevation data and obtains an amended permit before continuing work",
+          "supportScore": 0.8333,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "obtains",
+            "submits"
+          ]
+        },
+        {
+          "claim": "Work performed outside the scope of the approved permit is treated as unpermitted development",
+          "supportScore": 1,
+          "isSupported": true,
+          "unsupportedTokens": []
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-drainage-study",
+      "category": "answerable",
+      "question": "Is a drainage study required for site development in the floodplain?",
+      "expectedOutcome": "Answered",
+      "actualOutcome": "Answered",
+      "outcomeMatched": true,
+      "answer": "Yes. Site development within an area of special flood hazard must be supported by a drainage study showing that the proposed grading and detention will not increase runoff onto adjacent property, and the study must be sealed by a registered professional engineer.",
+      "citations": [
+        {
+          "number": 1,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 7 Drainage and Site Development Studies",
+          "page": 20
+        },
+        {
+          "number": 3,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9
+        },
+        {
+          "number": 4,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 6 Submittal Checklist",
+          "page": 18
+        },
+        {
+          "number": 5,
+          "source": "County",
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.5 Amendments to an Issued Permit",
+          "page": 13
+        }
+      ],
+      "evidenceCount": 5,
+      "facts": [
+        {
+          "factId": "required",
+          "description": "States that a drainage study is required",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        },
+        {
+          "factId": "sealed",
+          "description": "States that the study must be sealed by an engineer",
+          "isCovered": true,
+          "missingRequiredPhrases": [],
+          "missingAnyOf": false
+        }
+      ],
+      "factCoverage": 1,
+      "citationTitlesMatched": true,
+      "claims": [
+        {
+          "claim": "Site development within an area of special flood hazard must be supported by a drainage study showing that the proposed grading and detention will not increase runoff onto adjacent property, and the study must be sealed by a registered professional engineer",
+          "supportScore": 0.9565,
+          "isSupported": true,
+          "unsupportedTokens": [
+            "showing"
+          ]
+        }
+      ],
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-out-of-scope-tax",
+      "category": "out-of-scope",
+      "question": "What is the current Harris County property tax rate for residential property?",
+      "expectedOutcome": "InsufficientEvidence",
+      "actualOutcome": "InsufficientEvidence",
+      "outcomeMatched": true,
+      "answer": "The Harris County floodplain reference material does not contain property tax rates.",
+      "citations": [],
+      "evidenceCount": 5,
+      "facts": [],
+      "factCoverage": null,
+      "citationTitlesMatched": null,
+      "claims": null,
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-out-of-scope-status",
+      "category": "out-of-scope",
+      "question": "Has permit application number 2024-11875 been approved yet?",
+      "expectedOutcome": "InsufficientEvidence",
+      "actualOutcome": "InsufficientEvidence",
+      "outcomeMatched": true,
+      "answer": "The reference corpus describes county requirements and does not contain the status of an individual permit application.",
+      "citations": [],
+      "evidenceCount": 5,
+      "facts": [],
+      "factCoverage": null,
+      "citationTitlesMatched": null,
+      "claims": null,
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    },
+    {
+      "id": "gen-out-of-scope-advice",
+      "category": "out-of-scope",
+      "question": "Should I sue my neighbour over the stormwater running off their property onto mine?",
+      "expectedOutcome": "InsufficientEvidence",
+      "actualOutcome": "InsufficientEvidence",
+      "outcomeMatched": true,
+      "answer": "The reference material addresses floodplain permitting requirements and does not support advice about a private legal dispute.",
+      "citations": [],
+      "evidenceCount": 5,
+      "facts": [],
+      "factCoverage": null,
+      "citationTitlesMatched": null,
+      "claims": null,
+      "unsupportedClaims": [],
+      "promptVersion": "corpus-qa/v2",
+      "modelDeployment": "offline-scripted-fixture",
+      "error": null
+    }
+  ]
+}

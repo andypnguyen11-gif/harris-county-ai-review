@@ -1,0 +1,117 @@
+{
+  "description": "SYNTHETIC scripted answers for the offline generation harness. These are NOT model output and NOT legal guidance — they are hand-written stand-ins that let the whole question-answering pipeline (prompt construction, JSON parsing, citation resolution, the fail-closed downgrade) run end to end with no model call and no cost. Each entry names the document titles the answer should cite; the offline model resolves those to the source numbers actually present in the prompt, so a scripted answer can only cite evidence retrieval really surfaced. One entry (gen-penalties) deliberately contains a fabricated dollar figure so the committed baseline exercises unsupported-claim detection on a positive example.",
+  "version": 1,
+  "answers": [
+    {
+      "id": "gen-elevation",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "New construction and substantial improvement of a residential structure must have the lowest floor elevated to at least one foot above the base flood elevation. After construction is complete the permit holder submits an Elevation Certificate documenting the as built elevation of the lowest floor."
+    },
+    {
+      "id": "gen-permit-required",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "A floodplain development permit must be obtained before any development begins within an area of special flood hazard. The requirement applies to all areas of special flood hazard in the unincorporated portions of Harris County."
+    },
+    {
+      "id": "gen-application-contents",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "The application is made on the form supplied by the county and includes a site plan drawn to scale, the proposed elevation of the lowest floor of all structures, and a description of the extent to which a watercourse will be altered. Where elevation data is required the application also carries the certification of a registered professional engineer or licensed surveyor."
+    },
+    {
+      "id": "gen-floodway-fill",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "Encroachments within the adopted regulatory floodway are prohibited, and fill is named as an encroachment. The only exception is where a registered professional engineer certifies through hydrologic and hydraulic analysis that the proposed encroachment will result in no increase in flood levels during the base flood discharge."
+    },
+    {
+      "id": "gen-substantial-improvement",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "Work of that scale is a substantial improvement, which the regulations define as any repair, reconstruction, or improvement whose cost equals or exceeds fifty percent of the market value of the structure before the improvement begins. A substantially improved structure is held to the same standards as new construction."
+    },
+    {
+      "id": "gen-variance-historic",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "A variance may be issued for the reconstruction or rehabilitation of a structure listed on a register of historic places, provided the work does not preclude the structure's continued designation as a historic structure. A variance otherwise requires good and sufficient cause and a determination of exceptional hardship."
+    },
+    {
+      "id": "gen-penalties",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "Developing land in an area of special flood hazard without first obtaining a floodplain development permit is an offense, and each day a violation continues is a separate offense. Civil penalties reach five thousand dollars per calendar day under the Texas Water Code chapter cited in the ordinance. The county may also seek an order to remove the unpermitted work."
+    },
+    {
+      "id": "gen-administrator",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "The Harris County Engineer serves as the Floodplain Administrator and determines whether a parcel lies within the one hundred year flood zone by interpreting the adopted Flood Insurance Rate Map. That determination governs unless the Federal Emergency Management Agency amends it."
+    },
+    {
+      "id": "gen-elevation-certificate-timing",
+      "status": "answered",
+      "citeTitles": [
+        "Regulations of Harris County for Floodplain Management",
+        "FEMA Elevation Certificate Instructions"
+      ],
+      "answer": "Both. A certificate based on construction drawings or on a building under construction is provisional, and upon completion of construction a new certificate based on finished construction must be submitted so the as built elevation of the lowest floor is on record. The certificate is prepared by a licensed surveyor, engineer, or architect."
+    },
+    {
+      "id": "gen-ec-section-c",
+      "status": "answered",
+      "citeTitles": ["FEMA Elevation Certificate Instructions"],
+      "answer": "Section C must be completed by a land surveyor, engineer, or architect authorized by law to certify elevation information in the state where the building is located, and that professional must sign, seal, and date the certificate. A property owner, builder, or insurance agent may not certify Section C."
+    },
+    {
+      "id": "gen-mtez-when",
+      "status": "answered",
+      "citeTitles": ["MT-EZ Application Form Instructions"],
+      "answer": "Use MT-EZ for a simple Letter of Map Amendment request covering a single structure or a single parcel of legally recorded land on the basis of natural high ground. Use the full MT-1 package instead when the request involves fill, multiple structures, multiple lots, or a Letter of Map Revision."
+    },
+    {
+      "id": "gen-mtez-documents",
+      "status": "answered",
+      "citeTitles": ["MT-EZ Application Form Instructions"],
+      "answer": "Submit a copy of the effective Flood Insurance Rate Map panel with the property outlined, the recorded deed or plat showing the legal description, and elevation information certified by a licensed land surveyor or registered professional engineer. A request without certified elevation information cannot be processed."
+    },
+    {
+      "id": "gen-manufactured-home",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "Manufactured homes are held to the same elevation standard and to an additional one. They must be elevated on a permanent foundation so the lowest floor is at or above the required elevation, and they must also be securely anchored to resist flotation and lateral movement."
+    },
+    {
+      "id": "gen-permit-change",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "The permit holder submits a revised site plan and revised elevation data and obtains an amended permit before continuing work. Work performed outside the scope of the approved permit is treated as unpermitted development."
+    },
+    {
+      "id": "gen-drainage-study",
+      "status": "answered",
+      "citeTitles": ["Regulations of Harris County for Floodplain Management"],
+      "answer": "Yes. Site development within an area of special flood hazard must be supported by a drainage study showing that the proposed grading and detention will not increase runoff onto adjacent property, and the study must be sealed by a registered professional engineer."
+    },
+    {
+      "id": "gen-out-of-scope-tax",
+      "status": "insufficient_evidence",
+      "citeTitles": [],
+      "answer": "The Harris County floodplain reference material does not contain property tax rates."
+    },
+    {
+      "id": "gen-out-of-scope-status",
+      "status": "insufficient_evidence",
+      "citeTitles": [],
+      "answer": "The reference corpus describes county requirements and does not contain the status of an individual permit application."
+    },
+    {
+      "id": "gen-out-of-scope-advice",
+      "status": "insufficient_evidence",
+      "citeTitles": [],
+      "answer": "The reference material addresses floodplain permitting requirements and does not support advice about a private legal dispute."
+    }
+  ]
+}
