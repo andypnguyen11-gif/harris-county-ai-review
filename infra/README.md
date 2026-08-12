@@ -115,11 +115,11 @@ Service configuration), never from source control.
 | `blobEndpoint` | `BlobStorage:ConnectionString` | use the account connection string (or the endpoint with managed identity) |
 | `caseDocumentsContainerName` | `BlobStorage:CaseDocumentsContainerName` | `case-documents` |
 | `knowledgeBaseContainerName` | `BlobStorage:KnowledgeBaseContainerName` | `knowledge-base` |
-| `searchEndpoint` | `Search:Endpoint` | wired when the Search integration lands |
-| `documentIntelligenceEndpoint` | `DocumentIntelligence:Endpoint` | wired when the extraction integration lands |
-| `openAiEndpoint` | `OpenAI:Endpoint` | wired when the LLM integration lands |
-| `openAiChatDeploymentName` | `OpenAI:ChatDeploymentName` | `chat` (gpt-5-mini) |
-| `openAiEmbeddingDeploymentName` | `OpenAI:EmbeddingDeploymentName` | `embeddings` (text-embedding-3-small) |
+| `searchEndpoint` | `Search:Endpoint` | also set `Search:ApiKey`; `Search:IndexName` defaults to `harris-county-chunks` |
+| `documentIntelligenceEndpoint` | `DocumentIntelligence:Endpoint` | also set `DocumentIntelligence:ApiKey` |
+| `openAiEndpoint` | `LanguageModel:Endpoint` **and** `Embeddings:Endpoint` | one Azure OpenAI account backs both; each section takes its own key |
+| `openAiChatDeploymentName` | `LanguageModel:Deployment` | `chat` (gpt-5-mini) |
+| `openAiEmbeddingDeploymentName` | `Embeddings:Deployment` | `embeddings` (text-embedding-3-small) |
 | `appInsightsConnectionString` | `APPLICATIONINSIGHTS_CONNECTION_STRING` | set on the web app by the template |
 | `backendUrl` / `frontendHostname` | — | hosting endpoints for the deployment pipeline |
 

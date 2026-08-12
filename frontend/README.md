@@ -1,59 +1,49 @@
 # Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.3.
+The Angular reviewer UI for the Harris County AI Document Review Assistant. Generated with
+[Angular CLI](https://github.com/angular/angular-cli) 22.1.3. Start at the
+[root README](../README.md) for what the application does and how the pieces fit together.
 
-## Development server
+## Layout
 
-To start a local development server, run:
+| Path | Contents |
+|---|---|
+| `src/app/features/` | One folder per screen: `sign-in`, `dashboard`, `cases/*`, `document-upload`, `validation-report`, `document-viewer`, `question-answering`, `knowledge-base` |
+| `src/app/core/` | Cross-cutting code: `auth/`, `guards/`, `interceptors/`, `services/`, `models/`, `errors/` |
+| `src/app/shared/` | Reusable presentational components (`status-badge`, `citation`, `error-message`) |
+| `src/environments/` | `apiUrl`, the only environment-dependent value; rewritten by the deploy workflow |
 
-```bash
-ng serve
-```
+Routes are declared in `src/app/app.routes.ts` and every one is lazy-loaded. `/knowledge-base` is
+additionally gated on the `Administrator` role.
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Commands
 
 ```bash
-ng generate --help
+npm ci
+npm start                    # ng serve on http://localhost:4200
+npm run build                # production build into dist/frontend
+npx ng test --watch=false    # Vitest, single run — this is what CI runs
 ```
 
-## Building
+## Talking to the API
 
-To build the project run:
+`src/environments/environment.ts` points at `http://localhost:5096/api`, which is the backend's
+`http` launch profile. The backend applies **no CORS policy**, so a browser on `:4200` cannot call it
+directly; a dev CORS policy or a dev-server proxy has to be added first. This is a known gap, listed
+in the [root README](../README.md#known-limitations). The test suite is unaffected — it uses
+`HttpTestingController` rather than a real server.
 
-```bash
-ng build
-```
+Authentication in local development is the backend's dev-token endpoint: the sign-in screen posts a
+username, and `AuthService` stores the returned session in `sessionStorage`. `authInterceptor`
+attaches the bearer token to API calls and signs out on a `401`.
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Tests
 
-## Running unit tests
+Vitest with jsdom, run through the Angular CLI's `@angular/build:unit-test` builder — there is no
+Karma or Jasmine. `src/app/reviewer-workflow.spec.ts` walks the whole reviewer journey (sign in →
+create case → upload → process → validate → open a cited document → ask a question in both scopes)
+against a mocked HTTP backend.
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+There is **no browser end-to-end harness** — no Playwright, Cypress, or `ng e2e` configuration. The
+journey is covered at the HTTP-contract level on the frontend and end to end on the backend, but
+nothing drives a real browser.

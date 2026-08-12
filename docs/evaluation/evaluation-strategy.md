@@ -78,6 +78,26 @@ Credentials come from `~/.harriscountyai/azure.env` (override with
 `AZURE_ENV_FILE`), which lives outside the repository. Committed configuration
 carries empty-string placeholders only.
 
+## Where the numbers stand today
+
+Every committed baseline is a **fixture** run. Read this table as "the harness
+works and these are its regression gates", never as "the system performs at
+this level":
+
+| Report | Headline |
+|---|---|
+| `retrieval/results/baseline-fixture.json` | 28 questions; Recall@1 0.857, Recall@3 0.929, Recall@5 1.0, MRR 0.903 |
+| `generation/results/baseline-fixture.json` | 18 questions; outcome match 1.0, citation presence 1.0, mean fact coverage 1.0, unsupported-claim rate 0.10 |
+| `generation/results/judge-baseline-fixture.json` | 18 judged; mean score 4.79/5, acceptable rate 0.889, manual agreement 0.944 |
+
+The retrieval numbers describe a BM25-style ranker over a synthetic corpus, not
+hybrid search over the Harris County regulations. The generation and judge
+numbers describe hand-written answers and hand-written verdicts replayed
+through the real pipeline, not a model. **No live run has ever been performed**,
+which is why every one of those numbers is a `1.0` or close to it: the fixtures
+were written to exercise the pipeline, not to challenge it. The failure modes
+they *do* demonstrate are deliberate and documented below.
+
 ---
 
 ## Retrieval evaluation
