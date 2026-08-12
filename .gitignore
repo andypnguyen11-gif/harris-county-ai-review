@@ -31,3 +31,4 @@ coverage/
 
 # Evaluation run artifacts (live runs write these; only baselines are committed)
 evaluation/datasets/*/results/latest-live.json
+evaluation/datasets/*/results/judge-latest-live.json

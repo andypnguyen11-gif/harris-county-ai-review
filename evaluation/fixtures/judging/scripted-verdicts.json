@@ -1,0 +1,134 @@
+{
+  "description": "SYNTHETIC scripted judge verdicts for the offline harness. These are NOT model output. They exist so the judge prompt, the schema-constrained response contract, the parser, the acceptance threshold, and the manual-agreement metric can all run end to end with no model call and no cost. The scores were chosen to exercise the plumbing, not to represent what a real judge would say: gen-penalties is scored down on groundedness and unsupported claims to match the fabricated figure in the scripted answer, and gen-substantial-improvement is deliberately scored below the acceptance threshold on completeness so the committed baseline contains one judge-versus-human disagreement and the agreement metric is provably not stuck at 1.0.",
+  "version": 1,
+  "verdicts": [
+    {
+      "id": "gen-elevation",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Every statement traces to the elevation standard passage, and the certificate requirement is reported without embellishment.",
+      "reasoning": { "groundedness": "Both sentences restate the Section 5.2 passage." }
+    },
+    {
+      "id": "gen-permit-required",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 4, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Correct and on point; omits the Letter of Map Amendment path the evidence also mentions.",
+      "reasoning": { "completeness": "The evidence also covers the LOMA precondition, which the answer leaves out." }
+    },
+    {
+      "id": "gen-application-contents",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Enumerates the application contents exactly as the evidence lists them."
+    },
+    {
+      "id": "gen-floodway-fill",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "States the prohibition and the no-rise exception without softening either.",
+      "reasoning": { "accuracy": "The exception is reported as conditional on an engineer's certification, as in the evidence." }
+    },
+    {
+      "id": "gen-substantial-improvement",
+      "scores": { "groundedness": 4, "relevance": 5, "completeness": 3, "accuracy": 5, "unsupportedClaims": 4 },
+      "unsupportedClaims": [
+        "A substantially improved structure is held to the same standards as new construction"
+      ],
+      "summary": "The definition is exact, but the closing generalisation is not stated in these words by any passage.",
+      "reasoning": {
+        "completeness": "Does not explain which standards apply once the threshold is crossed.",
+        "unsupportedClaims": "The closing sentence generalises beyond the definition passage."
+      }
+    },
+    {
+      "id": "gen-variance-historic",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Reports both the historic-structure provision and the general hardship test."
+    },
+    {
+      "id": "gen-penalties",
+      "scores": { "groundedness": 2, "relevance": 5, "completeness": 4, "accuracy": 2, "unsupportedClaims": 1 },
+      "unsupportedClaims": [
+        "Civil penalties reach five thousand dollars per calendar day under the Texas Water Code chapter cited in the ordinance"
+      ],
+      "summary": "The offense and per-day statements are correct, but the answer invents a penalty amount and a statutory citation absent from the evidence.",
+      "reasoning": {
+        "groundedness": "A whole sentence has no basis in the supplied passages.",
+        "accuracy": "The invented figure would mislead a reviewer about the county's actual remedy.",
+        "unsupportedClaims": "The dollar amount and the Texas Water Code citation appear nowhere in the evidence."
+      }
+    },
+    {
+      "id": "gen-administrator",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Names the administrator, the basis for the determination, and the amendment caveat."
+    },
+    {
+      "id": "gen-elevation-certificate-timing",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Answers the either-or question directly and explains why a pre-completion certificate is provisional."
+    },
+    {
+      "id": "gen-ec-section-c",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "States who may certify and who may not, matching the instructions.",
+      "reasoning": { "completeness": "Includes the exclusion, which is the part applicants most often miss." }
+    },
+    {
+      "id": "gen-mtez-when",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Draws the MT-EZ versus MT-1 line the way the instructions do."
+    },
+    {
+      "id": "gen-mtez-documents",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Lists the three required items and the consequence of omitting certified elevations."
+    },
+    {
+      "id": "gen-manufactured-home",
+      "scores": { "groundedness": 4, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 4 },
+      "unsupportedClaims": [],
+      "summary": "Both requirements are correct; the framing sentence uses wording the passage does not.",
+      "reasoning": { "groundedness": "The comparison to regular houses is implied by the evidence rather than stated in it." }
+    },
+    {
+      "id": "gen-permit-change",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "States the amendment requirement and the consequence of working outside the approved scope."
+    },
+    {
+      "id": "gen-drainage-study",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 4, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Answers directly and includes the sealing requirement.",
+      "reasoning": { "completeness": "Omits the adopted rainfall data the passage also names." }
+    },
+    {
+      "id": "gen-out-of-scope-tax",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Declining is the correct behaviour here and is stated plainly.",
+      "reasoning": { "relevance": "Refusing to answer is the right response to a question the corpus cannot support." }
+    },
+    {
+      "id": "gen-out-of-scope-status",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Correctly separates reference material from case records and declines."
+    },
+    {
+      "id": "gen-out-of-scope-advice",
+      "scores": { "groundedness": 5, "relevance": 5, "completeness": 5, "accuracy": 5, "unsupportedClaims": 5 },
+      "unsupportedClaims": [],
+      "summary": "Declines to give legal advice and says why, without hedging into a partial answer."
+    }
+  ]
+}
