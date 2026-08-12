@@ -1,0 +1,96 @@
+{
+  "description": "Human labels for the answers the offline generation harness produces from evaluation/fixtures/generation/scripted-answers.json. Each answer was read against the fixture corpus passage it was written from and marked acceptable or unacceptable, with the reason. These labels anchor the LLM judge: a judge run reports its agreement with them, so a prompt change that makes the judge more agreeable rather than more accurate shows up as falling agreement instead of rising scores. When the fixture answers change, or when live answers are labeled, this file must be re-reviewed — a stale label is worse than none.",
+  "version": 1,
+  "reviews": [
+    {
+      "id": "gen-elevation",
+      "verdict": "Acceptable",
+      "notes": "States the one-foot freeboard above the base flood elevation and the as-built certificate requirement, both present in Section 5.2. Nothing added."
+    },
+    {
+      "id": "gen-permit-required",
+      "verdict": "Acceptable",
+      "notes": "Correctly states that the permit precedes development and scopes the requirement to special flood hazard areas in unincorporated Harris County."
+    },
+    {
+      "id": "gen-application-contents",
+      "verdict": "Acceptable",
+      "notes": "Lists the site plan, lowest-floor elevation, watercourse alteration, and professional certification exactly as Section 4.2 does."
+    },
+    {
+      "id": "gen-floodway-fill",
+      "verdict": "Acceptable",
+      "notes": "Names the prohibition and the no-rise certification exception without softening either. Fill is correctly identified as an encroachment."
+    },
+    {
+      "id": "gen-substantial-improvement",
+      "verdict": "Acceptable",
+      "notes": "The fifty percent of market value definition is stated correctly. The closing sentence generalises beyond the definition passage but is consistent with Section 5.2, which the answer also had in evidence."
+    },
+    {
+      "id": "gen-variance-historic",
+      "verdict": "Acceptable",
+      "notes": "Reports the historic structure provision and the general hardship test, and does not imply the variance is automatic."
+    },
+    {
+      "id": "gen-penalties",
+      "verdict": "Unacceptable",
+      "notes": "The offense and separate-offense-per-day statements are right, but the answer invents a five thousand dollar per day civil penalty and a Texas Water Code citation that appear nowhere in the evidence. A reviewer would reject it on that sentence alone."
+    },
+    {
+      "id": "gen-administrator",
+      "verdict": "Acceptable",
+      "notes": "Names the County Engineer as Floodplain Administrator, the map-based determination, and the FEMA amendment caveat, all from Section 4.1."
+    },
+    {
+      "id": "gen-elevation-certificate-timing",
+      "verdict": "Acceptable",
+      "notes": "Answers the actual question (both, and why), drawing on the regulation and the certificate instructions, and correctly calls the pre-completion certificate provisional."
+    },
+    {
+      "id": "gen-ec-section-c",
+      "verdict": "Acceptable",
+      "notes": "States who may certify and, importantly, who may not. Matches the Section C instructions."
+    },
+    {
+      "id": "gen-mtez-when",
+      "verdict": "Acceptable",
+      "notes": "Draws the MT-EZ versus MT-1 line the way the instructions do, including the fill and multiple-structure exclusions."
+    },
+    {
+      "id": "gen-mtez-documents",
+      "verdict": "Acceptable",
+      "notes": "Lists the three required items and the consequence of omitting certified elevation information."
+    },
+    {
+      "id": "gen-manufactured-home",
+      "verdict": "Acceptable",
+      "notes": "The elevation and anchoring requirements are both correct. The framing sentence uses wording the passage does not, but adds no claim."
+    },
+    {
+      "id": "gen-permit-change",
+      "verdict": "Acceptable",
+      "notes": "States the amended permit requirement and that out-of-scope work is treated as unpermitted, matching Section 4.5."
+    },
+    {
+      "id": "gen-drainage-study",
+      "verdict": "Acceptable",
+      "notes": "Answers directly and includes the sealing requirement. Does not invent a rainfall standard beyond what the passage names."
+    },
+    {
+      "id": "gen-out-of-scope-tax",
+      "verdict": "Acceptable",
+      "notes": "Correctly declines. Declining is the right behaviour here and should be scored as a good answer, not a failure to answer."
+    },
+    {
+      "id": "gen-out-of-scope-status",
+      "verdict": "Acceptable",
+      "notes": "Correctly distinguishes the reference corpus from case records and declines."
+    },
+    {
+      "id": "gen-out-of-scope-advice",
+      "verdict": "Acceptable",
+      "notes": "Correctly declines to give legal advice and says why, without hedging into a partial answer."
+    }
+  ]
+}

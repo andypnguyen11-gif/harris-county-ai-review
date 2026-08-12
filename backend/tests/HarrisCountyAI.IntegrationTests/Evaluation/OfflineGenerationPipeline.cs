@@ -11,24 +11,33 @@ namespace HarrisCountyAI.IntegrationTests.Evaluation;
 /// Everything between the question and the report is production code —
 /// <see cref="QuestionAnsweringService"/>, the grounded prompt, the citation
 /// resolver, the fail-closed downgrade. Only the two external dependencies are
-/// swapped, which is what makes the fixture baseline worth committing.
+/// swapped, which is what makes the fixture baselines worth committing.
 /// </remarks>
 public sealed class OfflineGenerationPipeline
 {
     private OfflineGenerationPipeline(
         GenerationEvaluationDataset dataset,
-        GenerationEvaluationRunner runner,
+        IQuestionAnsweringService questionAnswering,
+        RecordingRetrievalService recorder,
         ScriptedAnswerLanguageModel model)
     {
         Dataset = dataset;
-        Runner = runner;
+        QuestionAnswering = questionAnswering;
+        Recorder = recorder;
         Model = model;
+        Runner = new GenerationEvaluationRunner(questionAnswering, recorder);
     }
 
     /// <summary>The committed generation dataset.</summary>
     public GenerationEvaluationDataset Dataset { get; }
 
-    /// <summary>A runner wired to the offline pipeline.</summary>
+    /// <summary>The pipeline under evaluation.</summary>
+    public IQuestionAnsweringService QuestionAnswering { get; }
+
+    /// <summary>The retrieval decorator capturing the evidence behind each answer.</summary>
+    public RecordingRetrievalService Recorder { get; }
+
+    /// <summary>A generation runner wired to the offline pipeline.</summary>
     public GenerationEvaluationRunner Runner { get; }
 
     /// <summary>The scripted model, for asserting how often it was called.</summary>
@@ -41,9 +50,8 @@ public sealed class OfflineGenerationPipeline
             EvaluationWorkspace.ReadText(GenerationEvaluationFiles.Dataset));
         var recorder = new RecordingRetrievalService(FixtureCorpusRetrievalService.FromCommittedCorpus());
         var model = ScriptedAnswerLanguageModel.BindTo(dataset);
-        var questionAnswering = new QuestionAnsweringService(recorder, model);
 
         return new OfflineGenerationPipeline(
-            dataset, new GenerationEvaluationRunner(questionAnswering, recorder), model);
+            dataset, new QuestionAnsweringService(recorder, model), recorder, model);
     }
 }

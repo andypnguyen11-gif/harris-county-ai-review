@@ -31,12 +31,16 @@ evaluation/
   datasets/retrieval/floodplain-questions.json        curated retrieval questions
   datasets/retrieval/results/baseline-fixture.json    committed offline baseline
   datasets/generation/questions.json                  expected outcomes, facts, citations
-  datasets/generation/results/baseline-fixture.json   committed offline baseline
-  datasets/*/results/latest-live.json                 written by a live run (not committed)
+  datasets/generation/manual-review.json              human labels the judge is measured against
+  datasets/generation/results/baseline-fixture.json   committed offline generation baseline
+  datasets/generation/results/judge-baseline-fixture.json   committed offline judge baseline
+  datasets/*/results/*latest-live.json                written by a live run (not committed)
   fixtures/retrieval/fixture-corpus.json              synthetic corpus for offline runs
   fixtures/generation/scripted-answers.json           hand-written answers for offline runs
+  fixtures/judging/scripted-verdicts.json             hand-written verdicts for offline runs
   scripts/run-retrieval-evaluation.sh                 retrieval runner
   scripts/run-generation-evaluation.sh                generation runner
+  scripts/run-judge-evaluation.sh                     judge runner
 
 backend/src/HarrisCountyAI.Application/Evaluation/          datasets, scorers, metrics, runners
 backend/tests/HarrisCountyAI.IntegrationTests/Evaluation/   harness wiring and cost gates
@@ -287,6 +291,92 @@ entry degrades to insufficient evidence, exactly as a well-behaved model should.
 
 ---
 
+## LLM-as-a-judge evaluation
+
+The deterministic checks above are cheap and reproducible, but they are literal.
+They cannot tell a correct paraphrase from a subtly wrong one, and they cannot
+tell a faithful summary from an invention when both use the same vocabulary. The
+judge is the semantic layer that can — at the cost of a model call per answer.
+
+It is a **development-time evaluator, not a production dependency.** The PRD is
+explicit that a judge should prove itself as an evaluation capability before it
+ever sits in a request path, and `AddAnswerJudge` is deliberately not called from
+the application's composition root: putting it there would add a second model
+call, and a second thing to be wrong, to every answer a reviewer sees.
+
+### Criteria
+
+All five score 1–5 on the same scale, in the same direction — higher is always
+better — so an aggregate means something and nobody has to remember which way
+one of them points.
+
+| Criterion | Question it answers |
+|---|---|
+| `Groundedness` | Is every claim traceable to the supplied evidence? |
+| `Relevance` | Does the answer address the question that was asked? |
+| `Completeness` | Does it cover what the evidence supports? |
+| `Accuracy` | Does it state the evidence correctly, without reversing or overstating it? |
+| `UnsupportedClaims` | Freedom from claims beyond the evidence — 5 means none |
+
+A case counts as **acceptable** only when *every* criterion clears the threshold
+(4 by default). One weak criterion sinks it: a perfectly relevant, complete
+answer that invents a fact is not acceptable, and averaging would hide that.
+
+The judge is told to score against the supplied evidence only, and never to
+reward an answer for stating something true that the evidence does not contain.
+It is also told that correctly reporting insufficient evidence is good
+behaviour — a judge that punished a correct refusal would push the product
+toward answering everything, which is the opposite of what it is for.
+
+### Prompt-injection hygiene
+
+The judge sees three untrusted inputs at once: the question, the retrieved
+corpus text, and the generated answer. Each is delimited, delimiter tokens
+inside the data are neutralized so a block cannot close itself and address the
+judge directly, and the system prompt names all three as data. It additionally
+tells the judge that an answer asking to be scored highly is, by that fact, less
+trustworthy.
+
+### Failing closed
+
+A model error, unparseable JSON, a missing criterion, or a score outside 1–5 all
+yield `UnableToJudge` — never a partial verdict, never a substituted default.
+This matters more for a judge than for most services: one that quietly invented a
+3 when it could not read the response would pull every aggregate toward the
+middle and hide exactly the regressions it was built to find. An unjudged case is
+excluded from the metrics rather than counted as a bad answer, because the judge
+failing says nothing about the answer.
+
+### Checking the judge against a human
+
+An automated judge is worth exactly as much as its agreement with a person on
+cases a person has looked at. `evaluation/datasets/generation/manual-review.json`
+carries a hand-written verdict and reason for every generated answer, and every
+judge run reports `ManualAgreementRate` next to its own scores. A prompt change
+that makes the judge more agreeable rather than more accurate shows up as
+falling agreement, not rising scores.
+
+The committed fixture baseline contains one deliberate disagreement
+(`gen-substantial-improvement`, where the scripted judge is harsher than the
+human about a generalizing sentence), so the agreement metric is provably not
+stuck at 1.0. A test asserts that.
+
+### Running it
+
+```bash
+evaluation/scripts/run-judge-evaluation.sh            # offline, free
+evaluation/scripts/run-judge-evaluation.sh --update   # rewrite the baseline
+evaluation/scripts/run-judge-evaluation.sh --live     # the most expensive run in the harness
+```
+
+A live judge run costs **two model completions per question** — one to answer,
+one to judge — plus an embedding call and a search query each. That is why the
+runner takes answer transcripts rather than re-answering the dataset: one
+generation pass feeds both the generation report and the judge report, and the
+judge grades the answers that were actually measured.
+
+---
+
 ## Known limitations
 
 ### Retrieval
@@ -318,6 +408,26 @@ entry degrades to insufficient evidence, exactly as a well-behaved model should.
   answering would need seeded case documents, which this dataset does not carry.
 - **Three out-of-scope questions is thin** for measuring refusal behaviour,
   which is arguably the most important property the product has.
+
+### The judge
+
+- **The committed judge baseline is a scripted fixture, not a model.** It proves
+  the prompt is built, the response contract is parsed, the threshold is applied,
+  and agreement is computed. It says nothing about how a real model would score
+  these answers.
+- **The judge has never been run live**, so its agreement with the human labels
+  is entirely unmeasured. Until it has been, no judge score should carry weight
+  in a decision.
+- **Eighteen human labels, one reviewer, no adjudication.** There is no
+  inter-rater agreement figure, and the same person wrote the fixture answers and
+  labeled them, which is a real source of bias.
+- **Only one label is `Unacceptable`.** Agreement is therefore dominated by the
+  easy cases; a judge that marked everything acceptable would score 94% on this
+  set. The rate needs adversarial examples before it means much.
+- **Acceptability is a single threshold over five criteria.** It is a blunt
+  summary; the per-criterion scores are what actually diagnose a problem.
+- **A judge is a model**, with the same failure modes as the model it grades —
+  including agreeing with a confident, well-written, wrong answer.
 
 ### Both
 
