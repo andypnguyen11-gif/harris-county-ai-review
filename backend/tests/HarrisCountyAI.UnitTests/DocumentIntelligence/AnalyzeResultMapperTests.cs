@@ -360,4 +360,24 @@ public class AnalyzeResultMapperTests
         Assert.Equal(1d / 8.5, extractedMark.BoundingBox.X, precision: 6);
         Assert.Equal(5d / 11d, extractedMark.BoundingBox.Y, precision: 6);
     }
+
+    [Fact]
+    public void Leaves_The_Selection_Mark_Box_Null_When_The_Page_Reports_No_Dimensions()
+    {
+        var mark = DocumentIntelligenceModelFactory.DocumentSelectionMark(
+            state: DocumentSelectionMarkState.Selected,
+            polygon: [1f, 5f, 1.2f, 5f, 1.2f, 5.2f, 1f, 5.2f],
+            span: DocumentIntelligenceModelFactory.DocumentSpan(0, 10),
+            confidence: 0.95f);
+
+        var result = DocumentIntelligenceModelFactory.AnalyzeResult(
+            pages: [DocumentIntelligenceModelFactory.DocumentPage(pageNumber: 2, selectionMarks: [mark])]);
+
+        var extractedMark = _mapper.Map(DocumentId, result).SelectionMarks.Single();
+
+        Assert.Null(extractedMark.BoundingBox);
+        // The mark itself still mapped; only the region is dropped.
+        Assert.True(extractedMark.IsSelected);
+        Assert.Equal(2, extractedMark.PageNumber);
+    }
 }

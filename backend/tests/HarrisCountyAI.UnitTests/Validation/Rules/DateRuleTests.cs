@@ -218,6 +218,38 @@ public class DateRuleTests
     }
 
     [Fact]
+    public async Task Reports_The_Value_Region_For_A_Future_Date()
+    {
+        var valueBox = RegionOn(2, 0.5);
+        var keyBox = RegionOn(2, 0.1);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithDateField("Date", "08/12/2026", page: 2, keyBox: keyBox, valueBox: valueBox)
+            .Build();
+        var context = NormalizedDocumentBuilder.ContextFor(document);
+
+        var result = await Rule(disallowFuture: true).ValidateAsync(context, CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Invalid, result.Status);
+        Assert.Equal(valueBox, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_The_Value_Region_For_A_Date_Older_Than_MaxAge()
+    {
+        var valueBox = RegionOn(2, 0.5);
+        var keyBox = RegionOn(2, 0.1);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithDateField("Date", "01/01/2025", page: 2, keyBox: keyBox, valueBox: valueBox)
+            .Build();
+        var context = NormalizedDocumentBuilder.ContextFor(document);
+
+        var result = await Rule(maxAge: TimeSpan.FromDays(180)).ValidateAsync(context, CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Invalid, result.Status);
+        Assert.Equal(valueBox, result.BoundingBox);
+    }
+
+    [Fact]
     public async Task Reports_No_Region_When_The_Date_Field_Was_Never_Found()
     {
         var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
