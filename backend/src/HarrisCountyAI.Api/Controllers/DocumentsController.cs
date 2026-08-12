@@ -3,6 +3,7 @@ using HarrisCountyAI.Application.Documents;
 using HarrisCountyAI.Application.Documents.GetDocument;
 using HarrisCountyAI.Application.Documents.GetDocumentContent;
 using HarrisCountyAI.Application.Documents.GetDocuments;
+using HarrisCountyAI.Application.Documents.ProcessDocument;
 using HarrisCountyAI.Application.Documents.UploadDocument;
 using HarrisCountyAI.Api.Authorization;
 using HarrisCountyAI.Domain.Enums;
@@ -29,17 +30,20 @@ public class DocumentsController : ControllerBase
     private readonly GetDocumentsHandler _getDocuments;
     private readonly GetDocumentHandler _getDocument;
     private readonly GetDocumentContentHandler _getDocumentContent;
+    private readonly ProcessDocumentHandler _processDocument;
 
     public DocumentsController(
         UploadDocumentHandler uploadDocument,
         GetDocumentsHandler getDocuments,
         GetDocumentHandler getDocument,
-        GetDocumentContentHandler getDocumentContent)
+        GetDocumentContentHandler getDocumentContent,
+        ProcessDocumentHandler processDocument)
     {
         _uploadDocument = uploadDocument;
         _getDocuments = getDocuments;
         _getDocument = getDocument;
         _getDocumentContent = getDocumentContent;
+        _processDocument = processDocument;
     }
 
     [HttpPost]
@@ -127,6 +131,49 @@ public class DocumentsController : ControllerBase
     {
         var document = await _getDocument.HandleAsync(caseId, documentId, cancellationToken);
         return document is null ? NotFound() : Ok(document);
+    }
+
+    /// <summary>
+    /// Runs the extraction pipeline (extract → normalize → persist → index)
+    /// over an uploaded document, so its content becomes available to
+    /// validation and to case-scoped retrieval. Also used to reprocess a failed
+    /// document, or to re-run one after the applicant supplies a corrected file.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Deliberately separate from upload: this step calls Azure Document
+    /// Intelligence and the embedding and index path, so it is slow and fails
+    /// independently. Folding it into the upload request would mean a
+    /// Document Intelligence outage either discarded the stored file or turned
+    /// a successful upload into an error.
+    /// </para>
+    /// <para>
+    /// A run that fails returns <c>200 OK</c>, not a 5xx: the request itself
+    /// was handled and its outcome durably recorded. The body reports the
+    /// document's terminal <c>Failed</c> status and the reason, so a client can
+    /// tell "the pipeline ran and failed, here is why" — which the reviewer
+    /// resolves by fixing the file or retrying — apart from "the call never
+    /// landed", which is a transport problem. A stuck document is therefore
+    /// visible as <c>Failed</c> rather than sitting at <c>Uploaded</c> forever.
+    /// </para>
+    /// <para>
+    /// The run is synchronous: the response arrives when the pipeline finishes.
+    /// See the known limitations in <c>docs/testing/mvp-test-plan.md</c>.
+    /// </para>
+    /// </remarks>
+    [HttpPost("{documentId:guid}/process")]
+    [ProducesResponseType<ProcessDocumentResult>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Process(Guid caseId, Guid documentId, CancellationToken cancellationToken)
+    {
+        var result = await _processDocument.HandleAsync(caseId, documentId, cancellationToken);
+
+        return result is null
+            ? Problem(
+                title: "The document was not found.",
+                detail: "No document with that id belongs to this case.",
+                statusCode: StatusCodes.Status404NotFound)
+            : Ok(result);
     }
 
     /// <summary>
