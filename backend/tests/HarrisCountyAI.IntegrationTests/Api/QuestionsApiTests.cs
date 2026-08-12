@@ -62,7 +62,7 @@ public class QuestionsApiTests : IDisposable
         Assert.Equal("Section 4.2", citation.GetProperty("section").GetString());
         Assert.Equal(17, citation.GetProperty("page").GetInt32());
         Assert.Equal("https://www.hcfcd.org/regulations", citation.GetProperty("sourceUrl").GetString());
-        Assert.Equal("corpus-qa/v1", root.GetProperty("promptVersion").GetString());
+        Assert.Equal("corpus-qa/v2", root.GetProperty("promptVersion").GetString());
     }
 
     [Fact]

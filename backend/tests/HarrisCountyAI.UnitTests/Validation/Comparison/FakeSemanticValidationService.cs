@@ -21,7 +21,7 @@ public sealed class FakeSemanticValidationService : ISemanticValidationService
     /// <summary>Reasoning returned for every evaluation.</summary>
     public string Reasoning { get; set; } = "The submitted content satisfies the requirement.";
 
-    public string PromptVersion { get; set; } = "semantic-validation/v1";
+    public string PromptVersion { get; set; } = "semantic-validation/v2";
 
     public string ModelDeployment { get; set; } = "fake-deployment";
 

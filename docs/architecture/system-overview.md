@@ -45,6 +45,8 @@ The system maintains a strict separation between two knowledge domains:
 
 Content from one must never contaminate the other's retrieval results.
 
+Both domains are untrusted input as far as the model is concerned: applicants author the documents in one, and administrators ingest the other from external sources. See [`security.md`](security.md) for how uploaded documents and retrieved passages are isolated from the instruction channel.
+
 ## Local Development
 
 ```bash

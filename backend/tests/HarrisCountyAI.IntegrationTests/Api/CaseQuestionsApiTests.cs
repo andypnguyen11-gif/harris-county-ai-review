@@ -89,7 +89,7 @@ public class CaseQuestionsApiTests : IDisposable
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var root = body.RootElement;
         Assert.Equal("Answered", root.GetProperty("outcome").GetString());
-        Assert.Equal("case-qa/v1", root.GetProperty("promptVersion").GetString());
+        Assert.Equal("case-qa/v2", root.GetProperty("promptVersion").GetString());
         var citation = Assert.Single(root.GetProperty("citations").EnumerateArray());
         Assert.Equal("application.pdf", citation.GetProperty("title").GetString());
         Assert.Equal(2, citation.GetProperty("page").GetInt32());

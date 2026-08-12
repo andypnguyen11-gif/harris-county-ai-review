@@ -145,7 +145,7 @@ public class RequirementComparisonServiceTests
         Assert.Equal(ValidationType.Semantic, consistency.EvaluatedBy);
         // What code had already established, kept alongside the final verdict.
         Assert.Equal(ValidationStatus.Complete, consistency.DeterministicStatus);
-        Assert.Equal("semantic-validation/v1", consistency.PromptVersion);
+        Assert.Equal("semantic-validation/v2", consistency.PromptVersion);
         Assert.Equal("fake-deployment", consistency.ModelDeployment);
     }
 
