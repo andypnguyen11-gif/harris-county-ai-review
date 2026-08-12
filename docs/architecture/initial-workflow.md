@@ -109,9 +109,10 @@ clearly separated from the deterministic section (`BuildSemanticRules()` vs
 
 The model returns a strict JSON verdict (`pass` / `fail` / `needs_human_review`) with short
 reasoning; anything else — model errors included — fails closed to `UnableToDetermine`. Document
-text enters the prompt as delimited untrusted data with instructions to ignore anything
-instruction-like inside it (boundary hygiene only; a fuller prompt-injection defense lands in a
-later PR).
+text enters the prompt as delimited untrusted data routed through `UntrustedText.Sanitize`, which
+destroys any fence-shaped token in the evidence so a document cannot forge a boundary; the system
+prompt is a separate channel that no document content can reach. See
+[`security.md`](security.md) for the full design and the tests that assert it.
 
 ## Still deferred to semantic (LLM) validation
 

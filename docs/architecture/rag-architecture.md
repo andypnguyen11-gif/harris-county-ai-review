@@ -1,6 +1,77 @@
 # RAG Architecture: Indexing and Retrieval
 
-This document describes the Azure AI Search index that backs retrieval — its schema, its vector configuration, the guarantee that keeps case evidence and the Harris County reference corpus separate — and the retrieval strategy that queries it. See [`system-overview.md`](system-overview.md) for the wider architecture.
+This document describes the path a document takes from an uploaded file to a retrievable chunk, the
+Azure AI Search index that backs retrieval — its schema, its vector configuration, the guarantee that
+keeps case evidence and the Harris County reference corpus separate — and the retrieval strategy that
+queries it. See [`system-overview.md`](system-overview.md) for the wider architecture.
+
+> **Status:** the pipeline below is implemented and tested end to end against fakes and (for the
+> index itself) against a live search service. The Harris County reference corpus has **not** been
+> ingested — no county documents are committed to this repository and nothing seeds the index.
+> Ingestion is an operator action through the knowledge-base API. Everything that depends on an
+> ingested corpus, including live evaluation numbers, is therefore still unmeasured.
+
+## The ingestion pipeline
+
+Two pipelines feed one index. They share every component after extraction and differ only in what
+they tag the resulting chunks with.
+
+```mermaid
+flowchart TB
+    subgraph CASE["Case documents — POST /api/cases/{caseId}/documents/{documentId}/process"]
+        C1["Blob download"] --> C2["Document Intelligence<br/>prebuilt-layout"] --> C3["Normalize:<br/>fields, checkboxes, pages"] --> C4[("SQL:<br/>NormalizedDocument")]
+    end
+    subgraph KB["Knowledge base — POST /api/knowledge-base/documents/{id}/ingest"]
+        K1["Blob download"] --> K2["Document Intelligence<br/>prebuilt-layout"] --> K3["Normalize text,<br/>drop blank pages"]
+    end
+
+    C4 --> CH["StructureAwareChunkingService<br/>2000 chars max, 200 char overlap"]
+    K3 --> CH
+    CH --> EM["AzureEmbeddingService<br/>text-embedding-3-small, 1536 dims"]
+    EM --> IX["EnsureIndex → DeleteDocument → Index"]
+    IX --> IDX[("harris-county-chunks")]
+
+    CH -.->|"tagged sourceType=CaseDocument, caseId"| IX
+    CH -.->|"tagged sourceType=KnowledgeBase, department,<br/>permitType, documentType, effectiveDate, sourceUrl"| IX
+```
+
+Both pipelines are synchronous inside their HTTP request, and both index by **delete-then-index on
+`documentId`**, so re-running either is idempotent and never leaves stale chunks behind when a
+document shrinks.
+
+Case-document indexing chunks the **persisted** `NormalizedDocument` rather than re-extracting, so
+indexing and validation always see the same text. It also **fails open**: an indexing failure is
+logged and swallowed, because deterministic validation does not depend on the index and losing a
+document's validation to a search outage would be the worse failure.
+
+### Chunking
+
+`StructureAwareChunkingService` (`backend/src/HarrisCountyAI.Application/Search/Chunking/`) splits on
+document structure first and on size second. It detects headings — numbered headings, all-caps lines,
+and short standalone title lines — and emits one chunk per section when the section fits within
+`MaxChunkSize` (2000 characters). **Sections that fit get no overlap at all**, because a chunk that
+already corresponds to a complete section has nothing to lose at its boundaries; overlap
+(`OverlapSize`, 200 characters) is added only when an oversized section has to be split, and the
+split prefers paragraph boundaries, then sentence boundaries, then whitespace.
+
+This matters for the citation contract downstream. A chunk that maps to "Section 4.2" can be cited as
+Section 4.2; a chunk that was cut every 2000 characters regardless of structure could not be.
+
+Chunk keys are `{documentId:N}-{sequence:D4}`, so a chunk's position within its document is
+recoverable from the key alone.
+
+`ChunkingOptions` has defaults of 2000/200 and is **not** bound to configuration — the service is
+registered with its parameterless constructor. Changing the values today means changing the code.
+That is a deliberate limit for now (chunking changes require re-ingesting the whole corpus anyway,
+so a runtime toggle would be a trap), but it is worth knowing before looking for the setting.
+
+### Embedding
+
+`AzureEmbeddingService` batches texts (`Embeddings:MaxBatchSize`, default 16) against the configured
+Azure OpenAI embedding deployment, with its own bounded retry and jitter. The index service validates
+that every vector is exactly 1536 dimensions before upload, so a deployment swapped for a
+different-sized model fails at index time with a clear error rather than silently poisoning
+retrieval.
 
 ## One Index, Two Corpora
 
@@ -24,7 +95,7 @@ Every chunk carries two discriminator fields:
 | `sourceType` | `KnowledgeBase` \| `CaseDocument` | Which corpus the chunk belongs to |
 | `caseId` | GUID or null | The owning case; always null for `KnowledgeBase` chunks |
 
-**Every query issued against this index must apply a `sourceType` filter, and case-document queries must additionally filter `caseId` to the case under review.** Retrieval services (PR-23 onward) own this rule; no query path may search the index unfiltered. This is how the project principle — case evidence and the county corpus are indexed, retrieved, and cited separately — is enforced at query time:
+**Every query issued against this index must apply a `sourceType` filter, and case-document queries must additionally filter `caseId` to the case under review.** `AzureRetrievalService` owns this rule and builds the filter itself from the requested scope — a caller cannot supply a raw filter, and a case-scoped request without a case id throws rather than falling back to an unfiltered search. No query path may search the index unfiltered. This is how the project principle — case evidence and the county corpus are indexed, retrieved, and cited separately — is enforced at query time:
 
 ```text
 County requirements question:   $filter=sourceType eq 'KnowledgeBase'
@@ -64,7 +135,7 @@ Field-attribute choices:
 
 - **Profile:** `chunk-vector-profile`, applied to the `embedding` field.
 - **Algorithm:** HNSW (`chunk-hnsw`) with **cosine** similarity and SDK-default graph parameters (m=4, efConstruction=400, efSearch=500).
-- **Dimensions:** 1536, matching `text-embedding-3-small` — the embedding model configured in PR-20.
+- **Dimensions:** 1536, matching the configured `text-embedding-3-small` embedding deployment.
 
 Why HNSW over exhaustive KNN: HNSW is the standard approximate-nearest-neighbor choice on Azure AI Search — sub-linear query time as the corpus grows, at a negligible recall cost for a corpus of this size. Cosine is the metric OpenAI-family embeddings are trained for. Defaults are kept because the corpus (hundreds of documents, thousands of chunks) is far below the scale where HNSW graph tuning pays off; parameters live in one place (`SearchIndexDefinition`) if that changes.
 
@@ -123,19 +194,52 @@ Configuration (the `Reranking` section, every setting defaulted):
 | `Reranking:SemanticConfigurationName` | `chunk-semantic` | Semantic configuration to rank with |
 | `Reranking:CandidatePoolSize` | 20 | Hybrid candidates retrieved for the reranker (1–50; Azure rescoring caps at 50) |
 
-Reranking **fails open**: semantic ranker is a service-tier capability the free tier lacks, so it is off by default, the index only carries the semantic configuration when it is on (adding it later is an in-place index update — no re-creation or re-indexing), and any semantic-query failure at runtime logs a warning and falls back to plain hybrid order. The application never depends on the reranker being available.
+Reranking **fails open**: the semantic ranker is a service capability that may not be available or enabled on a given search service, so it is off by default, the index only carries the semantic configuration when it is on (adding it later is an in-place index update — no re-creation or re-indexing), and any semantic-query failure at runtime logs a warning and falls back to plain hybrid order. The application never depends on the reranker being available.
 
 The before/after comparison uses the same dataset and methodology as the vector-vs-hybrid comparison below, toggling `Reranking:Enabled` instead of `Retrieval:Mode`.
 
-### Comparing vector-only and hybrid retrieval
+## From retrieved chunks to a cited answer
 
-The evaluation dataset at [`evaluation/datasets/retrieval/floodplain-questions.json`](../../evaluation/datasets/retrieval/floodplain-questions.json) holds floodplain-permit questions in three categories — `section-number`, `form-number`, and `semantic` — each with the corpus source(s) a good retrieval should surface. The comparison methodology:
+Retrieval is not the product; a cited answer is. Three scopes sit on top of the same filtered
+retrieval, and the corpus separation survives all the way to the citation:
 
-1. Ingest the reference corpus into the index (knowledge-base upload flow).
-2. For each dataset question, run retrieval once with `Retrieval:Mode = VectorOnly` and once with `Hybrid` (the debug endpoint `POST /api/debug/retrieval` returns raw chunks with scores).
-3. Score each run per category: **hit rate** (an expected source appears in the top K, matching on title and — when given — section) and **MRR** (reciprocal rank of the first expected source).
-4. Hybrid should at minimum match vector-only on `semantic` questions and beat it on `section-number` / `form-number` questions; a regression in any category blocks the retrieval change.
+| Scope | Retrieval | Prompt | Extra rule |
+|---|---|---|---|
+| `County` | one query, `sourceType eq 'KnowledgeBase'` | `GroundedQuestionPrompt` (`corpus-qa/v2`) | — |
+| `Case` | one query, `sourceType eq 'CaseDocument' and caseId eq …` | `CaseQuestionPrompt` (`case-qa/v2`) | requires a case id |
+| `Both` | **two separate queries**, one per corpus | `ComparisonPrompt` (`comparison-qa/v2`), two separately labeled blocks | an answer citing no *county* source is downgraded |
 
-The dataset is deliberately small and curated; it exists to catch relative regressions between retrieval modes, not to benchmark absolute quality.
+In the `Both` scope the two corpora are retrieved independently, written into
+`<<<COUNTY_SOURCES_…>>>` and `<<<CASE_SOURCES_…>>>` blocks with distinct labels, and numbered
+continuously — county sources first, then case sources. Only the *answer* combines them. If either
+side returns nothing, the request short-circuits to an insufficient-evidence response naming which
+side was empty, without a model call.
 
-This comparison now runs automatically: `evaluation/scripts/run-retrieval-evaluation.sh --live` scores the dataset against the configured index and writes Recall@1/3/5 and MRR, overall and per category, to `evaluation/datasets/retrieval/results/`. Run it once per configuration and diff the reports. The same harness runs offline against a synthetic fixture corpus by default, so a plain `dotnet test` regression-tests the scorer without touching Azure. See [`docs/evaluation/evaluation-strategy.md`](../evaluation/evaluation-strategy.md).
+`CitationResolver` maps the numbers a model emits back to the chunks that were actually in the
+prompt, dropping anything out of range or duplicated, and takes each citation's corpus from the
+retrieval scope rather than from the model's output. The model cannot relabel an applicant's
+document as a county requirement, because it is never asked which block a passage came from.
+
+## Comparing retrieval configurations
+
+The evaluation dataset at [`evaluation/datasets/retrieval/floodplain-questions.json`](../../evaluation/datasets/retrieval/floodplain-questions.json) holds 28 floodplain-permit questions in four categories — `section-number`, `form-number`, `semantic`, and `mixed` — each with the corpus source(s) a good retrieval should surface.
+
+The comparison is automated. `evaluation/scripts/run-retrieval-evaluation.sh --live` scores the dataset against the configured index and writes Recall@1/3/5 and MRR, overall and per category, to `evaluation/datasets/retrieval/results/`:
+
+1. Ingest the reference corpus into the index (the knowledge-base upload and ingest endpoints).
+2. Run the script once per configuration, changing `Retrieval__Mode` (or `Reranking__Enabled`) between runs, keeping each `latest-live.json`.
+3. Diff the reports **per category**, not just on the aggregate.
+4. Hybrid should at minimum match vector-only on `semantic` questions and beat it on `section-number` / `form-number` questions. A regression in any category blocks the change, even if the aggregate improves.
+
+The same harness runs offline against a synthetic fixture corpus by default, so a plain `dotnet test` regression-tests the scorer and the dataset without touching Azure. The dataset is deliberately small and curated; it exists to catch relative regressions between configurations, not to benchmark absolute quality — and no live run has been performed yet, so no configuration in this repository has been compared against another on real data. See [`docs/evaluation/evaluation-strategy.md`](../evaluation/evaluation-strategy.md).
+
+An administrator-only debugging endpoint, `POST /api/debug/retrieval`, returns raw chunks with scores for one-off inspection. Its own doc comment schedules it for removal now that the question-answering endpoints exist; do not build tooling on it.
+
+## Known limitations
+
+- **The corpus is not ingested.** Everything above is exercised against fakes and a synthetic fixture corpus. No retrieval quality claim about the real Harris County material can be made from this repository as it stands.
+- **Deactivating a knowledge document does not remove its chunks.** `DeactivateKnowledgeDocumentHandler` flips the entity's status and nothing else; retrieval filters on `sourceType` and `caseId`, not on ingestion status, so a deactivated document remains retrievable and citable. Re-ingestion cleans up correctly (delete-then-index); deactivation does not.
+- **Ingestion has no stuck-state recovery.** A knowledge document is marked `Processing` before extraction and only leaves that state in-process. If the host is killed mid-ingest, the row stays `Processing` permanently: re-ingest returns `409`, and no endpoint resets it.
+- **Chunking parameters are not configurable.** `ChunkingOptions` defaults (2000 / 200) are baked in at construction.
+- **`SearchFilters` is not captured in AI telemetry.** The literal OData filter is built inside `AzureRetrievalService` and is not surfaced by `IRetrievalService`, so telemetry records the scope (`CaseId`) rather than the expression. See [`observability.md`](observability.md).
+- **Reranking has never been exercised against a live search service.** It is off by default and covered only by unit tests with a mocked query gateway, so the before/after comparison the design anticipates has not been run.
