@@ -17,12 +17,60 @@ jobs:
     defaults:
       run:
         working-directory: backend
+
+    # The integration suite talks to a real SQL Server and a real Azurite, the
+    # same dependencies docker-compose.yml provides locally. SqlServerTestDatabase
+    # creates a uniquely named database per fixture, applies migrations, and drops
+    # it afterwards, so a fresh empty server is all CI has to supply. The image,
+    # credentials, and ports below must stay in step with docker-compose.yml — the
+    # test connection strings hardcode localhost:1433 and the Azurite defaults.
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "LocalDev!Passw0rd"
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'LocalDev!Passw0rd' -C -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 20s
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      # Azurite runs as an explicit container rather than a service container:
+      # it binds to 127.0.0.1 inside the container by default, so it needs the
+      # same --blobHost/--queueHost/--tableHost override docker-compose.yml uses
+      # to be reachable through the published ports. Service containers cannot
+      # override the image command.
+      - name: Start Azurite
+        run: |
+          docker run -d --name azurite \
+            -p 10000:10000 -p 10001:10001 -p 10002:10002 \
+            mcr.microsoft.com/azure-storage/azurite \
+            azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+
+      - name: Wait for Azurite
+        run: |
+          for i in $(seq 1 30); do
+            if curl --silent --output /dev/null --max-time 2 http://127.0.0.1:10000/devstoreaccount1; then
+              echo "Azurite is accepting connections."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Azurite did not become reachable in time." >&2
+          docker logs azurite >&2 || true
+          exit 1
 
       - name: Restore
         run: dotnet restore
