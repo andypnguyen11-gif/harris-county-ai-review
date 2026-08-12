@@ -243,6 +243,12 @@ jobs:
         run: |
           set -euo pipefail
           cd "${{ runner.temp }}/publish"
+          # appsettings.Development.json is never read by the deployed app —
+          # ASPNETCORE_ENVIRONMENT is Production — but it carries the local dev
+          # signing key, and there is no reason for developer configuration to
+          # sit on a deployed host at all. Dropping it keeps the artifact to
+          # what the Production environment actually loads.
+          rm -f appsettings.Development.json
           zip -qr "${{ runner.temp }}/api.zip" .
 
       # ------------------------------------------------------------------
