@@ -337,7 +337,7 @@ If there is only time for one pass, this is the order:
 
 1. **`dotnet test`** — 1465 tests, offline, no Azure account. The architecture is testable because
    every external service is behind an interface.
-2. **Run validation on a case** — thirteen rules, no model, reproducible. Point at the elevation
+2. **Run validation on a case** — fourteen rules, no model, reproducible. Point at the elevation
    certificate reporting `NeedsHumanReview` rather than guessing.
 3. **Ask an out-of-scope question** — the system declines instead of answering. Then ask a real one
    and click through a citation to the source page.
