@@ -1,5 +1,6 @@
 using HarrisCountyAI.Domain.Enums;
 using HarrisCountyAI.Domain.Validation;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.Application.Validation.Rules;
 
@@ -33,7 +34,8 @@ public abstract class ValidationRuleBase : IValidationRule
         string message,
         string? extractedValue = null,
         Guid? sourceDocumentId = null,
-        int? page = null) =>
+        int? page = null,
+        BoundingBox? boundingBox = null) =>
         new()
         {
             Requirement = Requirement,
@@ -42,6 +44,7 @@ public abstract class ValidationRuleBase : IValidationRule
             ExtractedValue = extractedValue,
             SourceDocumentId = sourceDocumentId,
             Page = page,
+            BoundingBox = boundingBox,
             ValidationType = ValidationType.Deterministic,
             RuleName = Name,
         };

@@ -1,4 +1,5 @@
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.Domain.Entities;
 
@@ -39,4 +40,10 @@ public class ValidationReportItem
 
     /// <summary>1-based page number of the evidence within the source document, when known.</summary>
     public int? PageNumber { get; set; }
+
+    /// <summary>
+    /// Region of the source document the evidence was read from, when it could
+    /// be located. Null when no region was reported.
+    /// </summary>
+    public BoundingBox? BoundingBox { get; set; }
 }
