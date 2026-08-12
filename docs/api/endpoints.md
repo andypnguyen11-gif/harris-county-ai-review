@@ -15,8 +15,10 @@ narrative one.
   header (echoed from the request when it is well formed, generated otherwise).
 - A dependency that is unreachable produces `503` with a `service` field naming it, never a stack
   trace.
-- The API registers **no CORS policy**. In Azure the frontend origin is allowed at the App Service
-  layer by the deployment workflow; there is no local equivalent.
+- The API registers a CORS policy **only in the Development environment**, admitting the origins in
+  `Cors:AllowedOrigins` (`http://localhost:4200` by default) so the Angular dev server can reach it.
+  `X-Correlation-Id` is exposed to the browser; credentials are not allowed. In Azure no policy is
+  registered — the frontend origin is allowed at the App Service layer by the deployment workflow.
 
 ## Authorization
 

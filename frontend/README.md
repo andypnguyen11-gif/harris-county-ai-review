@@ -28,9 +28,11 @@ npx ng test --watch=false    # Vitest, single run — this is what CI runs
 ## Talking to the API
 
 `src/environments/environment.ts` points at `http://localhost:5096/api`, which is the backend's
-`http` launch profile. The backend applies **no CORS policy**, so a browser on `:4200` cannot call it
-directly; a dev CORS policy or a dev-server proxy has to be added first. This is a known gap, listed
-in the [root README](../README.md#known-limitations). The test suite is unaffected — it uses
+`http` launch profile. The call is cross-origin and the backend allows it: running in the Development
+environment, the API registers a `LocalDevelopment` CORS policy admitting the origins listed under
+`Cors:AllowedOrigins` in `appsettings.Development.json`, which ships with `http://localhost:4200`.
+Serve this app on another port and that origin has to be added there too. There is no dev-server
+proxy — `apiUrl` stays absolute. The test suite is unaffected either way; it uses
 `HttpTestingController` rather than a real server.
 
 Authentication in local development is the backend's dev-token endpoint: the sign-in screen posts a

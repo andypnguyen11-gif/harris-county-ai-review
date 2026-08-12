@@ -221,20 +221,22 @@ curl -s -X POST http://localhost:5096/api/cases \
 
 The full endpoint reference is [`docs/api/endpoints.md`](docs/api/endpoints.md).
 
-### 6. Run the Angular app (and one caveat)
+### 6. Run the Angular app
 
 ```bash
 cd frontend
 npm start          # http://localhost:4200
 ```
 
-**The API registers no CORS policy**, so a browser at `http://localhost:4200` cannot call an API at
-`http://localhost:5096`; the preflight comes back with no `Access-Control-Allow-Origin` header. In a
-deployed environment this is solved outside the app — the deployment workflow adds the Static Web App
-origin to App Service CORS. There is no equivalent for local development in the repository today,
-so the local UI needs a dev CORS policy or a dev-server proxy added before it will talk to a local
-API. This is listed again under [Known limitations](#known-limitations) because it is the first
-thing someone cloning this repo will hit.
+The browser at `http://localhost:4200` calls the API at `http://localhost:5096` cross-origin, which
+works because the API registers a `LocalDevelopment` CORS policy — **only when it is running in the
+Development environment**. The origins it admits come from `Cors:AllowedOrigins` in
+`backend/src/HarrisCountyAI.Api/appsettings.Development.json`; serve the UI from a different port and
+you add that origin there. The list is the only thing that opens the policy up — there is no wildcard
+fallback, so an empty list admits nothing.
+
+Deployed environments never use this policy. There the Static Web App origin is allowed at the App
+Service layer by the deployment workflow, exactly as before.
 
 The frontend's own test suite covers the reviewer journey end to end against a mocked HTTP backend
 (`frontend/src/app/reviewer-workflow.spec.ts`), so the flow itself is verified — just not through a
@@ -413,7 +415,6 @@ and verified against the code, not hypothetical.
 - Retry and timeout are configured on the Azure SDK clients, but there is no circuit breaker or
   bulkhead, and `/health` only reports that the process is up — it never probes SQL, Blob, Search, or
   the model. A dependency that is down still returns `Healthy`.
-- No CORS policy in the API (see [Running the Angular app](#6-run-the-angular-app-and-one-caveat)).
 
 **Product surface gaps.**
 
