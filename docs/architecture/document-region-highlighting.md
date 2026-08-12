@@ -89,12 +89,20 @@ namespace HarrisCountyAI.Domain.ValueObjects;
 /// </summary>
 public sealed record BoundingBox
 {
+    public required int PageNumber { get; init; }
     public required double X { get; init; }
     public required double Y { get; init; }
     public required double Width { get; init; }
     public required double Height { get; init; }
 }
 ```
+
+`PageNumber` lives **inside** the box rather than beside it. The box is chosen
+at the rule, not at the mapper, so a separate page field would have to be kept
+in sync with that choice by convention — four fields (two boxes, two page
+numbers) that a rule could mismatch. Carrying the page with the box makes the
+requirement below structurally unbreakable: a rule writes
+`page: box?.PageNumber ?? match.Field.PageNumber` and cannot get it wrong.
 
 Rules, fixed:
 
@@ -103,7 +111,7 @@ Rules, fixed:
 - **Unit-free by construction.** Document Intelligence reports polygons in
   inches for PDFs and pixels for images, with matching per-page `Width` and
   `Height`. Dividing by the page's own dimensions cancels the unit, so
-  `DocumentPageLengthUnit` never needs to be read.
+  `DocumentPage.Unit` (type `LengthUnit?`) never needs to be read.
 - **Quadrilateral to axis-aligned rectangle.** A polygon is eight numbers —
   four points, clockwise from top-left relative to text orientation. The box is
   the min/max over those four points, which stays correct for rotated text.
@@ -112,9 +120,11 @@ Rules, fixed:
   computed width or height of zero all produce `null`. Values are clamped to
   `[0, 1]`.
 - **`PageNumber` always comes from the region that produced the chosen box.**
-  Today `ExtractedField.PageNumber` is taken from the *key's* region. Once a
-  rule may resolve to the *value's* box instead, page and box could disagree
-  when a key and its value straddle a page break; the page must follow the box.
+  Today `ExtractedField.PageNumber` is taken from the *key's* region and keeps
+  that meaning unchanged. Once a rule may resolve to the *value's* box instead,
+  page and box could disagree when a key and its value straddle a page break —
+  so the reported page is read off the chosen box, falling back to the field's
+  page only when there is no box.
 
 ## Draw policy
 
@@ -176,6 +186,13 @@ No UI changes. Order of work: mapper → domain → rules → DTO.
   distinguish them.
 - `ExtractedSelectionMark` gains a nullable `BoundingBox` from the mark's own
   polygon.
+
+A selection mark has **one** polygon, not a key/value pair, so its landing spot
+on `DocumentField`'s two columns is fixed by decision rather than left to the
+implementer: **`ValueBoundingBox` = the mark's box, `KeyBoundingBox` = null.**
+`FieldKind` already distinguishes checkbox and signature fields, so nothing is
+lost. This choice also means either resolution order below —
+`Value ?? Key` or `Key ?? Value` — lands on the mark's box.
 - `AnalyzeResultMapper` builds a page-number → `(Width, Height)` lookup from
   `result.Pages` once per call, then normalizes each region against it. Verify
   the exact SDK member types against `Azure.AI.DocumentIntelligence` 1.0.0
@@ -204,9 +221,25 @@ No UI changes. Order of work: mapper → domain → rules → DTO.
   what a reviewer needs to find, and the value region of a blank field is
   absent or too small to see.
 
-- `CheckboxRule` and `SignatureRule` attach the selection mark's box when the
-  mark was found. When OCR found nothing, the box stays `null` — no invented
-  regions.
+- `DateRule` attaches a box on the same principle, across all five of its
+  outcomes: present-but-empty takes `KeyBoundingBox ?? ValueBoundingBox`;
+  unparseable, future, too-old, and valid all have a value on the page and take
+  `ValueBoundingBox ?? KeyBoundingBox`; unmatched stays `null`.
+- `SignatureRule` attaches the mark's box for both found outcomes (signed and
+  present-but-unsigned); unmatched stays `null`.
+- `CheckboxRule` attaches the mark's box when a checkbox was found. When OCR
+  found nothing, the box stays `null` — no invented regions.
+
+**`CheckboxRule` needs one behavior change beyond adding a box.** Its
+present-but-unchecked branch (the `if (foundAny)` result) currently passes
+neither `sourceDocumentId` nor `page`, unlike every other rule's found-but-
+failing branch. A finding produced there has no document link at all, so the
+report shows no **View page** button for it today and there is nowhere to hang
+a box. The rule must retain the matched field it found while looping so that
+branch can report document, page, and box. This is a **visible behavior change
+to existing output** — those findings gain a document link they did not have —
+so it is called out rather than folded in silently. It is required for the
+locked decision that checkbox findings can carry a box.
 
 **Persistence**
 
@@ -215,9 +248,9 @@ No UI changes. Order of work: mapper → domain → rules → DTO.
   `ValidationReportItem` — following the `OwnsMany` style already in
   `NormalizedDocumentConfiguration` and `ValidationReportConfiguration`.
 - Owned types flatten to **columns on the existing tables**, not new tables:
-  `NormalizedDocumentFields` gains eight columns
-  (`KeyBoundingBox_X` … `ValueBoundingBox_Height`) and
-  `ValidationReportItems` gains four.
+  `NormalizedDocumentFields` gains ten columns
+  (`KeyBoundingBox_PageNumber` … `ValueBoundingBox_Height`) and
+  `ValidationReportItems` gains five.
 - One EF migration. All columns nullable.
 - Documents normalized before this change keep null boxes until re-extracted.
   The UI already handles null through the no-region message, so **no backfill
@@ -225,8 +258,9 @@ No UI changes. Order of work: mapper → domain → rules → DTO.
 
 **API**
 
-- `ValidationReportDto`'s item gains a nullable bounding box.
-- `validation.model.ts` mirrors it on `ValidationReportItem`.
+- `ValidationReportDto`'s item gains a nullable bounding box. **This is where
+  PR-A stops** — the TypeScript mirror in `validation.model.ts` belongs to
+  PR-B, so "backend only" stays literal and PR-A touches no frontend file.
 
 **Tests**
 
@@ -237,8 +271,11 @@ No UI changes. Order of work: mapper → domain → rules → DTO.
 - Normalization: both boxes survive to `DocumentField`; selection-mark box
   survives.
 - `RequiredFieldRule`: all three rows of the table above.
+- `DateRule`: empty takes the key box; unparseable, future, too-old, and valid
+  take the value box; unmatched is null.
 - `CheckboxRule`, `SignatureRule`: box present when the mark was found, null
-  when it was not.
+  when it was not; plus a regression test that the present-but-unchecked
+  checkbox branch now reports document, page, and box.
 - Integration: EF round-trip of both owned boxes, including all-null.
 - `dotnet build` and `dotnet test` green.
 
@@ -253,6 +290,11 @@ of preference: a `new Worker(new URL(...), { type: 'module' })` reference the
 bundler can follow; failing that, an `assets`/`public` copy of the worker file
 declared in `angular.json`. **Spike this before the rest of PR-B**, and let it
 inform whether the viewer keeps a fallback path. It does not block PR-A.
+
+**Contract mirror**
+
+- `validation.model.ts` mirrors the DTO's nullable bounding box on
+  `ValidationReportItem` (deferred here from PR-A).
 
 **Viewer**
 
