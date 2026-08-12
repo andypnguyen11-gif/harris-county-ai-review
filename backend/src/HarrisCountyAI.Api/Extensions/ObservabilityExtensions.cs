@@ -1,4 +1,7 @@
 using HarrisCountyAI.Api.Middleware;
+using HarrisCountyAI.Api.Telemetry;
+using HarrisCountyAI.Application.Common.Telemetry;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace HarrisCountyAI.Api.Extensions;
 
@@ -46,6 +49,11 @@ public static class ObservabilityExtensions
         {
             builder.Services.AddApplicationInsightsTelemetry();
         }
+
+        // Lets the Application layer stamp AI telemetry with the correlation id
+        // and the caller's identity without taking a dependency on ASP.NET Core.
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.TryAddScoped<IRequestContextAccessor, HttpRequestContextAccessor>();
 
         return builder;
     }

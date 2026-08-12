@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Text.Json;
 using HarrisCountyAI.Application.Common.AI;
+using HarrisCountyAI.Application.Common.Telemetry;
 using HarrisCountyAI.Application.QuestionAnswering.Prompts;
 using HarrisCountyAI.Application.Search.Retrieval;
 using Microsoft.Extensions.Logging;
@@ -56,11 +58,15 @@ public sealed class DualSourceQuestionAnsweringService : IDualSourceQuestionAnsw
     private readonly IRetrievalService _retrievalService;
     private readonly ILanguageModelService _languageModel;
     private readonly ILogger<DualSourceQuestionAnsweringService> _logger;
+    private readonly IAiRequestTelemetryLogger? _telemetryLogger;
+    private readonly IRequestContextAccessor? _requestContext;
 
     public DualSourceQuestionAnsweringService(
         IRetrievalService retrievalService,
         ILanguageModelService languageModel,
-        ILogger<DualSourceQuestionAnsweringService>? logger = null)
+        ILogger<DualSourceQuestionAnsweringService>? logger = null,
+        IAiRequestTelemetryLogger? telemetryLogger = null,
+        IRequestContextAccessor? requestContext = null)
     {
         ArgumentNullException.ThrowIfNull(retrievalService);
         ArgumentNullException.ThrowIfNull(languageModel);
@@ -68,6 +74,8 @@ public sealed class DualSourceQuestionAnsweringService : IDualSourceQuestionAnsw
         _retrievalService = retrievalService;
         _languageModel = languageModel;
         _logger = logger ?? NullLogger<DualSourceQuestionAnsweringService>.Instance;
+        _telemetryLogger = telemetryLogger;
+        _requestContext = requestContext;
     }
 
     public async Task<DualSourceQuestionResponse> CompareAsync(
@@ -85,6 +93,10 @@ public sealed class DualSourceQuestionAnsweringService : IDualSourceQuestionAnsw
             throw new ArgumentException(
                 "A dual-source comparison requires the id of the case it is about.", nameof(request));
         }
+
+        // Latency is measured end to end, both retrievals included, because
+        // that is what a reviewer waiting on the comparison experiences.
+        var stopwatch = Stopwatch.StartNew();
 
         // Two separate retrievals, each with its own mandatory scope filter.
         // The county request deliberately carries no case id; the case request
@@ -129,7 +141,15 @@ public sealed class DualSourceQuestionAnsweringService : IDualSourceQuestionAnsw
                 countySources.Count,
                 caseSources.Count);
 
-            return Insufficient(message, countySources.Count, caseSources.Count);
+            var insufficient = Insufficient(message, countySources.Count, caseSources.Count);
+            RecordTelemetry(
+                request,
+                countySources,
+                caseSources,
+                stopwatch,
+                insufficient.Outcome.ToString(),
+                modelDeployment: AiTelemetryDefaults.NoModelDeployment);
+            return insufficient;
         }
 
         var modelRequest = new ModelRequest
@@ -154,10 +174,19 @@ public sealed class DualSourceQuestionAnsweringService : IDualSourceQuestionAnsw
         catch (Exception exception)
         {
             _logger.LogWarning(exception, "Dual-source comparison failed to call the language model.");
-            return Failed(
+            var failure = Failed(
                 "The language model could not be reached, so the comparison was not made.",
                 countySources.Count,
                 caseSources.Count);
+            RecordTelemetry(
+                request,
+                countySources,
+                caseSources,
+                stopwatch,
+                failure.Outcome.ToString(),
+                modelDeployment: AiTelemetryDefaults.NoModelDeployment,
+                error: exception.Message);
+            return failure;
         }
 
         // Source numbering is continuous, county block first, exactly as the
@@ -168,6 +197,14 @@ public sealed class DualSourceQuestionAnsweringService : IDualSourceQuestionAnsw
         evidence.AddRange(caseSources.Select(chunk => new EvidenceSource(SourceType.Case, chunk)));
 
         var result = ParseResponse(response, evidence, countySources.Count, caseSources.Count);
+        RecordTelemetry(
+            request,
+            countySources,
+            caseSources,
+            stopwatch,
+            result.Outcome.ToString(),
+            modelDeployment: response.ModelDeployment,
+            usage: response.Usage);
         _logger.LogInformation(
             "Dual-source comparison concluded {Outcome} with {CitationCount} citations from "
             + "{CountyCount} county and {CaseCount} case passages (deployment {Deployment}, prompt {PromptVersion}).",
@@ -178,6 +215,69 @@ public sealed class DualSourceQuestionAnsweringService : IDualSourceQuestionAnsw
             response.ModelDeployment,
             ComparisonPrompt.Version);
         return result;
+    }
+
+    /// <summary>
+    /// Emits one telemetry record for a comparison, whatever its outcome.
+    /// </summary>
+    /// <remarks>
+    /// Chunk ids are recorded county block first, then case block — the same
+    /// order the prompt presents them in and the same order citation numbers
+    /// resolve against, so position N in this list is the passage the model
+    /// saw as source N. Wrapped so a telemetry failure can never fail a
+    /// comparison.
+    /// </remarks>
+    private void RecordTelemetry(
+        DualSourceQuestionRequest request,
+        IReadOnlyList<RetrievedChunk> countySources,
+        IReadOnlyList<RetrievedChunk> caseSources,
+        Stopwatch stopwatch,
+        string responseStatus,
+        string modelDeployment,
+        ModelUsage? usage = null,
+        string? error = null)
+    {
+        if (_telemetryLogger is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var allSources = new List<RetrievedChunk>(countySources.Count + caseSources.Count);
+            allSources.AddRange(countySources);
+            allSources.AddRange(caseSources);
+
+            _telemetryLogger.LogAiRequest(new AiRequestTelemetry
+            {
+                RequestId = _requestContext?.CorrelationId ?? AiTelemetryDefaults.NoRequestId,
+                UserId = _requestContext?.UserId,
+                CaseId = request.CaseId,
+                Question = request.Question,
+                ModelDeployment = modelDeployment,
+                PromptVersion = ComparisonPrompt.Version,
+
+                // As in the single-scope path, the literal OData filter stays
+                // inside the retrieval implementation and is not guessed at here.
+                SearchFilters = null,
+
+                RetrievedChunkIds = [.. allSources.Select(chunk => chunk.ChunkId)],
+                RetrievalScores = [.. allSources.Select(chunk => chunk.Score)],
+                RerankingScores = allSources.Count > 0
+                    && allSources.All(chunk => chunk.RerankerScore is not null)
+                        ? [.. allSources.Select(chunk => chunk.RerankerScore!.Value)]
+                        : [],
+                LatencyMilliseconds = stopwatch.ElapsedMilliseconds,
+                PromptTokens = usage?.InputTokens,
+                CompletionTokens = usage?.OutputTokens,
+                ResponseStatus = responseStatus,
+                Error = error,
+            });
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to record AI request telemetry.");
+        }
     }
 
     private DualSourceQuestionResponse ParseResponse(

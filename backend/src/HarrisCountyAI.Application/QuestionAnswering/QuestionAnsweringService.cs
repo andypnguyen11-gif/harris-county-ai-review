@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Text.Json;
 using HarrisCountyAI.Application.Common.AI;
+using HarrisCountyAI.Application.Common.Telemetry;
 using HarrisCountyAI.Application.QuestionAnswering.Prompts;
 using HarrisCountyAI.Application.Search.Retrieval;
 using Microsoft.Extensions.Logging;
@@ -55,11 +57,15 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
     private readonly IRetrievalService _retrievalService;
     private readonly ILanguageModelService _languageModel;
     private readonly ILogger<QuestionAnsweringService> _logger;
+    private readonly IAiRequestTelemetryLogger? _telemetryLogger;
+    private readonly IRequestContextAccessor? _requestContext;
 
     public QuestionAnsweringService(
         IRetrievalService retrievalService,
         ILanguageModelService languageModel,
-        ILogger<QuestionAnsweringService>? logger = null)
+        ILogger<QuestionAnsweringService>? logger = null,
+        IAiRequestTelemetryLogger? telemetryLogger = null,
+        IRequestContextAccessor? requestContext = null)
     {
         ArgumentNullException.ThrowIfNull(retrievalService);
         ArgumentNullException.ThrowIfNull(languageModel);
@@ -67,6 +73,8 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
         _retrievalService = retrievalService;
         _languageModel = languageModel;
         _logger = logger ?? NullLogger<QuestionAnsweringService>.Instance;
+        _telemetryLogger = telemetryLogger;
+        _requestContext = requestContext;
     }
 
     public async Task<QuestionResponse> AnswerAsync(
@@ -99,6 +107,10 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
         var profile = isCaseScoped ? CaseProfile : CountyProfile;
         var sourceType = isCaseScoped ? SourceType.Case : SourceType.County;
 
+        // Latency is measured end to end, retrieval included, because that is
+        // what a reviewer waiting on an answer actually experiences.
+        var stopwatch = Stopwatch.StartNew();
+
         var sources = await _retrievalService.RetrieveAsync(
             new RetrievalRequest
             {
@@ -113,13 +125,21 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
         {
             _logger.LogInformation(
                 "{Scope} Q&A retrieved no evidence; skipping the model call.", request.Scope);
-            return new QuestionResponse
+            var noEvidenceResponse = new QuestionResponse
             {
                 Outcome = QuestionAnswerOutcome.InsufficientEvidence,
                 Answer = profile.NoEvidenceMessage,
                 Citations = [],
                 PromptVersion = profile.PromptVersion,
             };
+            RecordTelemetry(
+                request,
+                profile,
+                sources,
+                stopwatch,
+                noEvidenceResponse.Outcome.ToString(),
+                modelDeployment: AiTelemetryDefaults.NoModelDeployment);
+            return noEvidenceResponse;
         }
 
         var modelRequest = new ModelRequest
@@ -144,13 +164,30 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
         catch (Exception exception)
         {
             _logger.LogWarning(exception, "{Scope} Q&A failed to call the language model.", request.Scope);
-            return Failed(
+            var failure = Failed(
                 "The language model could not be reached, so the question was not answered.",
                 profile);
+            RecordTelemetry(
+                request,
+                profile,
+                sources,
+                stopwatch,
+                failure.Outcome.ToString(),
+                modelDeployment: AiTelemetryDefaults.NoModelDeployment,
+                error: exception.Message);
+            return failure;
         }
 
         var evidence = sources.Select(chunk => new EvidenceSource(sourceType, chunk)).ToList();
         var result = ParseResponse(response, evidence, profile);
+        RecordTelemetry(
+            request,
+            profile,
+            sources,
+            stopwatch,
+            result.Outcome.ToString(),
+            modelDeployment: response.ModelDeployment,
+            usage: response.Usage);
         _logger.LogInformation(
             "{Scope} Q&A concluded {Outcome} with {CitationCount} citations from {SourceCount} sources "
             + "(deployment {Deployment}, prompt {PromptVersion}).",
@@ -162,6 +199,76 @@ public sealed class QuestionAnsweringService : IQuestionAnsweringService
             profile.PromptVersion);
         return result;
     }
+
+    /// <summary>
+    /// Emits one telemetry record for an AI request, whatever its outcome.
+    /// </summary>
+    /// <remarks>
+    /// Wrapped so a telemetry failure can never fail an answer: this is an
+    /// observability concern, and a reviewer losing their answer because a log
+    /// sink was unavailable would be a far worse outcome than a missing record.
+    /// </remarks>
+    private void RecordTelemetry(
+        QuestionRequest request,
+        ScopeProfile profile,
+        IReadOnlyList<RetrievedChunk> sources,
+        Stopwatch stopwatch,
+        string responseStatus,
+        string modelDeployment,
+        ModelUsage? usage = null,
+        string? error = null)
+    {
+        if (_telemetryLogger is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _telemetryLogger.LogAiRequest(new AiRequestTelemetry
+            {
+                RequestId = _requestContext?.CorrelationId ?? AiTelemetryDefaults.NoRequestId,
+                UserId = _requestContext?.UserId,
+                CaseId = request.Scope == QuestionScope.Case ? request.CaseId : null,
+                Question = request.Question,
+                ModelDeployment = modelDeployment,
+                PromptVersion = profile.PromptVersion,
+
+                // The literal OData filter is built inside the retrieval
+                // implementation and is not surfaced by IRetrievalService, so it
+                // is left unset rather than guessed at. CaseId above already
+                // records the scope an auditor needs.
+                SearchFilters = null,
+
+                RetrievedChunkIds = [.. sources.Select(chunk => chunk.ChunkId)],
+                RetrievalScores = [.. sources.Select(chunk => chunk.Score)],
+                RerankingScores = BuildRerankingScores(sources),
+                LatencyMilliseconds = stopwatch.ElapsedMilliseconds,
+                PromptTokens = usage?.InputTokens,
+                CompletionTokens = usage?.OutputTokens,
+                ResponseStatus = responseStatus,
+                Error = error,
+            });
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to record AI request telemetry.");
+        }
+    }
+
+    /// <summary>
+    /// Reranking scores, but only when every retrieved chunk carries one.
+    /// </summary>
+    /// <remarks>
+    /// The contract is that this list aligns positionally with the chunk ids.
+    /// A partially reranked set cannot satisfy that without inventing a score
+    /// for the gaps, so it reports an empty list instead — "reranking did not
+    /// run here" is true and useful, a fabricated 0.0 is neither.
+    /// </remarks>
+    private static IReadOnlyList<double> BuildRerankingScores(IReadOnlyList<RetrievedChunk> sources) =>
+        sources.Count > 0 && sources.All(chunk => chunk.RerankerScore is not null)
+            ? [.. sources.Select(chunk => chunk.RerankerScore!.Value)]
+            : [];
 
     private QuestionResponse ParseResponse(
         ModelResponse response,
