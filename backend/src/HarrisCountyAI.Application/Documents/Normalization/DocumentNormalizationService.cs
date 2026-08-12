@@ -68,6 +68,8 @@ public class DocumentNormalizationService : IDocumentNormalizationService
             Value = pair.Value,
             Confidence = pair.Confidence,
             PageNumber = pair.PageNumber,
+            KeyBoundingBox = pair.KeyBoundingBox,
+            ValueBoundingBox = pair.ValueBoundingBox,
         };
 
         if (IsSignatureName(name))
@@ -104,6 +106,7 @@ public class DocumentNormalizationService : IDocumentNormalizationService
             Value = mark.IsSelected ? SelectedSentinel : UnselectedSentinel,
             Confidence = mark.Confidence,
             PageNumber = mark.PageNumber,
+            ValueBoundingBox = mark.BoundingBox,
         };
 
         if (IsSignatureName(name))
