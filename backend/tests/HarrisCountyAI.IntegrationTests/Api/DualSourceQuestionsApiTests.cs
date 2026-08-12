@@ -118,7 +118,7 @@ public class DualSourceQuestionsApiTests : IDisposable
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var root = body.RootElement;
         Assert.Equal("Answered", root.GetProperty("outcome").GetString());
-        Assert.Equal("comparison-qa/v1", root.GetProperty("promptVersion").GetString());
+        Assert.Equal("comparison-qa/v2", root.GetProperty("promptVersion").GetString());
         Assert.Equal(1, root.GetProperty("countyEvidenceCount").GetInt32());
         Assert.Equal(1, root.GetProperty("caseEvidenceCount").GetInt32());
 

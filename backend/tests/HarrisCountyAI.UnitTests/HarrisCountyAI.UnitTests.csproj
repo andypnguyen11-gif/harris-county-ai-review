@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <None Include="Search\Chunking\TestData\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Security\TestData\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
