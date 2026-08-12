@@ -1,0 +1,202 @@
+{
+  "description": "SYNTHETIC fixture corpus. These passages are written for the offline evaluation harness — they are NOT the text of the Harris County floodplain regulations or of any FEMA form, and must never be quoted as authority or ingested into the production knowledge base. Their titles, sections, and page numbers mirror the structure of the real corpus so that the harness, the matcher, and the committed fixture baselines exercise realistic metadata. Distractor passages are included on purpose so the offline baseline is not trivially perfect.",
+  "version": 1,
+  "passages": [
+    {
+      "id": "reg-01",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 1 Statutory Authorization and Purpose",
+      "page": 1,
+      "text": "These regulations are adopted under the authority granted to Harris County by the State of Texas. Their purpose is to reduce flood losses, to protect human life and health, and to qualify the county for participation in the National Flood Insurance Program by regulating development in areas of special flood hazard."
+    },
+    {
+      "id": "reg-02",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 2 Definitions",
+      "page": 3,
+      "text": "Substantial improvement means any repair, reconstruction, or improvement of a structure whose cost equals or exceeds fifty percent of the market value of the structure before the improvement begins. Lowest floor means the lowest enclosed area of a building, including a basement. Base flood elevation means the water surface elevation of the one percent annual chance flood, commonly called the one hundred year flood."
+    },
+    {
+      "id": "reg-03",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 3.1 Applicability and Basis for Establishing Flood Hazard Areas",
+      "page": 6,
+      "text": "These regulations apply to all areas of special flood hazard within the unincorporated portions of Harris County. The areas of special flood hazard are identified by the Federal Emergency Management Agency on the Flood Insurance Rate Map and the accompanying Flood Insurance Study, which are adopted by reference."
+    },
+    {
+      "id": "reg-04",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 3.4 Penalties for Violation",
+      "page": 7,
+      "text": "A person who develops land in an area of special flood hazard without first obtaining a floodplain development permit, or who violates a condition of an issued permit, commits an offense. Each day a violation continues is a separate offense, and the county may seek civil remedies including an order to remove the unpermitted work."
+    },
+    {
+      "id": "reg-05",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 4 Administration",
+      "page": 8,
+      "text": "A floodplain development permit shall be obtained before any development begins within an area of special flood hazard. Where a property owner asserts that a parcel lies on natural high ground above the base flood elevation, the county may require a Letter of Map Amendment from the Federal Emergency Management Agency before a permit is issued or before the elevation requirements are waived."
+    },
+    {
+      "id": "reg-06",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 4.1 Designation of the Floodplain Administrator",
+      "page": 8,
+      "text": "The Harris County Engineer is designated as the Floodplain Administrator and is responsible for administering and implementing these regulations. The Floodplain Administrator determines whether a parcel lies within the one hundred year flood zone by interpreting the adopted Flood Insurance Rate Map, and that determination governs unless it is amended by the Federal Emergency Management Agency."
+    },
+    {
+      "id": "reg-07",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 4.2 Permit Application Requirements",
+      "page": 9,
+      "text": "An application for a floodplain development permit shall be made on the form supplied by the county and shall include a site plan drawn to scale, the proposed elevation of the lowest floor of all structures, a description of the extent to which a watercourse will be altered, and the certification of a registered professional engineer or licensed surveyor where elevation data is required."
+    },
+    {
+      "id": "reg-08",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 4.3 Duties of the Floodplain Administrator",
+      "page": 10,
+      "text": "The duties of the Floodplain Administrator include reviewing all permit applications for completeness, verifying that required state and federal permits have been obtained, maintaining a record of the actual elevation of the lowest floor of every new or substantially improved structure, and notifying adjacent communities before any alteration of a watercourse."
+    },
+    {
+      "id": "reg-09",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 4.4 Variance Procedures",
+      "page": 12,
+      "text": "A variance from the elevation requirements may be granted only upon a showing of good and sufficient cause and a determination that failure to grant it would result in exceptional hardship. A variance may be issued for the reconstruction or rehabilitation of a structure listed on a register of historic places, provided the work does not preclude the structure's continued designation as a historic structure."
+    },
+    {
+      "id": "reg-10",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 4.5 Amendments to an Issued Permit",
+      "page": 13,
+      "text": "If the scope of a permitted project changes after the permit is approved, the permit holder shall submit a revised site plan and revised elevation data and obtain an amended permit before continuing work. Work performed outside the scope of the approved permit is treated as unpermitted development."
+    },
+    {
+      "id": "reg-11",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 5.1 Floodway Encroachment",
+      "page": 14,
+      "text": "Encroachments within the adopted regulatory floodway are prohibited, including fill, new construction, substantial improvement, and any other development, unless a registered professional engineer certifies through hydrologic and hydraulic analysis that the proposed encroachment will not result in any increase in flood levels during the base flood discharge."
+    },
+    {
+      "id": "reg-12",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 5.2 Specific Standards for New Construction",
+      "page": 15,
+      "text": "New construction and substantial improvement of any residential structure shall have the lowest floor elevated to at least one foot above the base flood elevation. Upon completion of construction the permit holder shall submit an Elevation Certificate prepared by a licensed surveyor, engineer, or architect documenting the as built elevation of the lowest floor."
+    },
+    {
+      "id": "reg-13",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 5.3 Manufactured Homes and Accessory Structures",
+      "page": 16,
+      "text": "Manufactured homes placed or substantially improved within an area of special flood hazard shall be elevated on a permanent foundation so that the lowest floor is at or above the required elevation, and shall be securely anchored to resist flotation and lateral movement. A small accessory structure such as a detached storage shed used only for parking or storage may be exempt from the elevation requirement if it is of low value, has flood openings, and uses flood resistant materials."
+    },
+    {
+      "id": "reg-14",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 6 Submittal Checklist",
+      "page": 18,
+      "text": "Every floodplain development permit application shall be submitted with the completed application form, a scaled site plan, a metes and bounds description or recorded plat, elevation data or an Elevation Certificate, the engineer's no rise certification where the floodway is involved, and the applicable review fee. An application missing any listed item is returned as incomplete."
+    },
+    {
+      "id": "reg-15",
+      "title": "Regulations of Harris County for Floodplain Management",
+      "section": "Section 7 Drainage and Site Development Studies",
+      "page": 20,
+      "text": "Site development within an area of special flood hazard shall be supported by a drainage study demonstrating that the proposed grading and detention will not increase runoff onto adjacent property. The drainage study shall be sealed by a registered professional engineer and shall use the rainfall data adopted by the Harris County Flood Control District."
+    },
+    {
+      "id": "mtez-01",
+      "title": "MT-EZ Application Form Instructions",
+      "section": "General Background Information",
+      "page": 1,
+      "text": "Use the MT-EZ form for a simple Letter of Map Amendment request to remove a single structure or a single parcel of legally recorded land from the Special Flood Hazard Area on the basis of natural high ground. Use the full MT-1 application package instead when the request involves fill, multiple structures, multiple lots, or a request for a Letter of Map Revision."
+    },
+    {
+      "id": "mtez-02",
+      "title": "MT-EZ Application Form Instructions",
+      "section": "What a Letter of Map Amendment Does",
+      "page": 1,
+      "text": "A Letter of Map Amendment is an official determination that a property sits on naturally high ground above the base flood elevation and was therefore inadvertently mapped inside the Special Flood Hazard Area. It removes the federal flood insurance purchase requirement for a federally backed mortgage on that property but does not change local development rules."
+    },
+    {
+      "id": "mtez-03",
+      "title": "MT-EZ Application Form Instructions",
+      "section": "Required Documentation",
+      "page": 2,
+      "text": "Submit with the MT-EZ form a copy of the effective Flood Insurance Rate Map panel with the property outlined, the recorded deed or plat showing the legal description of the property, and elevation information certified by a licensed land surveyor or registered professional engineer. Requests submitted without certified elevation information cannot be processed."
+    },
+    {
+      "id": "mtez-04",
+      "title": "MT-EZ Application Form Instructions",
+      "section": "Where to Submit and Processing Time",
+      "page": 3,
+      "text": "There is no fee for a Letter of Map Amendment request based on natural high ground. Mail the completed package to the address listed on the form or submit it through the online Letter of Map Change portal. Determinations are normally issued within sixty days of receipt of a complete submission."
+    },
+    {
+      "id": "ec-01",
+      "title": "FEMA Elevation Certificate Instructions",
+      "section": "General Instructions",
+      "page": 1,
+      "text": "The Elevation Certificate is used to provide elevation information necessary to ensure compliance with community floodplain management ordinances, to determine the proper insurance premium rate, and to support a request for a Letter of Map Amendment. The certificate records building characteristics, the flood zone, the base flood elevation, and measured elevations of the lowest floor and of mechanical equipment."
+    },
+    {
+      "id": "ec-02",
+      "title": "FEMA Elevation Certificate Instructions",
+      "section": "Section A Property Information",
+      "page": 2,
+      "text": "Enter the building owner's name, the street address of the building, and the legal description of the property. Record the building use, the latitude and longitude of the building, the number of permanent flood openings in enclosure walls, and the total net area of those openings."
+    },
+    {
+      "id": "ec-03",
+      "title": "FEMA Elevation Certificate Instructions",
+      "section": "Construction Stage of the Building",
+      "page": 3,
+      "text": "Indicate whether the certificate is based on construction drawings, on a building under construction, or on finished construction. A certificate based on drawings or on a building under construction is provisional; a new certificate based on finished construction must be submitted once the building is complete so that the as built elevation of the lowest floor is on record."
+    },
+    {
+      "id": "ec-04",
+      "title": "FEMA Elevation Certificate Instructions",
+      "section": "Section C Building Elevation Information Survey Required",
+      "page": 4,
+      "text": "Section C must be completed by a land surveyor, engineer, or architect who is authorized by law to certify elevation information in the state where the building is located. That professional must sign, seal, and date the certificate. A property owner, builder, or insurance agent may not complete or certify Section C."
+    },
+    {
+      "id": "ec-05",
+      "title": "FEMA Elevation Certificate Instructions",
+      "section": "Section D Certification",
+      "page": 5,
+      "text": "The certifier completes Section D with their name, license number, title, company name, address, telephone number, and the date of certification, and provides any comments explaining measurement assumptions or datum conversions used elsewhere on the form."
+    },
+    {
+      "id": "ec-06",
+      "title": "FEMA Elevation Certificate Instructions",
+      "section": "Building Diagrams",
+      "page": 8,
+      "text": "Select the diagram number that best matches the building being certified. Diagram 1A covers a slab on grade building with no basement. Diagram 2A covers a building with a basement. Diagram 8 covers a building with an attached garage, and the top of the garage slab is reported separately from the lowest floor of the living area."
+    },
+    {
+      "id": "distractor-01",
+      "title": "Harris County Permit Fee Schedule",
+      "section": "Development Review Fees",
+      "page": 2,
+      "text": "The following review fees apply to permit applications submitted to the county. Fees are payable at the time of submission and are non refundable once review begins. A resubmittal after a returned incomplete application does not require an additional fee within ninety days."
+    },
+    {
+      "id": "distractor-02",
+      "title": "Harris County Permit Fee Schedule",
+      "section": "Elevation and Drainage Review Surcharges",
+      "page": 3,
+      "text": "A surcharge applies where a submission requires review of elevation data, a drainage study, or a floodway no rise certification. The surcharge is assessed per structure and is listed separately on the invoice issued after the application is accepted."
+    },
+    {
+      "id": "distractor-03",
+      "title": "Harris County Residential Building Code Summary",
+      "section": "Foundation and Slab Requirements",
+      "page": 11,
+      "text": "Residential foundations shall be designed for the soil conditions of the site. Slab on grade construction requires a vapor retarder and reinforcement sized by the design engineer. These requirements are independent of any flood elevation requirement that may also apply to the structure."
+    }
+  ]
+}
