@@ -1,0 +1,336 @@
+{
+  "description": "Generation evaluation questions for the Harris County floodplain permit corpus. Each records how the question-answering pipeline should conclude, the facts a correct answer must state, and the documents it should cite. Facts are expressed as phrase requirements rather than as a reference answer, because a regulatory requirement has many correct wordings and scoring against one would punish a correct paraphrase. Expected facts and citation titles are provisional: they were written against the corpus structure and the fixture corpus in evaluation/fixtures/generation/, and must be re-verified against the ingested PDFs before a live baseline is read as a quality measurement. See docs/evaluation/evaluation-strategy.md.",
+  "version": 1,
+  "questions": [
+    {
+      "id": "gen-elevation",
+      "category": "answerable",
+      "question": "How high must the lowest floor of a new house be built in the floodplain?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "freeboard",
+          "description": "States the required elevation above the base flood elevation",
+          "requiredPhrases": ["one foot"],
+          "anyOfPhrases": ["base flood elevation", "bfe"]
+        },
+        {
+          "id": "lowest-floor",
+          "description": "Identifies the lowest floor as the measured element",
+          "requiredPhrases": ["lowest floor"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"]
+    },
+    {
+      "id": "gen-permit-required",
+      "category": "answerable",
+      "question": "Do I need a permit before developing land in a special flood hazard area?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "permit-required",
+          "description": "States that a floodplain development permit is required",
+          "requiredPhrases": ["floodplain development permit"]
+        },
+        {
+          "id": "before-work",
+          "description": "States that the permit must be obtained before development begins",
+          "anyOfPhrases": ["before any development", "before development begins", "before work begins"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"]
+    },
+    {
+      "id": "gen-application-contents",
+      "category": "answerable",
+      "question": "What must a floodplain development permit application include?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "site-plan",
+          "description": "Requires a site plan",
+          "requiredPhrases": ["site plan"]
+        },
+        {
+          "id": "elevation-data",
+          "description": "Requires the proposed lowest floor elevation",
+          "requiredPhrases": ["lowest floor"]
+        },
+        {
+          "id": "professional-certification",
+          "description": "Requires certification by a licensed professional",
+          "anyOfPhrases": ["registered professional engineer", "licensed surveyor", "licensed land surveyor"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"]
+    },
+    {
+      "id": "gen-floodway-fill",
+      "category": "answerable",
+      "question": "Can I place fill in the regulatory floodway to level out my lot?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "prohibited",
+          "description": "States that floodway encroachment is prohibited by default",
+          "anyOfPhrases": ["prohibited", "not permitted", "not allowed"]
+        },
+        {
+          "id": "no-rise",
+          "description": "States the no-rise certification exception",
+          "requiredPhrases": ["no increase"],
+          "anyOfPhrases": ["flood levels", "base flood"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"]
+    },
+    {
+      "id": "gen-substantial-improvement",
+      "category": "answerable",
+      "question": "If I remodel my house and the repairs cost more than half its value, do the flood rules apply to the whole house?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "threshold",
+          "description": "States the fifty percent cost threshold",
+          "anyOfPhrases": ["fifty percent", "50 percent"]
+        },
+        {
+          "id": "market-value",
+          "description": "States that the threshold is measured against market value",
+          "requiredPhrases": ["market value"]
+        },
+        {
+          "id": "term",
+          "description": "Names the regulatory term",
+          "requiredPhrases": ["substantial improvement"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"]
+    },
+    {
+      "id": "gen-variance-historic",
+      "category": "answerable",
+      "question": "Is there any way to get an exception to the flood elevation requirements for a historic building?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "variance",
+          "description": "Identifies the variance mechanism",
+          "requiredPhrases": ["variance"]
+        },
+        {
+          "id": "historic",
+          "description": "States the historic structure provision",
+          "requiredPhrases": ["historic"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"]
+    },
+    {
+      "id": "gen-penalties",
+      "category": "answerable",
+      "question": "What are the penalties for building in the floodplain without getting a permit first?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "offense",
+          "description": "States that unpermitted development is an offense",
+          "anyOfPhrases": ["offense", "violation"]
+        },
+        {
+          "id": "per-day",
+          "description": "States that each day is a separate offense",
+          "anyOfPhrases": ["each day", "separate offense"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"],
+      "notes": "The fixture answer for this question deliberately adds a fabricated dollar figure, so the committed baseline exercises unsupported-claim detection on a true positive. Two other fixture answers (gen-substantial-improvement, gen-manufactured-home) are flagged as false positives because they summarize the evidence in vocabulary the passages do not use; both are pinned in the baseline tests as a documented precision limit of the lexical screen."
+    },
+    {
+      "id": "gen-administrator",
+      "category": "answerable",
+      "question": "Who decides whether my land is inside the 100-year flood zone?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "administrator",
+          "description": "Names the Floodplain Administrator",
+          "requiredPhrases": ["floodplain administrator"]
+        },
+        {
+          "id": "map-basis",
+          "description": "States that the determination interprets the adopted flood map",
+          "anyOfPhrases": ["flood insurance rate map", "firm"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"]
+    },
+    {
+      "id": "gen-elevation-certificate-timing",
+      "category": "answerable",
+      "question": "Do I have to prove my finished floor height after construction is complete, or only before?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "after-construction",
+          "description": "States that an as-built certificate is required after completion",
+          "anyOfPhrases": ["upon completion", "finished construction", "as built"]
+        },
+        {
+          "id": "certifier",
+          "description": "Identifies who prepares the certificate",
+          "anyOfPhrases": ["surveyor", "engineer", "architect"]
+        }
+      ],
+      "expectedCitationTitles": [
+        "Regulations of Harris County for Floodplain Management",
+        "FEMA Elevation Certificate Instructions"
+      ]
+    },
+    {
+      "id": "gen-ec-section-c",
+      "category": "answerable",
+      "question": "Who is allowed to sign and seal Section C of the Elevation Certificate?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "professional",
+          "description": "Names the professionals permitted to certify Section C",
+          "anyOfPhrases": ["land surveyor", "engineer", "architect"]
+        },
+        {
+          "id": "seal",
+          "description": "States the sign-and-seal requirement",
+          "anyOfPhrases": ["seal", "sign"]
+        }
+      ],
+      "expectedCitationTitles": ["FEMA Elevation Certificate Instructions"]
+    },
+    {
+      "id": "gen-mtez-when",
+      "category": "answerable",
+      "question": "When should an applicant use Form MT-EZ instead of the full MT-1 application?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "simple-request",
+          "description": "States that MT-EZ covers a single structure or parcel",
+          "anyOfPhrases": ["single structure", "single parcel", "single lot"]
+        },
+        {
+          "id": "high-ground",
+          "description": "States the natural high ground basis",
+          "anyOfPhrases": ["natural high ground", "naturally high ground"]
+        }
+      ],
+      "expectedCitationTitles": ["MT-EZ Application Form Instructions"]
+    },
+    {
+      "id": "gen-mtez-documents",
+      "category": "answerable",
+      "question": "What supporting documents must accompany an MT-EZ submission?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "map-panel",
+          "description": "Requires the flood map panel with the property outlined",
+          "anyOfPhrases": ["flood insurance rate map", "firm panel"]
+        },
+        {
+          "id": "legal-description",
+          "description": "Requires the deed or plat",
+          "anyOfPhrases": ["deed", "plat"]
+        },
+        {
+          "id": "certified-elevation",
+          "description": "Requires certified elevation information",
+          "requiredPhrases": ["elevation"]
+        }
+      ],
+      "expectedCitationTitles": ["MT-EZ Application Form Instructions"]
+    },
+    {
+      "id": "gen-manufactured-home",
+      "category": "answerable",
+      "question": "Do manufactured homes have different flood elevation rules than regular houses?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "elevated",
+          "description": "States the elevation requirement applies",
+          "requiredPhrases": ["elevated"]
+        },
+        {
+          "id": "anchored",
+          "description": "States the anchoring requirement specific to manufactured homes",
+          "anyOfPhrases": ["anchored", "anchoring"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"]
+    },
+    {
+      "id": "gen-permit-change",
+      "category": "answerable",
+      "question": "What happens if my project changes after the floodplain permit was approved?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "amend",
+          "description": "States that an amended permit is required",
+          "anyOfPhrases": ["amended permit", "revised site plan", "revised elevation"]
+        },
+        {
+          "id": "unpermitted",
+          "description": "States the consequence of working outside the approved scope",
+          "anyOfPhrases": ["unpermitted", "outside the scope"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"]
+    },
+    {
+      "id": "gen-drainage-study",
+      "category": "answerable",
+      "question": "Is a drainage study required for site development in the floodplain?",
+      "expectedOutcome": "Answered",
+      "expectedFacts": [
+        {
+          "id": "required",
+          "description": "States that a drainage study is required",
+          "requiredPhrases": ["drainage study"]
+        },
+        {
+          "id": "sealed",
+          "description": "States that the study must be sealed by an engineer",
+          "anyOfPhrases": ["registered professional engineer", "sealed"]
+        }
+      ],
+      "expectedCitationTitles": ["Regulations of Harris County for Floodplain Management"]
+    },
+    {
+      "id": "gen-out-of-scope-tax",
+      "category": "out-of-scope",
+      "question": "What is the current Harris County property tax rate for residential property?",
+      "expectedOutcome": "InsufficientEvidence",
+      "expectedCitationTitles": [],
+      "notes": "Plausibly county-sounding but absent from the floodplain corpus. A confident answer here is a hallucination, however well written."
+    },
+    {
+      "id": "gen-out-of-scope-status",
+      "category": "out-of-scope",
+      "question": "Has permit application number 2024-11875 been approved yet?",
+      "expectedOutcome": "InsufficientEvidence",
+      "expectedCitationTitles": [],
+      "notes": "Case status is not in the reference corpus; the corpus scope cannot answer it and must say so."
+    },
+    {
+      "id": "gen-out-of-scope-advice",
+      "category": "out-of-scope",
+      "question": "Should I sue my neighbour over the stormwater running off their property onto mine?",
+      "expectedOutcome": "InsufficientEvidence",
+      "expectedCitationTitles": [],
+      "notes": "Requests legal advice the corpus does not contain and the product must not give."
+    }
+  ]
+}
