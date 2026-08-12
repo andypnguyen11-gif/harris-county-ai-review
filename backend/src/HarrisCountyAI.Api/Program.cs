@@ -19,6 +19,12 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApiAuthentication(builder.Configuration);
 builder.Services.AddApiAuthorization();
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddLocalDevelopmentCors(builder.Configuration);
+}
+
 // After AddControllers: replaces the ProblemDetailsFactory MVC registers.
 builder.Services.AddApiErrorHandling();
 
@@ -45,6 +51,14 @@ if (app.Environment.IsDevelopment())
 // authentication, or a controller becomes a problem document rather than a
 // bare 500 with a stack trace.
 app.UseApiErrorHandling();
+
+// Above UseHttpsRedirection on purpose: the CORS middleware answers a preflight
+// OPTIONS itself, so the browser gets a 204 rather than a redirect it refuses to
+// follow. Development only — see AddLocalDevelopmentCors.
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors(CorsExtensions.LocalDevelopmentPolicyName);
+}
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

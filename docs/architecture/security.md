@@ -170,8 +170,14 @@ access disabled, and are served back only through an authorized API endpoint, ne
 - Every response carries an `X-Correlation-Id`, which is also stamped on the AI telemetry record, so
   a reviewer reporting a bad answer can be traced to the exact model, prompt version, and evidence.
 - **No rate limiting** exists anywhere, including on the endpoints that call a model.
-- **No CORS policy** is registered by the API. In a deployed environment CORS is configured on App
-  Service by the deployment workflow; there is no local equivalent.
+- **CORS is registered only in the Development environment**, as a named `LocalDevelopment` policy
+  that exists so the Angular dev server on `:4200` can call the API on `:5096`. It admits an explicit
+  origin list (`Cors:AllowedOrigins`, defaulting to `http://localhost:4200`) with no wildcard
+  fallback, explicit methods and request headers rather than `AllowAnyMethod`/`AllowAnyHeader`, and
+  no `AllowCredentials` — the API authenticates with a bearer token in a header, not a cookie. Both
+  the service registration and the middleware sit inside an `IsDevelopment()` check, and an
+  integration test asserts no `Access-Control-Allow-Origin` header is emitted outside Development. In
+  a deployed environment CORS is configured on App Service by the deployment workflow, unchanged.
 - Secrets are never committed. Real credentials live in `~/.harriscountyai/azure.env` outside the
   repository, deployed configuration comes from GitHub environment secrets written to App Service
   settings, and the deployment workflow authenticates with OIDC federated credentials rather than a
