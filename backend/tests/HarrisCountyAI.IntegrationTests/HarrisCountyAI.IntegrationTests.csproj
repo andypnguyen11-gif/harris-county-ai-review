@@ -20,6 +20,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      The adversarial permit documents the unit-test suite maintains, linked
+      rather than copied so the end-to-end suite exercises the same payloads
+      through the HTTP surface and a newly added attack is covered in both.
+    -->
+    <None Include="..\HarrisCountyAI.UnitTests\Security\TestData\*.txt"
+          Link="EndToEnd\AdversarialDocuments\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\HarrisCountyAI.Api\HarrisCountyAI.Api.csproj" />
   </ItemGroup>
 
