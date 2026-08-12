@@ -136,4 +136,6 @@ The evaluation dataset at [`evaluation/datasets/retrieval/floodplain-questions.j
 3. Score each run per category: **hit rate** (an expected source appears in the top K, matching on title and — when given — section) and **MRR** (reciprocal rank of the first expected source).
 4. Hybrid should at minimum match vector-only on `semantic` questions and beat it on `section-number` / `form-number` questions; a regression in any category blocks the retrieval change.
 
-The dataset is deliberately small and curated; it exists to catch relative regressions between retrieval modes, not to benchmark absolute quality. Automated execution of this comparison is planned for the evaluation-harness PR.
+The dataset is deliberately small and curated; it exists to catch relative regressions between retrieval modes, not to benchmark absolute quality.
+
+This comparison now runs automatically: `evaluation/scripts/run-retrieval-evaluation.sh --live` scores the dataset against the configured index and writes Recall@1/3/5 and MRR, overall and per category, to `evaluation/datasets/retrieval/results/`. Run it once per configuration and diff the reports. The same harness runs offline against a synthetic fixture corpus by default, so a plain `dotnet test` regression-tests the scorer without touching Azure. See [`docs/evaluation/evaluation-strategy.md`](../evaluation/evaluation-strategy.md).

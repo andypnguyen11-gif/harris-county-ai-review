@@ -1,0 +1,1608 @@
+{
+  "reportVersion": 1,
+  "runType": "Fixture",
+  "datasetVersion": 2,
+  "retrievalConfiguration": "offline fixture corpus, BM25-style lexical ranking",
+  "topK": 5,
+  "pageTolerance": 1,
+  "overall": {
+    "questionCount": 28,
+    "hitCount": 28,
+    "recallAtK": {
+      "1": 0.8571,
+      "3": 0.9286,
+      "5": 1
+    },
+    "meanReciprocalRank": 0.903,
+    "recallAt1": 0.8571,
+    "recallAt3": 0.9286,
+    "recallAt5": 1
+  },
+  "byCategory": {
+    "form-number": {
+      "questionCount": 6,
+      "hitCount": 6,
+      "recallAtK": {
+        "1": 0.8333,
+        "3": 1,
+        "5": 1
+      },
+      "meanReciprocalRank": 0.8889,
+      "recallAt1": 0.8333,
+      "recallAt3": 1,
+      "recallAt5": 1
+    },
+    "mixed": {
+      "questionCount": 3,
+      "hitCount": 3,
+      "recallAtK": {
+        "1": 1,
+        "3": 1,
+        "5": 1
+      },
+      "meanReciprocalRank": 1,
+      "recallAt1": 1,
+      "recallAt3": 1,
+      "recallAt5": 1
+    },
+    "section-number": {
+      "questionCount": 7,
+      "hitCount": 7,
+      "recallAtK": {
+        "1": 0.7143,
+        "3": 0.7143,
+        "5": 1
+      },
+      "meanReciprocalRank": 0.7786,
+      "recallAt1": 0.7143,
+      "recallAt3": 0.7143,
+      "recallAt5": 1
+    },
+    "semantic": {
+      "questionCount": 12,
+      "hitCount": 12,
+      "recallAtK": {
+        "1": 0.9167,
+        "3": 1,
+        "5": 1
+      },
+      "meanReciprocalRank": 0.9583,
+      "recallAt1": 0.9167,
+      "recallAt3": 1,
+      "recallAt5": 1
+    }
+  },
+  "cases": [
+    {
+      "id": "section-01",
+      "category": "section-number",
+      "question": "What does Section 4.2 of the Harris County floodplain regulations require?",
+      "firstMatchRank": 5,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4 Administration",
+          "page": 8,
+          "score": 6.8546,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.1 Designation of the Floodplain Administrator",
+          "page": 8,
+          "score": 5.4826,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 1 Statutory Authorization and Purpose",
+          "page": 1,
+          "score": 5.2194,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.1 Applicability and Basis for Establishing Flood Hazard Areas",
+          "page": 6,
+          "score": 4.9625,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9,
+          "score": 4.6551,
+          "rerankerScore": null,
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "id": "section-02",
+      "category": "section-number",
+      "question": "What are the permit application requirements in Section 6 of the floodplain management regulations?",
+      "firstMatchRank": 4,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9,
+          "score": 11.9623,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4 Administration",
+          "page": 8,
+          "score": 7.3364,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.5 Amendments to an Issued Permit",
+          "page": 13,
+          "score": 6.816,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 6 Submittal Checklist",
+          "page": 18,
+          "score": 6.7274,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.4 Variance Procedures",
+          "page": 12,
+          "score": 5.3686,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "section-03",
+      "category": "section-number",
+      "question": "Which activities does Section 5.1 prohibit in the floodway?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.1 Floodway Encroachment",
+          "page": 14,
+          "score": 5.3947,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 6 Submittal Checklist",
+          "page": 18,
+          "score": 2.7423,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "Harris County Permit Fee Schedule",
+          "section": "Elevation and Drainage Review Surcharges",
+          "page": 3,
+          "score": 2.3351,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4,
+          "score": 1.1516,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section D Certification",
+          "page": 5,
+          "score": 1.0811,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "section-04",
+      "category": "section-number",
+      "question": "What does Section 4.3 say about the duties of the Floodplain Administrator?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.3 Duties of the Floodplain Administrator",
+          "page": 10,
+          "score": 14.1995,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.1 Designation of the Floodplain Administrator",
+          "page": 8,
+          "score": 8.2584,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9,
+          "score": 1.9538,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.4 Penalties for Violation",
+          "page": 7,
+          "score": 1.9386,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 6 Submittal Checklist",
+          "page": 18,
+          "score": 1.9089,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "section-05",
+      "category": "section-number",
+      "question": "What variance procedures are described in Section 4.4?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.4 Variance Procedures",
+          "page": 12,
+          "score": 12.869,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4,
+          "score": 1.1516,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section D Certification",
+          "page": 5,
+          "score": 1.0811,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section A Property Information",
+          "page": 2,
+          "score": 0.7857,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 1 Statutory Authorization and Purpose",
+          "page": 1,
+          "score": 0.7382,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "section-06",
+      "category": "section-number",
+      "question": "What elevation standards does Section 5.2 set for new residential construction?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.2 Specific Standards for New Construction",
+          "page": 15,
+          "score": 16.7535,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3,
+          "score": 8.3096,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "Harris County Residential Building Code Summary",
+          "section": "Foundation and Slab Requirements",
+          "page": 11,
+          "score": 8.0614,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.1 Floodway Encroachment",
+          "page": 14,
+          "score": 4.4724,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.3 Duties of the Floodplain Administrator",
+          "page": 10,
+          "score": 3.0272,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "section-07",
+      "category": "section-number",
+      "question": "How does Section 2 define substantial improvement?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 2 Definitions",
+          "page": 3,
+          "score": 5.7251,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.1 Floodway Encroachment",
+          "page": 14,
+          "score": 4.978,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.2 Specific Standards for New Construction",
+          "page": 15,
+          "score": 4.7434,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4,
+          "score": 1.1516,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section D Certification",
+          "page": 5,
+          "score": 1.0811,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "form-01",
+      "category": "form-number",
+      "question": "When should an applicant use Form MT-EZ instead of the full MT-1 application?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "General Background Information",
+          "page": 1,
+          "score": 19.478,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "Required Documentation",
+          "page": 2,
+          "score": 12.914,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "Where to Submit and Processing Time",
+          "page": 3,
+          "score": 11.0611,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "What a Letter of Map Amendment Does",
+          "page": 1,
+          "score": 9.8578,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9,
+          "score": 4.0399,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "form-02",
+      "category": "form-number",
+      "question": "What information goes on the FEMA Elevation Certificate?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4,
+          "score": 10.0139,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section A Property Information",
+          "page": 2,
+          "score": 8.3588,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 3,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "General Instructions",
+          "page": 1,
+          "score": 8.1326,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 4,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3,
+          "score": 6.7039,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 5,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section D Certification",
+          "page": 5,
+          "score": 5.6976,
+          "rerankerScore": null,
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "id": "form-03",
+      "category": "form-number",
+      "question": "Is a LOMA required before a floodplain development permit is issued?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.5 Amendments to an Issued Permit",
+          "page": 13,
+          "score": 7.6215,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9,
+          "score": 6.3542,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4 Administration",
+          "page": 8,
+          "score": 5.4853,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.4 Penalties for Violation",
+          "page": 7,
+          "score": 5.2268,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 5,
+          "title": "Harris County Permit Fee Schedule",
+          "section": "Development Review Fees",
+          "page": 2,
+          "score": 4.3084,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "form-04",
+      "category": "form-number",
+      "question": "Who is allowed to sign and seal Section C of the Elevation Certificate?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4,
+          "score": 11.0773,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3,
+          "score": 4.2482,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "General Instructions",
+          "page": 1,
+          "score": 4.1321,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section D Certification",
+          "page": 5,
+          "score": 4.0474,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section A Property Information",
+          "page": 2,
+          "score": 3.6246,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "form-05",
+      "category": "form-number",
+      "question": "What supporting documents must accompany an MT-EZ submission?",
+      "firstMatchRank": 3,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "General Background Information",
+          "page": 1,
+          "score": 8.4646,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 2,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "Where to Submit and Processing Time",
+          "page": 3,
+          "score": 8.2065,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "Required Documentation",
+          "page": 2,
+          "score": 8.0677,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 4,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "What a Letter of Map Amendment Does",
+          "page": 1,
+          "score": 5.8252,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Harris County Permit Fee Schedule",
+          "section": "Elevation and Drainage Review Surcharges",
+          "page": 3,
+          "score": 2.3351,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "form-06",
+      "category": "form-number",
+      "question": "Which diagram number on the Elevation Certificate applies to a building with an attached garage?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Building Diagrams",
+          "page": 8,
+          "score": 20.8222,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3,
+          "score": 7.9502,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section A Property Information",
+          "page": 2,
+          "score": 7.5225,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4,
+          "score": 6.8338,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section D Certification",
+          "page": 5,
+          "score": 6.1446,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "semantic-01",
+      "category": "semantic",
+      "question": "Can I build a storage shed on my property if part of it is in the floodplain?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.3 Manufactured Homes and Accessory Structures",
+          "page": 16,
+          "score": 7.0449,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section A Property Information",
+          "page": 2,
+          "score": 3.4933,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4 Administration",
+          "page": 8,
+          "score": 2.6385,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 7 Drainage and Site Development Studies",
+          "page": 20,
+          "score": 2.2985,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 5,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "What a Letter of Map Amendment Does",
+          "page": 1,
+          "score": 2.0236,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "semantic-02",
+      "category": "semantic",
+      "question": "How high above the flood level does the lowest floor of a new house have to be?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.2 Specific Standards for New Construction",
+          "page": 15,
+          "score": 9.5851,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.3 Manufactured Homes and Accessory Structures",
+          "page": 16,
+          "score": 4.5712,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 3,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "What a Letter of Map Amendment Does",
+          "page": 1,
+          "score": 4.5162,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3,
+          "score": 4.4313,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.3 Duties of the Floodplain Administrator",
+          "page": 10,
+          "score": 4.387,
+          "rerankerScore": null,
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "id": "semantic-03",
+      "category": "semantic",
+      "question": "What paperwork do I need to include when I apply for permission to build near a bayou?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.3 Duties of the Floodplain Administrator",
+          "page": 10,
+          "score": 2.4904,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9,
+          "score": 2.4416,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 3,
+          "title": "Harris County Permit Fee Schedule",
+          "section": "Development Review Fees",
+          "page": 2,
+          "score": 2.2614,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Harris County Residential Building Code Summary",
+          "section": "Foundation and Slab Requirements",
+          "page": 11,
+          "score": 2.2614,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.1 Applicability and Basis for Establishing Flood Hazard Areas",
+          "page": 6,
+          "score": 2.1064,
+          "rerankerScore": null,
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "id": "semantic-04",
+      "category": "semantic",
+      "question": "Who decides whether my land is inside the 100-year flood zone?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.1 Designation of the Floodplain Administrator",
+          "page": 8,
+          "score": 7.8737,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "What a Letter of Map Amendment Does",
+          "page": 1,
+          "score": 3.7691,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "General Instructions",
+          "page": 1,
+          "score": 3.1861,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 2 Definitions",
+          "page": 3,
+          "score": 3.0649,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 5,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3,
+          "score": 2.5155,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "semantic-05",
+      "category": "semantic",
+      "question": "What happens if my project changes after the floodplain permit was approved?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.5 Amendments to an Issued Permit",
+          "page": 13,
+          "score": 14.3482,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9,
+          "score": 3.6861,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.4 Penalties for Violation",
+          "page": 7,
+          "score": 2.7493,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4 Administration",
+          "page": 8,
+          "score": 2.6951,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 5,
+          "title": "Harris County Permit Fee Schedule",
+          "section": "Development Review Fees",
+          "page": 2,
+          "score": 2.57,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "semantic-06",
+      "category": "semantic",
+      "question": "If I remodel my house and the repairs cost more than half its value, do the flood rules apply to the whole house?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 2 Definitions",
+          "page": 3,
+          "score": 5.7522,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "What a Letter of Map Amendment Does",
+          "page": 1,
+          "score": 3.7691,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.1 Applicability and Basis for Establishing Flood Hazard Areas",
+          "page": 6,
+          "score": 3.7051,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.3 Manufactured Homes and Accessory Structures",
+          "page": 16,
+          "score": 2.9499,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 5,
+          "title": "Harris County Residential Building Code Summary",
+          "section": "Foundation and Slab Requirements",
+          "page": 11,
+          "score": 2.8646,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "semantic-07",
+      "category": "semantic",
+      "question": "Do I have to prove my finished floor height after construction is complete, or only before?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3,
+          "score": 13.0838,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.2 Specific Standards for New Construction",
+          "page": 15,
+          "score": 6.2198,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 3,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4,
+          "score": 2.1923,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 4,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "Where to Submit and Processing Time",
+          "page": 3,
+          "score": 2.1485,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Harris County Residential Building Code Summary",
+          "section": "Foundation and Slab Requirements",
+          "page": 11,
+          "score": 1.9927,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "semantic-08",
+      "category": "semantic",
+      "question": "Is there any way to get an exception to the flood elevation requirements for a historic building?",
+      "firstMatchRank": 2,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Harris County Residential Building Code Summary",
+          "section": "Foundation and Slab Requirements",
+          "page": 11,
+          "score": 7.6324,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.4 Variance Procedures",
+          "page": 12,
+          "score": 6.3131,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 3,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3,
+          "score": 4.5908,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Building Diagrams",
+          "page": 8,
+          "score": 4.5059,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4,
+          "score": 4.0664,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "semantic-09",
+      "category": "semantic",
+      "question": "What are the penalties for building in the floodplain without getting a permit first?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.4 Penalties for Violation",
+          "page": 7,
+          "score": 12.7639,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.5 Amendments to an Issued Permit",
+          "page": 13,
+          "score": 4.1231,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 3,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Building Diagrams",
+          "page": 8,
+          "score": 3.8607,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3,
+          "score": 3.702,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9,
+          "score": 3.6861,
+          "rerankerScore": null,
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "id": "semantic-10",
+      "category": "semantic",
+      "question": "Can I fill in part of the floodway to level out my lot?",
+      "firstMatchRank": 1,
+      "retrievedCount": 4,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.1 Floodway Encroachment",
+          "page": 14,
+          "score": 7.1369,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Harris County Permit Fee Schedule",
+          "section": "Elevation and Drainage Review Surcharges",
+          "page": 3,
+          "score": 2.3351,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "General Background Information",
+          "page": 1,
+          "score": 2.3061,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 6 Submittal Checklist",
+          "page": 18,
+          "score": 2.0463,
+          "rerankerScore": null,
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "id": "semantic-11",
+      "category": "semantic",
+      "question": "How do I get my property removed from the flood map if it sits on high ground?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "What a Letter of Map Amendment Does",
+          "page": 1,
+          "score": 12.0904,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4 Administration",
+          "page": 8,
+          "score": 6.9352,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "General Background Information",
+          "page": 1,
+          "score": 5.6542,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 4,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "Where to Submit and Processing Time",
+          "page": 3,
+          "score": 5.4922,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 5,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section A Property Information",
+          "page": 2,
+          "score": 4.1094,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "semantic-12",
+      "category": "semantic",
+      "question": "Do manufactured homes have different flood elevation rules than regular houses?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.3 Manufactured Homes and Accessory Structures",
+          "page": 16,
+          "score": 13.1192,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "MT-EZ Application Form Instructions",
+          "section": "What a Letter of Map Amendment Does",
+          "page": 1,
+          "score": 4.1569,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "General Instructions",
+          "page": 1,
+          "score": 1.8366,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 3.1 Applicability and Basis for Establishing Flood Hazard Areas",
+          "page": 6,
+          "score": 1.5987,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 2 Definitions",
+          "page": 3,
+          "score": 1.3511,
+          "rerankerScore": null,
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "id": "mixed-01",
+      "category": "mixed",
+      "question": "Does Section 7 say anything about drainage studies for site development in the floodplain?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 7 Drainage and Site Development Studies",
+          "page": 20,
+          "score": 17.846,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Harris County Permit Fee Schedule",
+          "section": "Elevation and Drainage Review Surcharges",
+          "page": 3,
+          "score": 5.7667,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9,
+          "score": 4.622,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 6 Submittal Checklist",
+          "page": 18,
+          "score": 4.5009,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.5 Amendments to an Issued Permit",
+          "page": 13,
+          "score": 4.4131,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    },
+    {
+      "id": "mixed-02",
+      "category": "mixed",
+      "question": "The regulations mention an Elevation Certificate \u2014 which form is that and what does Section 5.2 require me to do with it?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section D Certification",
+          "page": 5,
+          "score": 5.5911,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Section C Building Elevation Information Survey Required",
+          "page": 4,
+          "score": 4.9358,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 6 Submittal Checklist",
+          "page": 18,
+          "score": 4.6958,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4 Administration",
+          "page": 8,
+          "score": 4.5298,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "FEMA Elevation Certificate Instructions",
+          "section": "Construction Stage of the Building",
+          "page": 3,
+          "score": 4.2482,
+          "rerankerScore": null,
+          "isExpected": true
+        }
+      ]
+    },
+    {
+      "id": "mixed-03",
+      "category": "mixed",
+      "question": "My engineer says I need a LOMA before I can pull a permit \u2014 where does Section 4 say that?",
+      "firstMatchRank": 1,
+      "retrievedCount": 5,
+      "error": null,
+      "retrieved": [
+        {
+          "rank": 1,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.2 Permit Application Requirements",
+          "page": 9,
+          "score": 4.2769,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 2,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 4.5 Amendments to an Issued Permit",
+          "page": 13,
+          "score": 3.9353,
+          "rerankerScore": null,
+          "isExpected": true
+        },
+        {
+          "rank": 3,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 6 Submittal Checklist",
+          "page": 18,
+          "score": 2.856,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 4,
+          "title": "Regulations of Harris County for Floodplain Management",
+          "section": "Section 5.2 Specific Standards for New Construction",
+          "page": 15,
+          "score": 2.8291,
+          "rerankerScore": null,
+          "isExpected": false
+        },
+        {
+          "rank": 5,
+          "title": "Harris County Permit Fee Schedule",
+          "section": "Development Review Fees",
+          "page": 2,
+          "score": 2.57,
+          "rerankerScore": null,
+          "isExpected": false
+        }
+      ]
+    }
+  ]
+}

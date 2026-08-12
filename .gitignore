@@ -28,3 +28,6 @@ appsettings.Local.json
 # Test artifacts
 TestResults/
 coverage/
+
+# Evaluation run artifacts (live runs write these; only baselines are committed)
+evaluation/datasets/*/results/latest-live.json
