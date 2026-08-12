@@ -19,6 +19,8 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApiAuthentication(builder.Configuration);
 builder.Services.AddApiAuthorization();
+// After AddControllers: replaces the ProblemDetailsFactory MVC registers.
+builder.Services.AddApiErrorHandling();
 
 var app = builder.Build();
 app.UseObservability();
@@ -38,6 +40,11 @@ if (app.Environment.IsDevelopment())
         dbContext.Database.Migrate();
     }
 }
+
+// Wraps everything below it, so an unhandled failure anywhere in routing,
+// authentication, or a controller becomes a problem document rather than a
+// bare 500 with a stack trace.
+app.UseApiErrorHandling();
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

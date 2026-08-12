@@ -1,5 +1,6 @@
 using Azure.Storage.Blobs;
 using HarrisCountyAI.Application.Documents;
+using HarrisCountyAI.Infrastructure.Resilience;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -41,7 +42,7 @@ public static class BlobStorageServiceExtensions
         services.AddSingleton(provider =>
         {
             var options = provider.GetRequiredService<IOptions<BlobStorageOptions>>().Value;
-            return CreateBlobServiceClient(options.ConnectionString);
+            return CreateBlobServiceClient(options.ConnectionString, provider.GetResilienceOptions());
         });
 
         services.AddSingleton<IDocumentStorageService, AzureBlobDocumentStorageService>();
@@ -58,8 +59,14 @@ public static class BlobStorageServiceExtensions
     /// <summary>
     /// Creates a <see cref="BlobServiceClient"/> pinned to service API version
     /// 2025-11-05 — the newest version the local Azurite emulator (3.36.x)
-    /// accepts, and a GA version supported by Azure Storage.
+    /// accepts, and a GA version supported by Azure Storage — with the shared
+    /// retry and timeout budget applied.
     /// </summary>
-    public static BlobServiceClient CreateBlobServiceClient(string connectionString)
-        => new(connectionString, new BlobClientOptions(BlobClientOptions.ServiceVersion.V2025_11_05));
+    public static BlobServiceClient CreateBlobServiceClient(
+        string connectionString,
+        AzureResilienceOptions? resilience = null)
+        => new(
+            connectionString,
+            new BlobClientOptions(BlobClientOptions.ServiceVersion.V2025_11_05)
+                .WithResilience(resilience ?? new AzureResilienceOptions()));
 }

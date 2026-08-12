@@ -4,6 +4,7 @@ using HarrisCountyAI.Application.Documents;
 using HarrisCountyAI.Application.Documents.Extraction;
 using HarrisCountyAI.Application.Documents.Normalization;
 using HarrisCountyAI.Infrastructure.Persistence.Repositories;
+using HarrisCountyAI.Infrastructure.Resilience;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -36,7 +37,10 @@ public static class DocumentIntelligenceServiceExtensions
         services.AddSingleton(provider =>
         {
             var options = provider.GetRequiredService<IOptions<DocumentIntelligenceOptions>>().Value;
-            return new DocumentIntelligenceClient(new Uri(options.Endpoint), new AzureKeyCredential(options.ApiKey));
+            return new DocumentIntelligenceClient(
+                new Uri(options.Endpoint),
+                new AzureKeyCredential(options.ApiKey),
+                new DocumentIntelligenceClientOptions().WithResilience(provider.GetResilienceOptions()));
         });
 
         services.AddSingleton<IDocumentIntelligenceAnalyzeClient, DocumentIntelligenceAnalyzeClient>();
