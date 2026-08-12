@@ -60,12 +60,52 @@ Search filters, Retrieved chunk IDs, Retrieval scores, Reranking scores,
 Latency, Token usage, Response status, Errors
 ```
 
-`IAiRequestTelemetryLogger` is the contract question-answering handlers call once per request
-(success or failure); `AiRequestTelemetryLogger`
-(`backend/src/HarrisCountyAI.Infrastructure/Telemetry/`) emits it as a single structured log
-event. The question-answering pipeline is not built yet; when it lands it must record its requests
-through this interface so answers can be traced to the model, prompt, and retrieved chunks that
-produced them.
+`IAiRequestTelemetryLogger` is the contract question-answering calls once per request (success or
+failure); `AiRequestTelemetryLogger` (`backend/src/HarrisCountyAI.Infrastructure/Telemetry/`) emits
+it as a single structured log event.
+
+Both question-answering paths record through it:
+
+| Path | Records |
+| --- | --- |
+| `QuestionAnsweringService` | County-scoped and case-scoped questions |
+| `DualSourceQuestionAnsweringService` | Comparisons, county evidence first then case |
+
+Every exit path emits exactly one record — including the two that never reach the model (retrieval
+found nothing, or the model call threw). Those are the requests most worth investigating, so
+skipping them would hide the failures that matter most.
+
+### How a record is stamped
+
+The correlation id and the caller's identity are HTTP concerns, but only the Application layer knows
+which AI call they belong to. `IRequestContextAccessor`
+(`backend/src/HarrisCountyAI.Application/Common/Telemetry/`) carries them across that boundary;
+`HttpRequestContextAccessor` (`backend/src/HarrisCountyAI.Api/Telemetry/`) implements it over
+`IHttpContextAccessor`, reading the id assigned by `CorrelationIdMiddleware` and preferring the most
+stable identity claim available (`oid`, then the subject, then the username).
+
+Because the correlation id on the record is the same one returned in the `X-Correlation-Id` response
+header, a reviewer who reports a bad answer and quotes that id can be traced to the exact model,
+prompt version, and evidence that produced it.
+
+Two deliberate behaviours:
+
+- **Telemetry never fails an answer.** Recording is wrapped; a failing sink logs a warning and the
+  answer is returned regardless. Losing a reviewer's answer to an observability outage would be a
+  far worse failure than losing a record.
+- **Calls with no HTTP request still emit.** The offline evaluation harness drives these services
+  directly. Those records carry the placeholder ids in `AiTelemetryDefaults`, which are deliberately
+  unmistakable so no reader confuses one for a real correlation id.
+
+### Known gaps
+
+- `SearchFilters` is left unset. The literal OData scope filter is built inside the retrieval
+  implementation and is not surfaced by `IRetrievalService`, so it is not guessed at; `CaseId`
+  already records the scope an auditor needs. Surfacing the real expression means widening the
+  retrieval contract.
+- `RerankingScores` aligns positionally with the chunk ids, so it is reported only when *every*
+  retrieved chunk carries a reranker score. A partial set reports an empty list rather than padding
+  with a fabricated `0.0`, which would read as "ranked last".
 
 ## What is never logged
 
