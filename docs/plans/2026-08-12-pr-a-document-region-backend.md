@@ -1679,9 +1679,11 @@ Requires SQL Server running: `docker compose up -d`.
 In `NormalizedDocumentConfiguration.cs`, inside the existing `builder.OwnsMany(d => d.Fields, fields => { ... })` block, after `fields.Property(f => f.PageNumber);`:
 
 ```csharp
-            // Owned types flatten to columns on NormalizedDocumentFields; the
-            // navigation is required so EF materializes a null box rather than
-            // throwing when every column is null.
+            // Owned types flatten to columns on NormalizedDocumentFields.
+            // Each navigation MUST be marked optional: without IsRequired(false)
+            // EF can treat the owned entity as required and materialize a
+            // default BoundingBox when every column is null, which would make
+            // the null round-trip assertions below pass against a non-null box.
             fields.OwnsOne(f => f.KeyBoundingBox, box =>
             {
                 box.Property(b => b.PageNumber).HasColumnName("KeyBoundingBox_PageNumber");
@@ -1690,6 +1692,7 @@ In `NormalizedDocumentConfiguration.cs`, inside the existing `builder.OwnsMany(d
                 box.Property(b => b.Width).HasColumnName("KeyBoundingBox_Width");
                 box.Property(b => b.Height).HasColumnName("KeyBoundingBox_Height");
             });
+            fields.Navigation(f => f.KeyBoundingBox).IsRequired(false);
 
             fields.OwnsOne(f => f.ValueBoundingBox, box =>
             {
@@ -1699,6 +1702,7 @@ In `NormalizedDocumentConfiguration.cs`, inside the existing `builder.OwnsMany(d
                 box.Property(b => b.Width).HasColumnName("ValueBoundingBox_Width");
                 box.Property(b => b.Height).HasColumnName("ValueBoundingBox_Height");
             });
+            fields.Navigation(f => f.ValueBoundingBox).IsRequired(false);
 ```
 
 - [ ] **Step 4: Map the owned box on `ValidationReportItems`**
@@ -1714,7 +1718,13 @@ In `ValidationReportConfiguration.cs`, inside the existing `builder.OwnsMany(r =
                 box.Property(b => b.Width).HasColumnName("BoundingBox_Width");
                 box.Property(b => b.Height).HasColumnName("BoundingBox_Height");
             });
+            items.Navigation(i => i.BoundingBox).IsRequired(false);
 ```
+
+**If a round-trip ever loads a non-null box whose columns were all null, stop
+and fix the configuration** — do not adjust the assertion. A default-valued
+region would be drawn at the top-left corner of page zero, which is worse than
+no region at all.
 
 - [ ] **Step 5: Generate the migration**
 
@@ -1882,6 +1892,8 @@ git commit -m "Expose the evidence region on the validation report contract"
 - [ ] `dotnet build` succeeds with no new warnings.
 - [ ] `dotnet test` passes — unit, integration, and architecture suites.
 - [ ] The migration adds only nullable columns and drops nothing.
+- [ ] Every owned box navigation is marked `IsRequired(false)`, and an all-null
+      row loads as a null box rather than a default-valued one.
 - [ ] No file under `frontend/` was modified.
 - [ ] `docs/api/endpoints.md` documents the new field.
 - [ ] The PR description records the `CheckboxRule` behavior change: findings from the present-but-unchecked branch now carry a document id and page they previously lacked.
