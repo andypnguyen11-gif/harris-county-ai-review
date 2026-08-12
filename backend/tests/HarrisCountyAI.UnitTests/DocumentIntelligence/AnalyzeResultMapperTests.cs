@@ -1,4 +1,5 @@
 using Azure.AI.DocumentIntelligence;
+using HarrisCountyAI.Domain.ValueObjects;
 using HarrisCountyAI.Infrastructure.Azure.DocumentIntelligence;
 
 namespace HarrisCountyAI.UnitTests.DocumentIntelligence;
@@ -258,5 +259,105 @@ public class AnalyzeResultMapperTests
         Assert.Empty(extracted.Tables);
         Assert.Equal(string.Empty, extracted.RawText);
         Assert.Equal(string.Empty, extracted.ModelId);
+    }
+
+    private static DocumentPage LetterPage(int pageNumber, IEnumerable<DocumentSelectionMark>? selectionMarks = null) =>
+        DocumentIntelligenceModelFactory.DocumentPage(
+            pageNumber: pageNumber,
+            width: 8.5f,
+            height: 11f,
+            unit: LengthUnit.Inch,
+            selectionMarks: selectionMarks);
+
+    private static DocumentKeyValueElement Element(string content, int pageNumber, float[] polygon) =>
+        DocumentIntelligenceModelFactory.DocumentKeyValueElement(
+            content: content,
+            boundingRegions:
+            [
+                DocumentIntelligenceModelFactory.BoundingRegion(pageNumber: pageNumber, polygon: polygon),
+            ]);
+
+    [Fact]
+    public void Maps_Key_And_Value_Polygons_To_Normalized_Boxes()
+    {
+        var result = DocumentIntelligenceModelFactory.AnalyzeResult(
+            pages: [LetterPage(1)],
+            keyValuePairs:
+            [
+                DocumentIntelligenceModelFactory.DocumentKeyValuePair(
+                    key: Element("Owner Name:", 1, [1f, 2f, 3f, 2f, 3f, 2.5f, 1f, 2.5f]),
+                    value: Element("Trenton Okafor", 1, [3.5f, 2f, 6f, 2f, 6f, 2.5f, 3.5f, 2.5f]),
+                    confidence: 0.9f),
+            ]);
+
+        var field = _mapper.Map(DocumentId, result).KeyValuePairs.Single();
+
+        Assert.NotNull(field.KeyBoundingBox);
+        Assert.Equal(1, field.KeyBoundingBox.PageNumber);
+        Assert.Equal(1d / 8.5, field.KeyBoundingBox.X, precision: 6);
+        Assert.Equal(2d / 11d, field.KeyBoundingBox.Y, precision: 6);
+
+        Assert.NotNull(field.ValueBoundingBox);
+        Assert.Equal(3.5d / 8.5, field.ValueBoundingBox.X, precision: 6);
+    }
+
+    [Fact]
+    public void Leaves_Boxes_Null_When_The_Page_Reports_No_Dimensions()
+    {
+        var result = DocumentIntelligenceModelFactory.AnalyzeResult(
+            pages: [DocumentIntelligenceModelFactory.DocumentPage(pageNumber: 1)],
+            keyValuePairs:
+            [
+                DocumentIntelligenceModelFactory.DocumentKeyValuePair(
+                    key: Element("Owner Name:", 1, [1f, 2f, 3f, 2f, 3f, 2.5f, 1f, 2.5f]),
+                    value: null,
+                    confidence: 0.9f),
+            ]);
+
+        var field = _mapper.Map(DocumentId, result).KeyValuePairs.Single();
+
+        Assert.Null(field.KeyBoundingBox);
+        Assert.Null(field.ValueBoundingBox);
+        // The page number still resolves from the region, as it did before.
+        Assert.Equal(1, field.PageNumber);
+    }
+
+    [Fact]
+    public void Leaves_Value_Box_Null_When_The_Field_Is_Blank()
+    {
+        var result = DocumentIntelligenceModelFactory.AnalyzeResult(
+            pages: [LetterPage(1)],
+            keyValuePairs:
+            [
+                DocumentIntelligenceModelFactory.DocumentKeyValuePair(
+                    key: Element("HCAD Account Number:", 1, [1f, 3f, 4f, 3f, 4f, 3.5f, 1f, 3.5f]),
+                    value: null,
+                    confidence: 0.8f),
+            ]);
+
+        var field = _mapper.Map(DocumentId, result).KeyValuePairs.Single();
+
+        Assert.NotNull(field.KeyBoundingBox);
+        Assert.Null(field.ValueBoundingBox);
+    }
+
+    [Fact]
+    public void Maps_Selection_Mark_Polygon_To_A_Normalized_Box()
+    {
+        var mark = DocumentIntelligenceModelFactory.DocumentSelectionMark(
+            state: DocumentSelectionMarkState.Selected,
+            polygon: [1f, 5f, 1.2f, 5f, 1.2f, 5.2f, 1f, 5.2f],
+            span: DocumentIntelligenceModelFactory.DocumentSpan(0, 10),
+            confidence: 0.95f);
+
+        var result = DocumentIntelligenceModelFactory.AnalyzeResult(
+            pages: [LetterPage(2, selectionMarks: [mark])]);
+
+        var extractedMark = _mapper.Map(DocumentId, result).SelectionMarks.Single();
+
+        Assert.NotNull(extractedMark.BoundingBox);
+        Assert.Equal(2, extractedMark.BoundingBox.PageNumber);
+        Assert.Equal(1d / 8.5, extractedMark.BoundingBox.X, precision: 6);
+        Assert.Equal(5d / 11d, extractedMark.BoundingBox.Y, precision: 6);
     }
 }

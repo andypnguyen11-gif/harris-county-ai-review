@@ -1,3 +1,5 @@
+using HarrisCountyAI.Domain.ValueObjects;
+
 namespace HarrisCountyAI.Application.Documents.Extraction;
 
 /// <summary>A key/value pair recognized on a document, e.g. a labeled form field.</summary>
@@ -14,4 +16,10 @@ public sealed record ExtractedField
 
     /// <summary>1-based page number the field's key appears on, when resolvable.</summary>
     public int? PageNumber { get; init; }
+
+    /// <summary>Region of the field's printed label, when it was located.</summary>
+    public BoundingBox? KeyBoundingBox { get; init; }
+
+    /// <summary>Region of the field's recognized value, when it was located.</summary>
+    public BoundingBox? ValueBoundingBox { get; init; }
 }

@@ -1,5 +1,6 @@
 using Azure.AI.DocumentIntelligence;
 using HarrisCountyAI.Application.Documents.Extraction;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.Infrastructure.Azure.DocumentIntelligence;
 
@@ -15,18 +16,64 @@ public sealed class AnalyzeResultMapper
         ArgumentNullException.ThrowIfNull(result);
 
         var content = result.Content ?? string.Empty;
+        var pageDimensions = MapPageDimensions(result);
 
         return new ExtractedDocument
         {
             DocumentId = documentId,
             Pages = MapPages(result, content),
-            KeyValuePairs = MapKeyValuePairs(result),
-            SelectionMarks = MapSelectionMarks(result),
+            KeyValuePairs = MapKeyValuePairs(result, pageDimensions),
+            SelectionMarks = MapSelectionMarks(result, pageDimensions),
             Tables = MapTables(result),
             RawText = content,
             ModelId = result.ModelId ?? string.Empty,
             ExtractedAt = DateTime.UtcNow,
         };
+    }
+
+    /// <summary>
+    /// Page dimensions by page number, in whatever unit the service reported.
+    /// Pages that omit a dimension are absent, which makes their regions
+    /// unresolvable rather than wrong.
+    /// </summary>
+    private static Dictionary<int, (double Width, double Height)> MapPageDimensions(AnalyzeResult result)
+    {
+        var dimensions = new Dictionary<int, (double Width, double Height)>();
+
+        foreach (var page in result.Pages ?? [])
+        {
+            if (page.Width is { } width && page.Height is { } height)
+            {
+                dimensions[page.PageNumber] = (width, height);
+            }
+        }
+
+        return dimensions;
+    }
+
+    /// <summary>
+    /// The first region that yields a usable box. Regions whose page reported
+    /// no dimensions are skipped rather than treated as failures, because a
+    /// later region may still resolve.
+    /// </summary>
+    private static BoundingBox? ResolveBox(
+        IReadOnlyList<BoundingRegion>? regions,
+        IReadOnlyDictionary<int, (double Width, double Height)> pageDimensions)
+    {
+        foreach (var region in regions ?? [])
+        {
+            if (!pageDimensions.TryGetValue(region.PageNumber, out var page))
+            {
+                continue;
+            }
+
+            if (BoundingBox.FromPolygon(region.PageNumber, region.Polygon, page.Width, page.Height) is { } box)
+            {
+                return box;
+            }
+        }
+
+        return null;
     }
 
     private static List<ExtractedPage> MapPages(AnalyzeResult result, string content)
@@ -71,7 +118,9 @@ public sealed class AnalyzeResultMapper
             .Select(paragraph => paragraph.Content ?? string.Empty)
             .ToList();
 
-    private static List<ExtractedField> MapKeyValuePairs(AnalyzeResult result)
+    private static List<ExtractedField> MapKeyValuePairs(
+        AnalyzeResult result,
+        IReadOnlyDictionary<int, (double Width, double Height)> pageDimensions)
     {
         var fields = new List<ExtractedField>();
 
@@ -89,18 +138,24 @@ public sealed class AnalyzeResultMapper
                 Value = pair.Value?.Content,
                 Confidence = pair.Confidence,
                 PageNumber = (pair.Key!.BoundingRegions ?? []).Select(region => (int?)region.PageNumber).FirstOrDefault(),
+                KeyBoundingBox = ResolveBox(pair.Key!.BoundingRegions, pageDimensions),
+                ValueBoundingBox = ResolveBox(pair.Value?.BoundingRegions, pageDimensions),
             });
         }
 
         return fields;
     }
 
-    private static List<ExtractedSelectionMark> MapSelectionMarks(AnalyzeResult result)
+    private static List<ExtractedSelectionMark> MapSelectionMarks(
+        AnalyzeResult result,
+        IReadOnlyDictionary<int, (double Width, double Height)> pageDimensions)
     {
         var marks = new List<ExtractedSelectionMark>();
 
         foreach (var page in result.Pages ?? [])
         {
+            var hasDimensions = pageDimensions.TryGetValue(page.PageNumber, out var dimensions);
+
             foreach (var mark in page.SelectionMarks ?? [])
             {
                 marks.Add(new ExtractedSelectionMark
@@ -109,6 +164,9 @@ public sealed class AnalyzeResultMapper
                     IsSelected = mark.State == DocumentSelectionMarkState.Selected,
                     Confidence = mark.Confidence,
                     PageNumber = page.PageNumber,
+                    BoundingBox = hasDimensions
+                        ? BoundingBox.FromPolygon(page.PageNumber, mark.Polygon, dimensions.Width, dimensions.Height)
+                        : null,
                 });
             }
         }
