@@ -141,19 +141,30 @@ What *does* hold, and is asserted, is **evidence isolation**:
 So the current guarantee is "one case's evidence never bleeds into another's",
 not "only the assigned reviewer can open this case".
 
-### 2. The extraction pipeline has no HTTP trigger
+### 2. The extraction pipeline runs synchronously, with no background worker
 
-`IDocumentProcessingService` — extract, normalize, persist, index — is
-registered and fully tested, but nothing in the API calls it. Uploading a
-document leaves it at status `Uploaded` forever; there is no endpoint to
-process it and no background worker. The end-to-end suite drives this one step
-through the host's service provider (`EndToEndTestBase.ProcessAsync`). Every
-other step in the scenario goes over the wire.
+`IDocumentProcessingService` — extract, normalize, persist, index — is driven
+by `POST /api/cases/{caseId}/documents/{documentId}/process`, the endpoint the
+reviewer's browser calls after an upload completes. The end-to-end suite drives
+it the same way (`EndToEndTestBase.ProcessAsync`); every step in the scenario
+goes over the wire, and nothing reaches into the host's service provider to
+move the workflow along.
 
-This means the deployed MVP cannot currently complete the workflow through the
-UI alone. Adding the trigger is a small piece of work and is not in this PR's
-scope, but it is the gap between "the pipeline works" and "a reviewer can run
-it".
+What remains is that the run is **synchronous**: the HTTP response arrives only
+when the pipeline finishes, so a large document holds a request open for as
+long as Document Intelligence and the embedding calls take, and a client that
+disconnects mid-run gets no outcome (the document is still recorded `Failed`,
+so it is never left stuck mid-run). There is no queue, no background worker,
+and no polling status endpoint. A run that fails answers `200 OK` carrying the
+document's terminal `Failed` status and the reason — deliberately not a 5xx, so
+a caller can tell "the pipeline ran and failed" from "the call never landed",
+which are different things to retry. Processing is also not guarded against two
+callers processing the same document at once; the last run wins, and because
+indexing is delete-then-index the index does not accumulate duplicates.
+
+Moving this to a background job would be a much larger change — queue
+infrastructure, a worker host, and a status-polling contract — and is out of
+scope for the MVP.
 
 ### 3. The frontend has no browser end-to-end harness
 

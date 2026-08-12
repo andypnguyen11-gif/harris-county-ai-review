@@ -34,11 +34,11 @@ namespace HarrisCountyAI.IntegrationTests.EndToEnd;
 /// production code path.
 /// </para>
 /// <para>
-/// The pipeline step between upload and validation has no HTTP trigger in the
-/// application today (see <c>docs/testing/mvp-test-plan.md</c>), so
-/// <see cref="ProcessAsync"/> drives <see cref="IDocumentProcessingService"/>
-/// through the host's own service provider. Every other step in the scenario
-/// goes over the wire.
+/// Every step in the scenario goes over the wire, including the pipeline step
+/// between upload and validation: <see cref="ProcessAsync"/> posts to
+/// <c>/api/cases/{caseId}/documents/{documentId}/process</c>, the same
+/// endpoint the reviewer's browser calls. Nothing in the suite reaches into
+/// the host's service provider to move the workflow along.
 /// </para>
 /// </remarks>
 public abstract class EndToEndTestBase : IAsyncLifetime
@@ -155,22 +155,40 @@ public abstract class EndToEndTestBase : IAsyncLifetime
 
     /// <summary>
     /// Runs extraction, normalization, persistence, and search indexing for an
-    /// uploaded document. Driven through the host's own service provider
-    /// because the application exposes no endpoint for this step.
+    /// uploaded document over HTTP, and asserts the run completed, leaving the
+    /// document at its terminal <c>Normalized</c> status.
     /// </summary>
-    protected async Task ProcessAsync(Guid documentId)
+    protected async Task ProcessAsync(Guid caseId, Guid documentId)
     {
-        using var scope = Factory.Services.CreateScope();
-        var processing = scope.ServiceProvider.GetRequiredService<IDocumentProcessingService>();
-        await processing.ProcessAsync(documentId);
+        var result = await ProcessRequestAsync(caseId, documentId);
+
+        Assert.Equal(JsonValueKind.Null, result.GetProperty("failureReason").ValueKind);
+        Assert.Equal("Normalized", result.GetProperty("document").GetProperty("processingStatus").GetString());
     }
 
-    /// <summary>Runs the pipeline expecting it to fail, and returns the exception it surfaced.</summary>
-    protected async Task<Exception> ProcessExpectingFailureAsync(Guid documentId)
+    /// <summary>
+    /// Runs the pipeline expecting it to fail, and returns the reason the API
+    /// reported. A failed run is still a handled request — the endpoint answers
+    /// <c>200 OK</c> and reports the terminal <c>Failed</c> status in the body,
+    /// which is what distinguishes it from a call that never landed.
+    /// </summary>
+    protected async Task<string> ProcessExpectingFailureAsync(Guid caseId, Guid documentId)
     {
-        using var scope = Factory.Services.CreateScope();
-        var processing = scope.ServiceProvider.GetRequiredService<IDocumentProcessingService>();
-        return await Assert.ThrowsAnyAsync<Exception>(() => processing.ProcessAsync(documentId));
+        var result = await ProcessRequestAsync(caseId, documentId);
+
+        Assert.Equal("Failed", result.GetProperty("document").GetProperty("processingStatus").GetString());
+        var reason = result.GetProperty("failureReason").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(reason), "A failed run must report why it failed.");
+        return reason!;
+    }
+
+    private async Task<JsonElement> ProcessRequestAsync(Guid caseId, Guid documentId)
+    {
+        var response = await Reviewer.PostAsync(
+            $"/api/cases/{caseId}/documents/{documentId}/process", content: null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await ReadJsonAsync(response);
     }
 
     /// <summary>Uploads a document and runs it through the pipeline with the given extraction result.</summary>
@@ -182,7 +200,7 @@ public abstract class EndToEndTestBase : IAsyncLifetime
     {
         var documentId = await UploadAsync(caseId, fileName, documentType);
         Extraction.Script(documentId, extracted);
-        await ProcessAsync(documentId);
+        await ProcessAsync(caseId, documentId);
         return documentId;
     }
 
