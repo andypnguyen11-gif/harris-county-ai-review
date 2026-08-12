@@ -1,0 +1,658 @@
+name: Deploy (development)
+
+# Deploys the API to Azure App Service and the Angular app to Azure Static Web
+# Apps, applies EF Core migrations to Azure SQL, and smoke-tests the result.
+#
+# TRIGGERS — deliberately never "every push to main":
+#   * workflow_dispatch — the normal path; a human decides when to deploy.
+#   * push of a `deploy-dev-*` tag — an explicit, auditable release marker.
+# The dev environment runs on a fixed Azure credit budget, and this workflow
+# mutates a live database, so deploying is an intentional act rather than a
+# side effect of merging. The `development` GitHub Environment is the second
+# gate: add required reviewers there to make every run need approval.
+#
+# ONE-TIME OPERATOR SETUP IS REQUIRED before the first run — federated
+# identity, environment variables, and secrets. See
+# docs/deployment/dev-environment.md. This workflow has never been executed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      i_understand_local_development_auth_is_insecure:
+        description: >-
+          Allow deploying with Authentication:Mode=LocalDevelopment. This mode
+          hands out signed Reviewer/Administrator tokens to ANY anonymous
+          caller of POST /api/auth/dev-token. Leave false unless you accept a
+          publicly reachable, effectively unauthenticated deployment.
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'deploy-dev-*'
+
+# id-token: write is what lets azure/login exchange a GitHub OIDC token for an
+# Azure access token. No Azure client secret is stored anywhere.
+permissions:
+  contents: read
+  id-token: write
+
+# Never cancel a deploy in progress: it may be mid-migration.
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-harriscountyai-dev' }}
+  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME || 'app-harriscountyai-dev' }}
+  AZURE_STATIC_WEB_APP_NAME: ${{ vars.AZURE_STATIC_WEB_APP_NAME || 'swa-harriscountyai-dev' }}
+  AZURE_SQL_SERVER_NAME: ${{ vars.AZURE_SQL_SERVER_NAME || 'sql-harriscountyai-dev' }}
+  AZURE_SQL_DATABASE_NAME: ${{ vars.AZURE_SQL_DATABASE_NAME || 'HarrisCountyAI' }}
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_EF_VERSION: '10.0.11'
+  NODE_VERSION: '22'
+
+jobs:
+  deploy:
+    name: Deploy to development
+    runs-on: ubuntu-latest
+
+    # A single job so the environment is approved once, one OIDC login covers
+    # every Azure call, and the steps read top to bottom in deploy order.
+    environment:
+      name: development
+      url: ${{ steps.resolve.outputs.frontend_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------
+      # Configuration guards — fail before touching Azure, not halfway through
+      # ------------------------------------------------------------------
+
+      - name: Check required configuration is present
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          SQL_ADMIN_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+          BLOB_STORAGE_CONNECTION_STRING: ${{ secrets.BLOB_STORAGE_CONNECTION_STRING }}
+          DOCUMENT_INTELLIGENCE_API_KEY: ${{ secrets.DOCUMENT_INTELLIGENCE_API_KEY }}
+          LANGUAGE_MODEL_API_KEY: ${{ secrets.LANGUAGE_MODEL_API_KEY }}
+          SEARCH_API_KEY: ${{ secrets.SEARCH_API_KEY }}
+          EMBEDDINGS_API_KEY: ${{ secrets.EMBEDDINGS_API_KEY }}
+          DOCUMENT_INTELLIGENCE_ENDPOINT: ${{ vars.DOCUMENT_INTELLIGENCE_ENDPOINT }}
+          LANGUAGE_MODEL_ENDPOINT: ${{ vars.LANGUAGE_MODEL_ENDPOINT }}
+          LANGUAGE_MODEL_DEPLOYMENT: ${{ vars.LANGUAGE_MODEL_DEPLOYMENT }}
+          SEARCH_ENDPOINT: ${{ vars.SEARCH_ENDPOINT }}
+          SEARCH_INDEX_NAME: ${{ vars.SEARCH_INDEX_NAME }}
+          EMBEDDINGS_ENDPOINT: ${{ vars.EMBEDDINGS_ENDPOINT }}
+          EMBEDDINGS_DEPLOYMENT: ${{ vars.EMBEDDINGS_DEPLOYMENT }}
+        run: |
+          set -euo pipefail
+
+          # Every one of these is required for the API to *start*: BlobStorage,
+          # DocumentIntelligence, LanguageModel, Search and Embeddings options
+          # are all registered with ValidateOnStart, so a missing endpoint or
+          # key crashes the host on boot and /health never answers.
+          missing=()
+          for name in \
+            AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID \
+            AZURE_STATIC_WEB_APPS_API_TOKEN \
+            SQL_ADMIN_LOGIN SQL_ADMIN_PASSWORD \
+            BLOB_STORAGE_CONNECTION_STRING \
+            DOCUMENT_INTELLIGENCE_API_KEY LANGUAGE_MODEL_API_KEY \
+            SEARCH_API_KEY EMBEDDINGS_API_KEY \
+            DOCUMENT_INTELLIGENCE_ENDPOINT \
+            LANGUAGE_MODEL_ENDPOINT LANGUAGE_MODEL_DEPLOYMENT \
+            SEARCH_ENDPOINT SEARCH_INDEX_NAME \
+            EMBEDDINGS_ENDPOINT EMBEDDINGS_DEPLOYMENT
+          do
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+            fi
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required GitHub environment configuration: ${missing[*]}"
+            echo "Set them on the 'development' environment. See docs/deployment/dev-environment.md." >&2
+            exit 1
+          fi
+
+          echo "All required secrets and variables are present."
+
+      - name: Guard the deployed authentication mode
+        id: auth_guard
+        env:
+          AUTHENTICATION_MODE: ${{ vars.AUTHENTICATION_MODE }}
+          ENTRA_AUTHORITY: ${{ vars.ENTRA_AUTHORITY }}
+          ENTRA_AUDIENCE: ${{ vars.ENTRA_AUDIENCE }}
+          LOCAL_DEV_SIGNING_KEY: ${{ secrets.LOCAL_DEV_SIGNING_KEY }}
+          ACKNOWLEDGED: ${{ inputs.i_understand_local_development_auth_is_insecure }}
+        run: |
+          set -euo pipefail
+
+          case "${AUTHENTICATION_MODE:-}" in
+            EntraId)
+              if [ -z "${ENTRA_AUTHORITY:-}" ] || [ -z "${ENTRA_AUDIENCE:-}" ]; then
+                echo "::error::AUTHENTICATION_MODE=EntraId requires the ENTRA_AUTHORITY and ENTRA_AUDIENCE variables."
+                exit 1
+              fi
+              echo "Deploying with Entra ID authentication."
+              ;;
+
+            LocalDevelopment)
+              # LocalDevelopment mode exposes POST /api/auth/dev-token, which
+              # mints a signed Reviewer or Administrator JWT for any anonymous
+              # caller. On a public *.azurewebsites.net URL that is equivalent
+              # to no authentication at all. It is allowed only via an explicit
+              # per-run acknowledgement, and never from a tag push.
+              if [ "${ACKNOWLEDGED:-false}" != "true" ]; then
+                echo "::error::AUTHENTICATION_MODE=LocalDevelopment was refused. This mode issues Reviewer/Administrator tokens to anonymous callers of POST /api/auth/dev-token and is NOT appropriate for a deployed, internet-reachable environment. Set AUTHENTICATION_MODE=EntraId, or re-run via workflow_dispatch with i_understand_local_development_auth_is_insecure=true if you accept an effectively unauthenticated deployment."
+                exit 1
+              fi
+              if [ -z "${LOCAL_DEV_SIGNING_KEY:-}" ]; then
+                echo "::error::LocalDevelopment mode requires the LOCAL_DEV_SIGNING_KEY secret (32+ characters). The signing key in appsettings.Development.json is public and must never be used on a deployed host."
+                exit 1
+              fi
+              if [ "${#LOCAL_DEV_SIGNING_KEY}" -lt 32 ]; then
+                echo "::error::LOCAL_DEV_SIGNING_KEY must be at least 32 characters."
+                exit 1
+              fi
+              echo "::warning::INSECURE DEPLOYMENT: the API is being deployed with Authentication:Mode=LocalDevelopment. Anyone who can reach the public URL can mint an Administrator token from POST /api/auth/dev-token. Do not put real Harris County data in this environment, and switch to EntraId before any non-demo use."
+              ;;
+
+            "")
+              echo "::error::The AUTHENTICATION_MODE variable is not set on the 'development' environment. It has no default on purpose: defaulting to LocalDevelopment would silently deploy dev-token authentication. Set it to EntraId (recommended) or LocalDevelopment."
+              exit 1
+              ;;
+
+            *)
+              echo "::error::Unsupported AUTHENTICATION_MODE '${AUTHENTICATION_MODE}'. Expected 'EntraId' or 'LocalDevelopment'."
+              exit 1
+              ;;
+          esac
+
+          echo "mode=${AUTHENTICATION_MODE}" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # Azure sign-in (federated identity — no stored service principal secret)
+      # ------------------------------------------------------------------
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify the target resources exist
+        id: resolve
+        run: |
+          set -euo pipefail
+
+          fail_missing() {
+            echo "::error::$1 was not found in resource group ${AZURE_RESOURCE_GROUP}. Provision the environment first: see infra/README.md (az deployment group create -f infra/main.bicep -p infra/main.bicepparam). This workflow deploys code and configuration; it does not create infrastructure."
+            exit 1
+          }
+
+          az group show -n "$AZURE_RESOURCE_GROUP" --output none 2>/dev/null \
+            || fail_missing "Resource group ${AZURE_RESOURCE_GROUP}"
+
+          backend_hostname=$(az webapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
+            --query defaultHostName -o tsv 2>/dev/null) || true
+          [ -n "${backend_hostname:-}" ] || fail_missing "Web app ${AZURE_WEBAPP_NAME}"
+
+          sql_fqdn=$(az sql server show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_SQL_SERVER_NAME" \
+            --query fullyQualifiedDomainName -o tsv 2>/dev/null) || true
+          [ -n "${sql_fqdn:-}" ] || fail_missing "SQL server ${AZURE_SQL_SERVER_NAME}"
+
+          frontend_hostname=$(az staticwebapp show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_STATIC_WEB_APP_NAME" \
+            --query defaultHostname -o tsv 2>/dev/null) || true
+          [ -n "${frontend_hostname:-}" ] || fail_missing "Static Web App ${AZURE_STATIC_WEB_APP_NAME}"
+
+          {
+            echo "backend_url=https://${backend_hostname}"
+            echo "frontend_url=https://${frontend_hostname}"
+            echo "frontend_hostname=${frontend_hostname}"
+            echo "sql_fqdn=${sql_fqdn}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Backend:  https://${backend_hostname}"
+          echo "Frontend: https://${frontend_hostname}"
+
+      # ------------------------------------------------------------------
+      # Build the API
+      # ------------------------------------------------------------------
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish the API
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          dotnet publish src/HarrisCountyAI.Api/HarrisCountyAI.Api.csproj \
+            --configuration Release \
+            --output "${{ runner.temp }}/publish" \
+            -p:TreatWarningsAsErrors=false
+
+      - name: Package the API
+        run: |
+          set -euo pipefail
+          cd "${{ runner.temp }}/publish"
+          zip -qr "${{ runner.temp }}/api.zip" .
+
+      # ------------------------------------------------------------------
+      # Database migrations — a discrete, pre-deploy step
+      # ------------------------------------------------------------------
+      #
+      # Deliberately NOT Database:ApplyMigrationsAtStartup. Three reasons:
+      #   1. Program.cs only honours that setting inside
+      #      `if (app.Environment.IsDevelopment())`, and the deployed app runs
+      #      as Production — the setting is inert there.
+      #   2. On App Service a failed startup migration presents as a
+      #      crash-looping site, not as a failed deploy. Here it fails the
+      #      pipeline loudly, before the new code is deployed.
+      #   3. Startup migrations race whenever more than one instance boots.
+      #
+      # The script is generated with --idempotent (safe to re-apply, guards
+      # every migration against __EFMigrationsHistory) and uploaded as a build
+      # artifact so the exact DDL applied to Azure SQL is auditable.
+
+      - name: Generate the idempotent migration script
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          dotnet tool install --global dotnet-ef --version "$DOTNET_EF_VERSION"
+          export PATH="$PATH:$HOME/.dotnet/tools"
+
+          # Both --project and --startup-project are the Infrastructure project
+          # so EF uses DesignTimeDbContextFactory. Nothing connects to a
+          # database and the API host is never constructed.
+          dotnet ef migrations script \
+            --idempotent \
+            --project src/HarrisCountyAI.Infrastructure/HarrisCountyAI.Infrastructure.csproj \
+            --startup-project src/HarrisCountyAI.Infrastructure/HarrisCountyAI.Infrastructure.csproj \
+            --output "${{ runner.temp }}/migrations.sql"
+
+          echo "Generated $(wc -l < "${{ runner.temp }}/migrations.sql") lines of SQL."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: migrations-sql
+          path: ${{ runner.temp }}/migrations.sql
+          retention-days: 14
+
+      # The Bicep firewall only opens the server to Azure services; a
+      # GitHub-hosted runner reaches Azure SQL from a public IP, so the rule is
+      # opened just for this run and removed in the cleanup step below.
+      - name: Open a temporary SQL firewall rule for this runner
+        id: sql_firewall
+        run: |
+          set -euo pipefail
+          runner_ip=$(curl -fsS --max-time 20 https://api.ipify.org)
+          if [ -z "$runner_ip" ]; then
+            echo "::error::Could not determine the runner's public IP address."
+            exit 1
+          fi
+          rule_name="github-actions-${GITHUB_RUN_ID}"
+          az sql server firewall-rule create \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --server "$AZURE_SQL_SERVER_NAME" \
+            --name "$rule_name" \
+            --start-ip-address "$runner_ip" \
+            --end-ip-address "$runner_ip" \
+            --output none
+          echo "rule_name=${rule_name}" >> "$GITHUB_OUTPUT"
+          echo "Opened firewall rule ${rule_name} for this run."
+
+      - name: Apply migrations to Azure SQL
+        env:
+          SQL_FQDN: ${{ steps.resolve.outputs.sql_fqdn }}
+          SQL_ADMIN_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
+          SQLCMDPASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # sqlcmd comes from Microsoft's own image so the step does not depend
+          # on whatever SQL tooling happens to be baked into the runner.
+          #   -b  stop and exit non-zero on the first SQL error
+          #   -N  encrypt the connection (required by Azure SQL)
+          #   -f 65001  the EF script is UTF-8 with a BOM
+          docker run --rm \
+            -v "${{ runner.temp }}:/scripts:ro" \
+            -e SQLCMDPASSWORD \
+            mcr.microsoft.com/mssql-tools \
+            /opt/mssql-tools/bin/sqlcmd \
+              -S "tcp:${SQL_FQDN},1433" \
+              -d "$AZURE_SQL_DATABASE_NAME" \
+              -U "$SQL_ADMIN_LOGIN" \
+              -N -b -l 60 -f 65001 \
+              -i /scripts/migrations.sql
+
+      # ------------------------------------------------------------------
+      # Backend configuration
+      # ------------------------------------------------------------------
+      #
+      # Every deployed setting comes from GitHub environment secrets and
+      # variables and is written to App Service configuration. Nothing
+      # environment-specific lives in appsettings*.json in the repository —
+      # appsettings.json ships empty-string placeholders only, and
+      # appsettings.Development.json is never loaded here because
+      # ASPNETCORE_ENVIRONMENT is Production.
+      #
+      # `--output none` on every az call matters: az echoes the full app
+      # settings list, secret values included, to stdout by default.
+
+      - name: Configure App Service application settings
+        env:
+          AUTHENTICATION_MODE: ${{ steps.auth_guard.outputs.mode }}
+          ENTRA_AUTHORITY: ${{ vars.ENTRA_AUTHORITY }}
+          ENTRA_AUDIENCE: ${{ vars.ENTRA_AUDIENCE }}
+          LOCAL_DEV_SIGNING_KEY: ${{ secrets.LOCAL_DEV_SIGNING_KEY }}
+          SQL_FQDN: ${{ steps.resolve.outputs.sql_fqdn }}
+          SQL_ADMIN_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+          BLOB_STORAGE_CONNECTION_STRING: ${{ secrets.BLOB_STORAGE_CONNECTION_STRING }}
+          BLOB_CASE_DOCUMENTS_CONTAINER: ${{ vars.BLOB_CASE_DOCUMENTS_CONTAINER || 'case-documents' }}
+          BLOB_KNOWLEDGE_BASE_CONTAINER: ${{ vars.BLOB_KNOWLEDGE_BASE_CONTAINER || 'knowledge-base' }}
+          DOCUMENT_INTELLIGENCE_ENDPOINT: ${{ vars.DOCUMENT_INTELLIGENCE_ENDPOINT }}
+          DOCUMENT_INTELLIGENCE_API_KEY: ${{ secrets.DOCUMENT_INTELLIGENCE_API_KEY }}
+          LANGUAGE_MODEL_ENDPOINT: ${{ vars.LANGUAGE_MODEL_ENDPOINT }}
+          LANGUAGE_MODEL_API_KEY: ${{ secrets.LANGUAGE_MODEL_API_KEY }}
+          LANGUAGE_MODEL_DEPLOYMENT: ${{ vars.LANGUAGE_MODEL_DEPLOYMENT }}
+          SEARCH_ENDPOINT: ${{ vars.SEARCH_ENDPOINT }}
+          SEARCH_API_KEY: ${{ secrets.SEARCH_API_KEY }}
+          SEARCH_INDEX_NAME: ${{ vars.SEARCH_INDEX_NAME }}
+          EMBEDDINGS_ENDPOINT: ${{ vars.EMBEDDINGS_ENDPOINT }}
+          EMBEDDINGS_API_KEY: ${{ secrets.EMBEDDINGS_API_KEY }}
+          EMBEDDINGS_DEPLOYMENT: ${{ vars.EMBEDDINGS_DEPLOYMENT }}
+        run: |
+          set -euo pipefail
+
+          connection_string="Server=tcp:${SQL_FQDN},1433;Initial Catalog=${AZURE_SQL_DATABASE_NAME};User ID=${SQL_ADMIN_LOGIN};Password=${SQL_ADMIN_PASSWORD};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+          echo "::add-mask::${connection_string}"
+          export CONNECTION_STRING="$connection_string"
+
+          # Application Insights: the Bicep template sets
+          # APPLICATIONINSIGHTS_CONNECTION_STRING on the web app, but
+          # ObservabilityExtensions gates telemetry on the
+          # ApplicationInsights:ConnectionString configuration key, so copy the
+          # value across. Telemetry stays off if the resource is absent.
+          app_insights=$(az webapp config appsettings list \
+            -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
+            --query "[?name=='APPLICATIONINSIGHTS_CONNECTION_STRING'].value | [0]" -o tsv 2>/dev/null || true)
+          if [ -n "${app_insights:-}" ] && [ "${app_insights}" != "None" ]; then
+            echo "::add-mask::${app_insights}"
+            export APP_INSIGHTS_CONNECTION_STRING="$app_insights"
+            echo "Application Insights connection string found; telemetry will be enabled."
+          else
+            export APP_INSIGHTS_CONNECTION_STRING=""
+            echo "No Application Insights connection string on the web app; telemetry stays disabled."
+          fi
+
+          settings_file="${{ runner.temp }}/appsettings.deploy.json"
+          python3 - "$settings_file" <<'PY'
+          import json
+          import os
+          import sys
+
+          def env(name: str) -> str:
+              return os.environ.get(name, "")
+
+          settings = {
+              # Production disables the Swagger UI, the OpenAPI document and the
+              # startup-migration branch in Program.cs.
+              "ASPNETCORE_ENVIRONMENT": "Production",
+              # The zip already contains a published app; App Service must not
+              # try to build it again.
+              "SCM_DO_BUILD_DURING_DEPLOYMENT": "false",
+              "Database__ApplyMigrationsAtStartup": "false",
+              "ConnectionStrings__Database": env("CONNECTION_STRING"),
+              "Authentication__Mode": env("AUTHENTICATION_MODE"),
+              "BlobStorage__ConnectionString": env("BLOB_STORAGE_CONNECTION_STRING"),
+              "BlobStorage__CaseDocumentsContainerName": env("BLOB_CASE_DOCUMENTS_CONTAINER"),
+              "BlobStorage__KnowledgeBaseContainerName": env("BLOB_KNOWLEDGE_BASE_CONTAINER"),
+              "BlobStorage__MaxFileSizeBytes": "52428800",
+              "DocumentIntelligence__Endpoint": env("DOCUMENT_INTELLIGENCE_ENDPOINT"),
+              "DocumentIntelligence__ApiKey": env("DOCUMENT_INTELLIGENCE_API_KEY"),
+              "LanguageModel__Endpoint": env("LANGUAGE_MODEL_ENDPOINT"),
+              "LanguageModel__ApiKey": env("LANGUAGE_MODEL_API_KEY"),
+              "LanguageModel__Deployment": env("LANGUAGE_MODEL_DEPLOYMENT"),
+              "Search__Endpoint": env("SEARCH_ENDPOINT"),
+              "Search__ApiKey": env("SEARCH_API_KEY"),
+              "Search__IndexName": env("SEARCH_INDEX_NAME"),
+              "Embeddings__Endpoint": env("EMBEDDINGS_ENDPOINT"),
+              "Embeddings__ApiKey": env("EMBEDDINGS_API_KEY"),
+              "Embeddings__Deployment": env("EMBEDDINGS_DEPLOYMENT"),
+          }
+
+          if env("APP_INSIGHTS_CONNECTION_STRING"):
+              settings["ApplicationInsights__ConnectionString"] = env("APP_INSIGHTS_CONNECTION_STRING")
+
+          if env("AUTHENTICATION_MODE") == "EntraId":
+              settings["Authentication__EntraId__Authority"] = env("ENTRA_AUTHORITY")
+              settings["Authentication__EntraId__Audience"] = env("ENTRA_AUDIENCE")
+          else:
+              # Only reached with the explicit insecure acknowledgement. The
+              # signing key comes from a secret, never from the public key in
+              # appsettings.Development.json, and the user list is the same two
+              # demo accounts the local environment uses.
+              settings.update({
+                  "Authentication__LocalDevelopment__Issuer": "HarrisCountyAI.Local",
+                  "Authentication__LocalDevelopment__Audience": "HarrisCountyAI.Api",
+                  "Authentication__LocalDevelopment__SigningKey": env("LOCAL_DEV_SIGNING_KEY"),
+                  "Authentication__LocalDevelopment__TokenLifetimeMinutes": "480",
+                  "Authentication__LocalDevelopment__Users__0__Username": "dev.reviewer",
+                  "Authentication__LocalDevelopment__Users__0__DisplayName": "Dev Reviewer",
+                  "Authentication__LocalDevelopment__Users__0__Roles__0": "Reviewer",
+                  "Authentication__LocalDevelopment__Users__1__Username": "dev.admin",
+                  "Authentication__LocalDevelopment__Users__1__DisplayName": "Dev Administrator",
+                  "Authentication__LocalDevelopment__Users__1__Roles__0": "Administrator",
+              })
+
+          payload = [
+              {"name": name, "value": value, "slotSetting": False}
+              for name, value in settings.items()
+          ]
+
+          with open(sys.argv[1], "w", encoding="utf-8") as handle:
+              json.dump(payload, handle)
+
+          print(f"Prepared {len(payload)} application settings (values not echoed).")
+          PY
+
+          az webapp config appsettings set \
+            -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
+            --settings "@${settings_file}" \
+            --output none
+
+          rm -f "$settings_file"
+          echo "Application settings applied."
+
+      # The API registers no CORS policy of its own, so the Static Web App
+      # origin is allowed at the App Service platform layer. Idempotent: the
+      # origin is added only when it is not already listed.
+      - name: Allow the frontend origin through App Service CORS
+        env:
+          FRONTEND_URL: ${{ steps.resolve.outputs.frontend_url }}
+        run: |
+          set -euo pipefail
+          existing=$(az webapp cors show -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
+            --query "allowedOrigins" -o tsv 2>/dev/null || true)
+          if printf '%s\n' "$existing" | grep -Fxq "$FRONTEND_URL"; then
+            echo "CORS already allows ${FRONTEND_URL}."
+          else
+            az webapp cors add -g "$AZURE_RESOURCE_GROUP" -n "$AZURE_WEBAPP_NAME" \
+              --allowed-origins "$FRONTEND_URL" --output none
+            echo "Added ${FRONTEND_URL} to the allowed CORS origins."
+          fi
+
+      # ------------------------------------------------------------------
+      # Deploy the API
+      # ------------------------------------------------------------------
+
+      - name: Deploy the API to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: ${{ runner.temp }}/api.zip
+
+      # ------------------------------------------------------------------
+      # Build and deploy the frontend
+      # ------------------------------------------------------------------
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # src/environments/environment.ts is the production environment file and
+      # its committed apiUrl points at localhost for local development. The
+      # deployed API URL is only known once the web app is resolved, so it is
+      # written in here — the deploy-time equivalent of the fileReplacements
+      # angular.json uses for the development configuration.
+      - name: Point the frontend at the deployed API
+        env:
+          BACKEND_URL: ${{ steps.resolve.outputs.backend_url }}
+        run: |
+          set -euo pipefail
+          cat > frontend/src/environments/environment.ts <<EOF
+          // Generated by .github/workflows/deploy-dev.yml at deploy time.
+          export const environment = {
+            apiUrl: '${BACKEND_URL}/api',
+          };
+          EOF
+          cat frontend/src/environments/environment.ts
+
+      - name: Build the frontend
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+
+      - name: Deploy the frontend to Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          # Already built above, so the action uploads the artifact as-is.
+          skip_app_build: true
+          skip_api_build: true
+          app_location: frontend/dist/frontend/browser
+          output_location: ''
+
+      # ------------------------------------------------------------------
+      # Smoke test — the deploy is not "done" until the environment answers
+      # ------------------------------------------------------------------
+
+      - name: Smoke test the deployment
+        env:
+          BACKEND_URL: ${{ steps.resolve.outputs.backend_url }}
+          FRONTEND_URL: ${{ steps.resolve.outputs.frontend_url }}
+          AUTHENTICATION_MODE: ${{ steps.auth_guard.outputs.mode }}
+        run: |
+          set -euo pipefail
+
+          # The F1 App Service plan has no Always On, so the first request after
+          # a deployment pays a cold start. Retry generously, then fail hard.
+          health_body=""
+          status=""
+          for attempt in $(seq 1 30); do
+            status=$(curl -sS -o "${{ runner.temp }}/health.txt" -w '%{http_code}' \
+              --max-time 30 "${BACKEND_URL}/health" || echo "000")
+            health_body=$(cat "${{ runner.temp }}/health.txt" 2>/dev/null || true)
+            if [ "$status" = "200" ]; then
+              echo "GET /health returned 200 on attempt ${attempt}: ${health_body}"
+              break
+            fi
+            echo "Attempt ${attempt}: GET /health returned ${status}; retrying in 10s."
+            sleep 10
+          done
+
+          if [ "$status" != "200" ]; then
+            echo "::error::Smoke test failed: ${BACKEND_URL}/health returned ${status} after 30 attempts. The API is deployed but not serving. Check the App Service log stream — a missing or invalid DocumentIntelligence, LanguageModel, Search, Embeddings or BlobStorage setting fails ValidateOnStart and crashes the host on boot."
+            exit 1
+          fi
+
+          if [ "$health_body" != "Healthy" ]; then
+            echo "::error::Smoke test failed: /health returned 200 but the body was '${health_body}' rather than 'Healthy'."
+            exit 1
+          fi
+
+          # In any mode other than LocalDevelopment the dev-token endpoint must
+          # not exist. Asserting it here means a misconfigured deployment that
+          # silently hands out Administrator tokens fails the pipeline.
+          if [ "$AUTHENTICATION_MODE" != "LocalDevelopment" ]; then
+            token_status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 \
+              -X POST -H 'Content-Type: application/json' \
+              -d '{"username":"dev.reviewer"}' \
+              "${BACKEND_URL}/api/auth/dev-token" || echo "000")
+            if [ "$token_status" != "404" ]; then
+              echo "::error::Security smoke test failed: POST /api/auth/dev-token returned ${token_status}, expected 404. The deployed API may be issuing development tokens."
+              exit 1
+            fi
+            echo "POST /api/auth/dev-token correctly returned 404."
+          fi
+
+          # A protected endpoint must reject an anonymous caller.
+          cases_status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 \
+            "${BACKEND_URL}/api/cases" || echo "000")
+          if [ "$cases_status" != "401" ]; then
+            echo "::error::Security smoke test failed: anonymous GET /api/cases returned ${cases_status}, expected 401."
+            exit 1
+          fi
+          echo "Anonymous GET /api/cases correctly returned 401."
+
+          frontend_status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 \
+            "${FRONTEND_URL}/" || echo "000")
+          if [ "$frontend_status" != "200" ]; then
+            echo "::error::Smoke test failed: ${FRONTEND_URL}/ returned ${frontend_status}, expected 200."
+            exit 1
+          fi
+          echo "Frontend root returned 200."
+
+      # ------------------------------------------------------------------
+      # Cleanup and reporting
+      # ------------------------------------------------------------------
+
+      - name: Remove the temporary SQL firewall rule
+        if: always() && steps.sql_firewall.outputs.rule_name != ''
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --server "$AZURE_SQL_SERVER_NAME" \
+            --name "${{ steps.sql_firewall.outputs.rule_name }}" \
+            --output none \
+            || echo "::warning::Could not remove firewall rule ${{ steps.sql_firewall.outputs.rule_name }}. Remove it manually."
+
+      - name: Summarise the deployment
+        if: always()
+        env:
+          BACKEND_URL: ${{ steps.resolve.outputs.backend_url }}
+          FRONTEND_URL: ${{ steps.resolve.outputs.frontend_url }}
+          AUTHENTICATION_MODE: ${{ steps.auth_guard.outputs.mode }}
+        run: |
+          {
+            echo "### Development deployment"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Result | ${{ job.status }} |"
+            echo "| Commit | \`${GITHUB_SHA}\` |"
+            echo "| Backend | ${BACKEND_URL:-not resolved} |"
+            echo "| Frontend | ${FRONTEND_URL:-not resolved} |"
+            echo "| Authentication mode | ${AUTHENTICATION_MODE:-not resolved} |"
+            if [ "${AUTHENTICATION_MODE:-}" = "LocalDevelopment" ]; then
+              echo ""
+              echo "> **This deployment is effectively unauthenticated.**"
+              echo "> \`Authentication:Mode=LocalDevelopment\` means anyone who can reach"
+              echo "> ${BACKEND_URL:-the API} can mint an Administrator token from"
+              echo "> \`POST /api/auth/dev-token\`. Do not place real Harris County data"
+              echo "> in this environment."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
