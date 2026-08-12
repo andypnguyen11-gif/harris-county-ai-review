@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../../environments/environment';
-import { CaseDocument } from '../models/document.model';
+import { CaseDocument, DocumentProcessingResult } from '../models/document.model';
 import { makeDocument, makePdfFile } from '../../testing/document-fixtures';
 import { DocumentService, DocumentUploadEvent } from './document.service';
 
@@ -95,6 +95,57 @@ describe('DocumentService', () => {
 
     expect(error).toBeInstanceOf(HttpErrorResponse);
     expect(error?.status).toBe(400);
+  });
+
+  it('processDocument POSTs to the document process endpoint', () => {
+    const document = makeDocument({ caseId, processingStatus: 'Normalized' });
+    let result: DocumentProcessingResult | undefined;
+
+    service.processDocument(caseId, document.id).subscribe((value) => (result = value));
+
+    const req = httpMock.expectOne(`${baseUrl}/${document.id}/process`);
+    expect(req.request.method).toBe('POST');
+    req.flush({ document, failureReason: null });
+
+    expect(result).toEqual({ document, failureReason: null });
+  });
+
+  it('processDocument surfaces a failed run as a normal response, not an error', () => {
+    const document = makeDocument({ caseId, processingStatus: 'Failed' });
+    let result: DocumentProcessingResult | undefined;
+    let errored = false;
+
+    service.processDocument(caseId, document.id).subscribe({
+      next: (value) => (result = value),
+      error: () => (errored = true),
+    });
+
+    httpMock
+      .expectOne(`${baseUrl}/${document.id}/process`)
+      .flush({ document, failureReason: 'The file could not be analyzed.' });
+
+    // A failed run is a handled request; only a transport or server fault errors.
+    expect(errored).toBe(false);
+    expect(result?.document.processingStatus).toBe('Failed');
+    expect(result?.failureReason).toBe('The file could not be analyzed.');
+  });
+
+  it('processDocument propagates HTTP errors to the subscriber', () => {
+    const document = makeDocument({ caseId });
+    let error: HttpErrorResponse | undefined;
+
+    service.processDocument(caseId, document.id).subscribe({
+      next: () => {
+        throw new Error('expected an error, not a value');
+      },
+      error: (err: HttpErrorResponse) => (error = err),
+    });
+
+    httpMock
+      .expectOne(`${baseUrl}/${document.id}/process`)
+      .flush({ title: 'The document was not found.' }, { status: 404, statusText: 'Not Found' });
+
+    expect(error?.status).toBe(404);
   });
 
   it('getDocuments issues GET /cases/{caseId}/documents and returns the list', () => {

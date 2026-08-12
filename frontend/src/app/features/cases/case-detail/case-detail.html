@@ -89,7 +89,11 @@
 
     <div class="detail-section__upload">
       <h3>Upload documents</h3>
-      <app-document-upload [caseId]="c.id" (uploaded)="onDocumentUploaded($event)" />
+      <app-document-upload
+        [caseId]="c.id"
+        (uploaded)="onDocumentUploaded($event)"
+        (processed)="onDocumentProcessed($event)"
+      />
     </div>
   </section>
 

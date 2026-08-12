@@ -27,7 +27,10 @@ describe('CaseDetail', () => {
       providers: [
         provideRouter([]),
         { provide: CaseService, useValue: { getCase } },
-        { provide: DocumentService, useValue: { getDocuments, uploadDocument: vi.fn() } },
+        {
+          provide: DocumentService,
+          useValue: { getDocuments, uploadDocument: vi.fn(), processDocument: vi.fn() },
+        },
         {
           provide: ValidationService,
           useValue: { getLatestReport, runValidation: vi.fn() },
@@ -198,5 +201,60 @@ describe('CaseDetail', () => {
     const rows = el.querySelectorAll('.document-table tbody tr');
     expect(rows).toHaveLength(1);
     expect(rows[0].textContent).toContain('fresh-upload.pdf');
+  });
+
+  it('replaces a document row with the outcome of its processing run', async () => {
+    const caseItem = makeCase();
+    const document = makeDocument({
+      caseId: caseItem.id,
+      fileName: 'site-plan.pdf',
+      processingStatus: 'Uploaded',
+    });
+    getCase = vi.fn(() => of(caseItem));
+    getDocuments = vi.fn(() => of([document]));
+    setup(caseItem.id);
+    const fixture = await render();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.document-table tbody tr')!.textContent).toContain('Uploaded');
+
+    const upload = fixture.debugElement.query(
+      (node) => node.componentInstance instanceof DocumentUpload,
+    );
+    (upload!.componentInstance as DocumentUpload).processed.emit({
+      ...document,
+      processingStatus: 'Normalized',
+    });
+    await fixture.whenStable();
+
+    const rows = el.querySelectorAll('.document-table tbody tr');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain('Normalized');
+    expect(rows[0].textContent).not.toContain('Uploaded');
+  });
+
+  it('shows a failed processing run on the document row rather than leaving it Uploaded', async () => {
+    const caseItem = makeCase();
+    const document = makeDocument({
+      caseId: caseItem.id,
+      fileName: 'corrupt.pdf',
+      processingStatus: 'Uploaded',
+    });
+    getCase = vi.fn(() => of(caseItem));
+    getDocuments = vi.fn(() => of([document]));
+    setup(caseItem.id);
+    const fixture = await render();
+
+    const upload = fixture.debugElement.query(
+      (node) => node.componentInstance instanceof DocumentUpload,
+    );
+    (upload!.componentInstance as DocumentUpload).processed.emit({
+      ...document,
+      processingStatus: 'Failed',
+    });
+    await fixture.whenStable();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.document-table tbody tr')!.textContent).toContain('Failed');
   });
 });

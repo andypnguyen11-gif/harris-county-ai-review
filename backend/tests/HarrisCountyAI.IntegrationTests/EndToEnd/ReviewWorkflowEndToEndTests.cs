@@ -168,10 +168,10 @@ public class ReviewWorkflowEndToEndTests : EndToEndTestBase, IClassFixture<SqlSe
         var corruptId = await UploadAsync(caseId, "site-plan.pdf", "SitePlan");
         Extraction.ExtractException = new InvalidOperationException(
             "The file could not be analyzed: unexpected end of stream.");
-        var failure = await ProcessExpectingFailureAsync(corruptId);
+        var failure = await ProcessExpectingFailureAsync(caseId, corruptId);
         Extraction.ExtractException = null;
 
-        Assert.Contains("could not be analyzed", failure.Message);
+        Assert.Contains("could not be analyzed", failure);
 
         // The document records the failure and is not indexed as evidence.
         var document = await GetDocumentAsync(caseId, corruptId);
@@ -201,7 +201,7 @@ public class ReviewWorkflowEndToEndTests : EndToEndTestBase, IClassFixture<SqlSe
 
         // The applicant returns a signed copy; the same document is reprocessed.
         Extraction.Script(applicationId, id => FloodplainSubmission.PermitApplication(id));
-        await ProcessAsync(applicationId);
+        await ProcessAsync(caseId, applicationId);
 
         var afterReport = await RunValidationAsync(caseId);
         Assert.Equal("Complete", StatusOf(afterReport, "Applicant signature"));

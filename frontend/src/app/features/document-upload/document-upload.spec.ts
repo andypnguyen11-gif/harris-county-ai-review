@@ -1,7 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 
-import { CaseDocument } from '../../core/models/document.model';
+import {
+  CaseDocument,
+  DocumentProcessingResult,
+} from '../../core/models/document.model';
 import { DocumentService, DocumentUploadEvent } from '../../core/services/document.service';
 import { makeDocument, makePdfFile } from '../../testing/document-fixtures';
 import { DocumentUpload } from './document-upload';
@@ -9,17 +12,31 @@ import { DocumentUpload } from './document-upload';
 describe('DocumentUpload', () => {
   const caseId = '00000000-0000-0000-0000-000000000123';
   let uploadDocument: ReturnType<typeof vi.fn>;
+  let processDocument: ReturnType<typeof vi.fn>;
   let fixture: ComponentFixture<DocumentUpload>;
 
   async function setup(): Promise<void> {
     uploadDocument = vi.fn();
+    // The happy path by default: uploaded documents come back processed.
+    processDocument = vi.fn(
+      (_caseId: string, documentId: string) =>
+        of({
+          document: makeDocument({ id: documentId, processingStatus: 'Normalized' }),
+          failureReason: null,
+        }),
+    );
     TestBed.configureTestingModule({
       imports: [DocumentUpload],
-      providers: [{ provide: DocumentService, useValue: { uploadDocument } }],
+      providers: [{ provide: DocumentService, useValue: { uploadDocument, processDocument } }],
     });
     fixture = TestBed.createComponent(DocumentUpload);
     fixture.componentRef.setInput('caseId', caseId);
     await fixture.whenStable();
+  }
+
+  /** Makes the upload succeed, returning the document the API stored. */
+  function uploadSucceedsWith(document: CaseDocument): void {
+    uploadDocument.mockReturnValue(of({ kind: 'complete', document }));
   }
 
   function el(): HTMLElement {
@@ -37,6 +54,15 @@ describe('DocumentUpload', () => {
   async function clickUpload(): Promise<void> {
     const button = [...el().querySelectorAll('button')].find(
       (candidate) => candidate.textContent?.trim() === 'Upload',
+    );
+    expect(button).toBeDefined();
+    button!.click();
+    await fixture.whenStable();
+  }
+
+  async function clickRetry(): Promise<void> {
+    const button = [...el().querySelectorAll('button')].find(
+      (candidate) => candidate.textContent?.trim() === 'Retry',
     );
     expect(button).toBeDefined();
     button!.click();
@@ -102,13 +128,13 @@ describe('DocumentUpload', () => {
     expect(uploadDocument).toHaveBeenCalledTimes(2);
     expect(uploadDocument).toHaveBeenCalledWith(caseId, first, 'SitePlan');
     expect(uploadDocument).toHaveBeenCalledWith(caseId, second, 'SupportingDocument');
-    expect(el().textContent).toContain('Uploaded');
+    expect(el().textContent).toContain('Processed');
   });
 
   it('emits uploaded for each stored document', async () => {
     await setup();
     const stored = makeDocument({ fileName: 'site-plan.pdf' });
-    uploadDocument.mockReturnValue(of({ kind: 'complete', document: stored }));
+    uploadSucceedsWith(stored);
 
     const emitted: CaseDocument[] = [];
     fixture.componentInstance.uploaded.subscribe((document) => emitted.push(document));
@@ -117,6 +143,131 @@ describe('DocumentUpload', () => {
     await clickUpload();
 
     expect(emitted).toEqual([stored]);
+  });
+
+  it('processes each stored document so it does not sit at Uploaded', async () => {
+    await setup();
+    const stored = makeDocument({ fileName: 'site-plan.pdf' });
+    uploadSucceedsWith(stored);
+
+    await selectFiles(makePdfFile('site-plan.pdf'));
+    await clickUpload();
+
+    expect(processDocument).toHaveBeenCalledTimes(1);
+    expect(processDocument).toHaveBeenCalledWith(caseId, stored.id);
+  });
+
+  it('emits processed with the document its run produced', async () => {
+    await setup();
+    const stored = makeDocument({ fileName: 'site-plan.pdf' });
+    const normalized = { ...stored, processingStatus: 'Normalized' as const };
+    uploadSucceedsWith(stored);
+    processDocument.mockReturnValue(of({ document: normalized, failureReason: null }));
+
+    const emitted: CaseDocument[] = [];
+    fixture.componentInstance.processed.subscribe((document) => emitted.push(document));
+
+    await selectFiles(makePdfFile('site-plan.pdf'));
+    await clickUpload();
+
+    expect(emitted).toEqual([normalized]);
+  });
+
+  it('shows a processing state while the pipeline runs', async () => {
+    await setup();
+    const stored = makeDocument({ fileName: 'site-plan.pdf' });
+    uploadSucceedsWith(stored);
+    const runs = new Subject<DocumentProcessingResult>();
+    processDocument.mockReturnValue(runs);
+
+    await selectFiles(makePdfFile('site-plan.pdf'));
+    await clickUpload();
+
+    expect(el().textContent).toContain('Processing');
+    expect(el().textContent).not.toContain('Processed');
+
+    runs.next({
+      document: { ...stored, processingStatus: 'Normalized' },
+      failureReason: null,
+    });
+    await fixture.whenStable();
+
+    expect(el().textContent).toContain('Processed');
+  });
+
+  it('reports a failed run with its reason instead of claiming success', async () => {
+    await setup();
+    const stored = makeDocument({ fileName: 'site-plan.pdf' });
+    uploadSucceedsWith(stored);
+    processDocument.mockReturnValue(
+      of({
+        document: { ...stored, processingStatus: 'Failed' as const },
+        failureReason: 'The file could not be analyzed: unexpected end of stream.',
+      }),
+    );
+
+    await selectFiles(makePdfFile('site-plan.pdf'));
+    await clickUpload();
+
+    expect(el().textContent).toContain('Failed');
+    expect(el().textContent).toContain('could not be analyzed');
+    expect(el().textContent).not.toContain('Processed');
+  });
+
+  it('emits processed even when the run failed, so the case shows the failure', async () => {
+    await setup();
+    const stored = makeDocument({ fileName: 'site-plan.pdf' });
+    const failed = { ...stored, processingStatus: 'Failed' as const };
+    uploadSucceedsWith(stored);
+    processDocument.mockReturnValue(of({ document: failed, failureReason: 'Extraction outage.' }));
+
+    const emitted: CaseDocument[] = [];
+    fixture.componentInstance.processed.subscribe((document) => emitted.push(document));
+
+    await selectFiles(makePdfFile('site-plan.pdf'));
+    await clickUpload();
+
+    expect(emitted).toEqual([failed]);
+  });
+
+  it('retries only processing for a document that is already stored', async () => {
+    await setup();
+    const stored = makeDocument({ fileName: 'site-plan.pdf' });
+    uploadSucceedsWith(stored);
+    processDocument.mockReturnValue(
+      of({
+        document: { ...stored, processingStatus: 'Failed' as const },
+        failureReason: 'Extraction outage.',
+      }),
+    );
+
+    await selectFiles(makePdfFile('site-plan.pdf'));
+    await clickUpload();
+    expect(el().textContent).toContain('Extraction outage.');
+
+    processDocument.mockReturnValue(
+      of({ document: { ...stored, processingStatus: 'Normalized' as const }, failureReason: null }),
+    );
+    await clickRetry();
+
+    // Re-uploading would duplicate a file the API already stored.
+    expect(uploadDocument).toHaveBeenCalledTimes(1);
+    expect(processDocument).toHaveBeenCalledTimes(2);
+    expect(el().textContent).toContain('Processed');
+    expect(el().textContent).not.toContain('Retry');
+  });
+
+  it('keeps the upload and explains when the processing request itself fails', async () => {
+    await setup();
+    const stored = makeDocument({ fileName: 'site-plan.pdf' });
+    uploadSucceedsWith(stored);
+    processDocument.mockReturnValue(throwError(() => new Error('offline')));
+
+    await selectFiles(makePdfFile('site-plan.pdf'));
+    await clickUpload();
+
+    expect(el().textContent).toContain('The file was uploaded, but processing could not be started.');
+    expect(el().textContent).not.toContain('Upload failed.');
   });
 
   it('shows upload progress while the request is in flight', async () => {
@@ -144,19 +295,14 @@ describe('DocumentUpload', () => {
 
     expect(el().textContent).toContain('Failed');
     expect(el().textContent).toContain('Upload failed. Check the file and try again.');
+    expect(processDocument).not.toHaveBeenCalled();
 
-    const stored = makeDocument({ fileName: 'site-plan.pdf' });
-    uploadDocument.mockReturnValue(of({ kind: 'complete', document: stored }));
+    uploadSucceedsWith(makeDocument({ fileName: 'site-plan.pdf' }));
+    await clickRetry();
 
-    const retry = [...el().querySelectorAll('button')].find(
-      (candidate) => candidate.textContent?.trim() === 'Retry',
-    );
-    expect(retry).toBeDefined();
-    retry!.click();
-    await fixture.whenStable();
-
+    // Nothing was stored, so the retry repeats the upload itself.
     expect(uploadDocument).toHaveBeenCalledTimes(2);
-    expect(el().textContent).toContain('Uploaded');
+    expect(el().textContent).toContain('Processed');
     expect(el().textContent).not.toContain('Retry');
   });
 
