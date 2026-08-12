@@ -1,6 +1,7 @@
 using HarrisCountyAI.Domain.Entities;
 using HarrisCountyAI.Domain.Enums;
 using HarrisCountyAI.Domain.Validation;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.UnitTests.Validation;
 
@@ -22,33 +23,58 @@ public sealed class NormalizedDocumentBuilder
         };
     }
 
-    public NormalizedDocumentBuilder WithTextField(string name, string? value, int? page = 1)
+    public NormalizedDocumentBuilder WithTextField(
+        string name,
+        string? value,
+        int? page = 1,
+        BoundingBox? keyBox = null,
+        BoundingBox? valueBox = null)
     {
-        AddField(name, FieldKind.Text, value: value, page: page);
+        AddField(name, FieldKind.Text, value: value, page: page, keyBox: keyBox, valueBox: valueBox);
         return this;
     }
 
-    public NormalizedDocumentBuilder WithDateField(string name, string? value, int? page = 1)
+    public NormalizedDocumentBuilder WithDateField(
+        string name,
+        string? value,
+        int? page = 1,
+        BoundingBox? keyBox = null,
+        BoundingBox? valueBox = null)
     {
-        AddField(name, FieldKind.Date, value: value, page: page);
+        AddField(name, FieldKind.Date, value: value, page: page, keyBox: keyBox, valueBox: valueBox);
         return this;
     }
 
-    public NormalizedDocumentBuilder WithNumberField(string name, string? value, int? page = 1)
+    public NormalizedDocumentBuilder WithNumberField(
+        string name,
+        string? value,
+        int? page = 1,
+        BoundingBox? keyBox = null,
+        BoundingBox? valueBox = null)
     {
-        AddField(name, FieldKind.Number, value: value, page: page);
+        AddField(name, FieldKind.Number, value: value, page: page, keyBox: keyBox, valueBox: valueBox);
         return this;
     }
 
-    public NormalizedDocumentBuilder WithCheckbox(string name, bool isChecked, int? page = 1)
+    public NormalizedDocumentBuilder WithCheckbox(
+        string name,
+        bool isChecked,
+        int? page = 1,
+        BoundingBox? keyBox = null,
+        BoundingBox? valueBox = null)
     {
-        AddField(name, FieldKind.Checkbox, isChecked: isChecked, page: page);
+        AddField(name, FieldKind.Checkbox, isChecked: isChecked, page: page, keyBox: keyBox, valueBox: valueBox);
         return this;
     }
 
-    public NormalizedDocumentBuilder WithSignature(string name, bool? isSigned, int? page = 1)
+    public NormalizedDocumentBuilder WithSignature(
+        string name,
+        bool? isSigned,
+        int? page = 1,
+        BoundingBox? keyBox = null,
+        BoundingBox? valueBox = null)
     {
-        AddField(name, FieldKind.Signature, isSigned: isSigned, page: page);
+        AddField(name, FieldKind.Signature, isSigned: isSigned, page: page, keyBox: keyBox, valueBox: valueBox);
         return this;
     }
 
@@ -57,7 +83,15 @@ public sealed class NormalizedDocumentBuilder
     public static ValidationContext ContextFor(params NormalizedDocument[] documents) =>
         new(Guid.NewGuid(), WorkflowType.FloodplainDevelopmentPermit, documents);
 
-    private void AddField(string name, FieldKind kind, string? value = null, bool? isChecked = null, bool? isSigned = null, int? page = 1)
+    private void AddField(
+        string name,
+        FieldKind kind,
+        string? value = null,
+        bool? isChecked = null,
+        bool? isSigned = null,
+        int? page = 1,
+        BoundingBox? keyBox = null,
+        BoundingBox? valueBox = null)
     {
         _document.Fields.Add(new DocumentField
         {
@@ -69,6 +103,8 @@ public sealed class NormalizedDocumentBuilder
             IsSigned = isSigned,
             Confidence = 0.95,
             PageNumber = page,
+            KeyBoundingBox = keyBox,
+            ValueBoundingBox = valueBox,
         });
     }
 }

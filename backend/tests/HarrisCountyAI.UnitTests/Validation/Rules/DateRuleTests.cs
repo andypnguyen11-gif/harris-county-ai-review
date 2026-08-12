@@ -1,5 +1,6 @@
 using HarrisCountyAI.Application.Validation.Rules;
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.UnitTests.Validation.Rules;
 
@@ -144,5 +145,72 @@ public class DateRuleTests
         var result = await Rule().ValidateAsync(context, CancellationToken.None);
 
         Assert.Equal(ValidationStatus.UnableToDetermine, result.Status);
+    }
+
+    private static BoundingBox RegionOn(int pageNumber, double x) => new()
+    {
+        PageNumber = pageNumber,
+        X = x,
+        Y = 0.3,
+        Width = 0.2,
+        Height = 0.03,
+    };
+
+    [Fact]
+    public async Task Reports_The_Value_Region_For_A_Valid_Date()
+    {
+        var valueBox = RegionOn(2, 0.5);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithDateField("application date", "1/15/2026", page: 2, keyBox: RegionOn(2, 0.1), valueBox: valueBox)
+            .Build();
+        var rule = new DateRule("Application date", "application date");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Complete, result.Status);
+        Assert.Equal(valueBox, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_The_Value_Region_For_An_Unparseable_Date()
+    {
+        var valueBox = RegionOn(2, 0.5);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithDateField("application date", "not a date", page: 2, keyBox: RegionOn(2, 0.1), valueBox: valueBox)
+            .Build();
+        var rule = new DateRule("Application date", "application date");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Invalid, result.Status);
+        Assert.Equal(valueBox, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_The_Key_Region_For_An_Empty_Date()
+    {
+        var keyBox = RegionOn(2, 0.1);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithDateField("application date", null, page: 2, keyBox: keyBox)
+            .Build();
+        var rule = new DateRule("Application date", "application date");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Missing, result.Status);
+        Assert.Equal(keyBox, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_No_Region_When_The_Date_Field_Was_Never_Found()
+    {
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithTextField("owner name", "Trenton Okafor")
+            .Build();
+        var rule = new DateRule("Application date", "application date");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Null(result.BoundingBox);
     }
 }

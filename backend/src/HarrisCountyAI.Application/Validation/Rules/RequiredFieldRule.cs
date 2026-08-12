@@ -1,5 +1,6 @@
 using HarrisCountyAI.Domain.Enums;
 using HarrisCountyAI.Domain.Validation;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.Application.Validation.Rules;
 
@@ -45,18 +46,24 @@ public sealed class RequiredFieldRule : ValidationRuleBase
 
         if (string.IsNullOrWhiteSpace(match.Field.Value))
         {
+            // The printed label is what a reviewer scans for; a blank field's
+            // value region is absent or too small to see.
+            var labelBox = match.Field.KeyBoundingBox ?? match.Field.ValueBoundingBox;
             return Task.FromResult(Result(
                 ValidationStatus.Missing,
                 $"Field '{match.Field.Name}' is present but has no value.",
                 sourceDocumentId: match.Document.Id,
-                page: match.Field.PageNumber));
+                page: labelBox?.PageNumber ?? match.Field.PageNumber,
+                boundingBox: labelBox));
         }
 
+        var valueBox = match.Field.ValueBoundingBox ?? match.Field.KeyBoundingBox;
         return Task.FromResult(Result(
             ValidationStatus.Complete,
             $"Field '{match.Field.Name}' is present.",
             extractedValue: match.Field.Value,
             sourceDocumentId: match.Document.Id,
-            page: match.Field.PageNumber));
+            page: valueBox?.PageNumber ?? match.Field.PageNumber,
+            boundingBox: valueBox));
     }
 }
