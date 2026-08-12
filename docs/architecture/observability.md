@@ -1,7 +1,7 @@
 # Observability
 
-How the backend is instrumented so that any request — and eventually any AI response — can be
-traced from the HTTP call down to the evidence that produced it.
+How the backend is instrumented so that any request — and any AI response — can be traced from the
+HTTP call down to the evidence that produced it.
 
 ## Logging configuration
 
@@ -107,7 +107,7 @@ Two deliberate behaviours:
   retrieved chunk carries a reranker score. A partial set reports an empty list rather than padding
   with a fabricated `0.0`, which would read as "ranked last".
 
-## What is never logged
+## What is never logged at `Information` and above
 
 - Raw document content — neither uploaded case documents nor extracted text/normalized fields.
 - Retrieved chunk **text** — telemetry carries chunk ids and scores only.
@@ -115,6 +115,20 @@ Two deliberate behaviours:
 
 Identifiers (case ids, document ids, file names) and the user's question are acceptable log
 content; document bodies are not.
+
+### The `Debug` exception
+
+`AzureLanguageModelService` logs the full system and user prompts when `Debug` logging is enabled
+(`backend/src/HarrisCountyAI.Infrastructure/Azure/LanguageModels/AzureLanguageModelService.cs`). The
+user prompt is the assembled evidence block, so at `Debug` level raw document and chunk text does
+reach the logs. It is guarded by an `IsEnabled(LogLevel.Debug)` check and never appears at
+`Information`.
+
+**There is no redaction filter.** Nothing scrubs a log record before it is written — not for
+document content, not for personal data on a permit application. Enabling `Debug` in an environment
+holding real applicant documents would expose their contents, so the level is the only control, and
+it is a blunt one. Adding redaction is genuine outstanding work, recorded here and in
+[`security.md`](security.md) rather than left implicit.
 
 ## Application Insights
 
@@ -128,5 +142,7 @@ environment configuration in Azure (App Service settings / Key Vault), never com
 ```bash
 cd backend
 dotnet test --filter "FullyQualifiedName~CorrelationId"
-curl -i http://localhost:5000/health -H "X-Correlation-Id: my-trace-1"   # echoes the header back
+curl -i http://localhost:5096/health -H "X-Correlation-Id: my-trace-1"   # echoes the header back
 ```
+
+(`http://localhost:5096` is the `http` launch profile; `https://localhost:7074` is the `https` one.)

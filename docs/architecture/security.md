@@ -1,6 +1,12 @@
-# Security: Prompt Injection and Untrusted Evidence
+# Security
 
-This document describes how the system treats text it did not author. See [`system-overview.md`](system-overview.md) for the wider architecture and [`rag-architecture.md`](rag-architecture.md) for how evidence is retrieved before it reaches a prompt.
+This document is mostly about one thing — how the system treats text it did not author — because
+that is the security problem this product actually has. Authentication, authorization, and upload
+handling are summarized at the end. See [`system-overview.md`](system-overview.md) for the wider
+architecture and [`rag-architecture.md`](rag-architecture.md) for how evidence is retrieved before it
+reaches a prompt.
+
+# Prompt injection and untrusted evidence
 
 ## The Threat
 
@@ -98,5 +104,76 @@ Stated plainly, because a security document that only lists strengths is not use
 - **No output-side filtering.** Responses are parsed defensively (malformed JSON and unknown verdicts fail closed to `insufficient_evidence` / `UnableToDetermine`) and citations are resolved to real chunks in code, but the answer text itself is not screened for leaked instructions or for content that contradicts the case record.
 - **No input screening.** Documents are not scanned for injection patterns at ingestion, and nothing flags to a reviewer that a document contained a neutralized delimiter or hidden characters. The sanitizer discards that signal silently; surfacing it would be a genuine improvement.
 - **Sanitization is lossy.** Text with three or more consecutive angle brackets, and all zero-width characters, are rewritten or removed. Zero-width joiners are stripped, which would degrade scripts and emoji sequences that depend on them.
-- **Prompt text is logged.** `AzureLanguageModelService` logs the full system and user prompts at debug level, which puts raw document content in logs. Log redaction is PR-36's scope.
-- **The boundary covers the model-facing path only.** This document is about prompt injection. Authentication, authorization, upload validation, and storage isolation are covered by their own PRs and are not restated here.
+- **Prompt text is logged at `Debug` level.** `AzureLanguageModelService` logs the full system and user prompts when debug logging is enabled, which puts raw document content in logs. It never appears at `Information`. **No log redaction exists** — the observability work added correlation ids, structured logging, and AI request telemetry, but not a redaction filter, so raising the log level in an environment holding real applicant documents would expose their contents. This qualifies the "raw document content is never logged" statement in [`observability.md`](observability.md), which is true at `Information` and above and not true at `Debug`.
+
+# Authentication, authorization, and uploads
+
+The rest of the security surface, summarized so this document is not misleading by omission.
+
+## Authentication
+
+Two modes, selected by `Authentication:Mode`.
+
+- **`LocalDevelopment`** issues signed JWTs to anonymous callers from a fixed allow list of usernames
+  (`dev.reviewer`, `dev.admin`) using a symmetric key in `appsettings.Development.json`. It is
+  development-only in the strongest sense: `POST /api/auth/dev-token` returns `404` in every other
+  mode, and the deployment workflow refuses to deploy in this mode unless the run explicitly
+  acknowledges the risk and the signing key is at least 32 characters.
+- **`EntraId`** validates bearer tokens against a configured authority and audience. It is
+  config-validated (authority must be an absolute `https` URI, audience non-empty), and the API boots
+  in it — but **no test presents an Entra-issued token, and it has never been pointed at a real
+  tenant**. The Angular app's only sign-in path is the dev-token endpoint, so an Entra-mode
+  deployment currently has no usable UI.
+
+Tokens with a wrong signature, wrong issuer, wrong audience, or an expired lifetime are rejected, and
+each case is covered by a test.
+
+## Authorization
+
+Two role policies (`Reviewer`, `Administrator`) plus a fallback requiring an authenticated user, so
+an endpoint that forgets to declare a policy is still not anonymous.
+
+| Surface | Policy |
+|---|---|
+| Cases, documents, validation, questions | `RequireReviewer` |
+| Knowledge base (upload, list, ingest, deactivate) | `RequireAdministrator` |
+| `POST /api/debug/retrieval` | `RequireAdministrator` |
+| `POST /api/auth/dev-token`, `GET /health` | anonymous |
+
+**There is no per-case authorization.** Cases have no owner field and the repositories take no user
+argument, so any authenticated Reviewer can read any case, its documents, and its reports. This is
+not an oversight that testing missed — it is asserted by a test named after the gap,
+`Any_Reviewer_Can_Open_Any_Case_Today_Because_Cases_Have_No_Owner`, so that closing it will require
+deliberately rewriting that test rather than quietly discovering the behavior in production.
+
+## Uploads
+
+`DocumentFileValidator` runs on both upload paths and evaluates every rule so a caller gets all
+failures at once:
+
+- **Extension** must be one of `.pdf .png .jpg .jpeg .tif .tiff`.
+- **Content type** must be one of `application/pdf image/png image/jpeg image/tiff`.
+- **Size** must be greater than zero and at most `BlobStorage:MaxFileSizeBytes` (50 MB). The
+  case-document endpoint additionally caps the request body and multipart length.
+
+Two honest gaps: the content type checked is the one the *client declared*, and no magic-byte
+sniffing is performed — a renamed file with a spoofed `application/pdf` header passes. And there is
+**no malware scanning**; uploaded bytes go to blob storage and then to Document Intelligence.
+
+Files are stored under separate containers (`case-documents`, `knowledge-base`) with public blob
+access disabled, and are served back only through an authorized API endpoint, never by direct URL.
+
+## Other controls, and what is missing
+
+- Errors are returned as RFC 7807 problem documents. Azure exceptions are translated inside
+  Infrastructure so endpoints and request URIs never reach a client.
+- Every response carries an `X-Correlation-Id`, which is also stamped on the AI telemetry record, so
+  a reviewer reporting a bad answer can be traced to the exact model, prompt version, and evidence.
+- **No rate limiting** exists anywhere, including on the endpoints that call a model.
+- **No CORS policy** is registered by the API. In a deployed environment CORS is configured on App
+  Service by the deployment workflow; there is no local equivalent.
+- Secrets are never committed. Real credentials live in `~/.harriscountyai/azure.env` outside the
+  repository, deployed configuration comes from GitHub environment secrets written to App Service
+  settings, and the deployment workflow authenticates with OIDC federated credentials rather than a
+  stored Azure secret. The infrastructure uses account keys rather than managed identity, which is a
+  known gap recorded in [`../deployment/dev-environment.md`](../deployment/dev-environment.md).
