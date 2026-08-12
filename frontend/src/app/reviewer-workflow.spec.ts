@@ -7,7 +7,7 @@ import { environment } from '../environments/environment';
 import { AuthService } from './core/auth/auth.service';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { toCitationTarget } from './core/models/citation-target.model';
-import { CaseDocument } from './core/models/document.model';
+import { CaseDocument, DocumentProcessingResult } from './core/models/document.model';
 import { QuestionResponse } from './core/models/question-answer.model';
 import { ValidationReport } from './core/models/validation.model';
 import { Case } from './core/models/case.model';
@@ -111,7 +111,26 @@ describe('reviewer workflow', () => {
     uploadRequest.flush(stored);
     expect(uploaded).toEqual(stored);
 
-    // 3. Run validation and read the report.
+    // 3. Process the stored document, so its content reaches validation.
+    // A separate request from the upload: it is slow and fails on its own,
+    // and the file must survive an extraction outage.
+    const normalized: CaseDocument = { ...stored, processingStatus: 'Normalized' };
+    let processed: DocumentProcessingResult | undefined;
+    TestBed.inject(DocumentService)
+      .processDocument(created.id, stored.id)
+      .subscribe((value) => (processed = value));
+
+    const processRequest = httpMock.expectOne(
+      `${api}/cases/${created.id}/documents/${stored.id}/process`,
+    );
+    expect(processRequest.request.method).toBe('POST');
+    expect(processRequest.request.headers.get('Authorization')).toBe(`Bearer ${token}`);
+    processRequest.flush({ document: normalized, failureReason: null });
+
+    expect(processed?.failureReason).toBeNull();
+    expect(processed?.document.processingStatus).toBe('Normalized');
+
+    // 4. Run validation and read the report.
     const report = makeValidationReport({
       caseId: created.id,
       items: [
@@ -136,7 +155,7 @@ describe('reviewer workflow', () => {
     validationRequest.flush(report);
     expect(reportResult?.items.map((item) => item.status)).toEqual(['Complete', 'Missing']);
 
-    // 4. Open the document a report item points at, at the page it names.
+    // 5. Open the document a report item points at, at the page it names.
     const cited = reportResult!.items[0];
     expect(cited.documentId).toBe(stored.id);
     expect(cited.pageNumber).toBe(1);

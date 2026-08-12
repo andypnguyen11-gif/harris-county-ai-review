@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, filter, map } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { CaseDocument, DocumentType } from '../models/document.model';
+import { CaseDocument, DocumentProcessingResult, DocumentType } from '../models/document.model';
 
 /** Progress of an in-flight upload, ending with the stored document. */
 export type DocumentUploadEvent =
@@ -37,6 +37,20 @@ export class DocumentService {
         map((event) => this.toUploadEvent(event)),
         filter((event): event is DocumentUploadEvent => event !== null),
       );
+  }
+
+  /**
+   * Runs the extraction pipeline over an uploaded document, so its content
+   * reaches validation and case-scoped retrieval. Separate from the upload
+   * request because it is slow and fails independently — a failure here must
+   * never cost the reviewer the stored file, and retrying repeats only this
+   * half. Also used to reprocess a document that failed.
+   */
+  processDocument(caseId: string, documentId: string): Observable<DocumentProcessingResult> {
+    return this.http.post<DocumentProcessingResult>(
+      `${this.baseUrl}/${caseId}/documents/${documentId}/process`,
+      null,
+    );
   }
 
   getDocuments(caseId: string): Observable<CaseDocument[]> {

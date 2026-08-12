@@ -82,4 +82,15 @@ export class CaseDetail implements OnInit {
   protected onDocumentUploaded(document: CaseDocument): void {
     this.documents.update((documents) => [...documents, document]);
   }
+
+  /**
+   * Replaces the row a processing run just finished, so the list shows the
+   * document's real status — Normalized or Failed — instead of the Uploaded
+   * status it was added with.
+   */
+  protected onDocumentProcessed(document: CaseDocument): void {
+    this.documents.update((documents) =>
+      documents.map((candidate) => (candidate.id === document.id ? document : candidate)),
+    );
+  }
 }

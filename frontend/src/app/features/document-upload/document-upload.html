@@ -40,7 +40,7 @@
             <span class="visually-hidden">Document type for {{ item.file.name }}</span>
             <select
               [value]="item.documentType"
-              [disabled]="item.status === 'uploading' || item.status === 'success'"
+              [disabled]="item.status !== 'ready'"
               (change)="setDocumentType(item, $event)"
             >
               @for (type of documentTypes; track type) {
@@ -62,8 +62,11 @@
               @case ('uploading') {
                 <span class="upload-item__state">{{ item.progress }}%</span>
               }
+              @case ('processing') {
+                <span class="upload-item__state" role="status">Processing</span>
+              }
               @case ('success') {
-                <span class="upload-item__state upload-item__state--success">Uploaded</span>
+                <span class="upload-item__state upload-item__state--success">Processed</span>
               }
               @case ('error') {
                 <span class="upload-item__state upload-item__state--error">Failed</span>
