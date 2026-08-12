@@ -1,5 +1,6 @@
 using HarrisCountyAI.Domain.Entities;
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 
 namespace HarrisCountyAI.IntegrationTests.Persistence;
@@ -139,6 +140,31 @@ public class ValidationReportPersistenceTests : IClassFixture<SqlServerTestDatab
                 .SqlQuery<int>($"SELECT COUNT(*) AS [Value] FROM ValidationReportItems WHERE ValidationReportId = {report.Id}")
                 .SingleAsync();
             Assert.Equal(0, itemCount);
+        }
+    }
+
+    [Fact]
+    public async Task Report_Item_Bounding_Box_Round_Trips()
+    {
+        var box = new BoundingBox { PageNumber = 1, X = 0.1, Y = 0.2, Width = 0.3, Height = 0.04 };
+
+        var report = CreateReport();
+        var item = report.Items.Single(i => i.Requirement == "Owner name");
+        item.BoundingBox = box;
+
+        await using (var context = _database.CreateContext())
+        {
+            context.ValidationReports.Add(report);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _database.CreateContext())
+        {
+            var loaded = await context.ValidationReports
+                .SingleAsync(r => r.Id == report.Id);
+
+            Assert.Equal(box, loaded.Items.Single(i => i.Requirement == "Owner name").BoundingBox);
+            Assert.Null(loaded.Items.Single(i => i.Requirement == "Site plan").BoundingBox);
         }
     }
 }

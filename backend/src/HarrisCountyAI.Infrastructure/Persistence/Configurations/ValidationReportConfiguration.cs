@@ -68,6 +68,16 @@ public class ValidationReportConfiguration : IEntityTypeConfiguration<Validation
 
             items.Property(i => i.PageNumber);
 
+            items.OwnsOne(i => i.BoundingBox, box =>
+            {
+                box.Property(b => b.PageNumber).HasColumnName("BoundingBox_PageNumber");
+                box.Property(b => b.X).HasColumnName("BoundingBox_X");
+                box.Property(b => b.Y).HasColumnName("BoundingBox_Y");
+                box.Property(b => b.Width).HasColumnName("BoundingBox_Width");
+                box.Property(b => b.Height).HasColumnName("BoundingBox_Height");
+            });
+            items.Navigation(i => i.BoundingBox).IsRequired(false);
+
             items.HasIndex("ValidationReportId");
         });
     }

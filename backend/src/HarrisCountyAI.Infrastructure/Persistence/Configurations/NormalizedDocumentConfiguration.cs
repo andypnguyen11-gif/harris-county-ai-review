@@ -75,6 +75,31 @@ public class NormalizedDocumentConfiguration : IEntityTypeConfiguration<Normaliz
             fields.Property(f => f.Confidence);
             fields.Property(f => f.PageNumber);
 
+            // Owned types flatten to columns on NormalizedDocumentFields.
+            // Each navigation MUST be marked optional: without IsRequired(false)
+            // EF can treat the owned entity as required and materialize a
+            // default BoundingBox when every column is null, which would make
+            // the null round-trip assertions below pass against a non-null box.
+            fields.OwnsOne(f => f.KeyBoundingBox, box =>
+            {
+                box.Property(b => b.PageNumber).HasColumnName("KeyBoundingBox_PageNumber");
+                box.Property(b => b.X).HasColumnName("KeyBoundingBox_X");
+                box.Property(b => b.Y).HasColumnName("KeyBoundingBox_Y");
+                box.Property(b => b.Width).HasColumnName("KeyBoundingBox_Width");
+                box.Property(b => b.Height).HasColumnName("KeyBoundingBox_Height");
+            });
+            fields.Navigation(f => f.KeyBoundingBox).IsRequired(false);
+
+            fields.OwnsOne(f => f.ValueBoundingBox, box =>
+            {
+                box.Property(b => b.PageNumber).HasColumnName("ValueBoundingBox_PageNumber");
+                box.Property(b => b.X).HasColumnName("ValueBoundingBox_X");
+                box.Property(b => b.Y).HasColumnName("ValueBoundingBox_Y");
+                box.Property(b => b.Width).HasColumnName("ValueBoundingBox_Width");
+                box.Property(b => b.Height).HasColumnName("ValueBoundingBox_Height");
+            });
+            fields.Navigation(f => f.ValueBoundingBox).IsRequired(false);
+
             fields.HasIndex("NormalizedDocumentId");
         });
     }

@@ -1,5 +1,6 @@
 using HarrisCountyAI.Domain.Entities;
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 
 namespace HarrisCountyAI.IntegrationTests.Persistence;
@@ -157,6 +158,40 @@ public class NormalizedDocumentPersistenceTests : IClassFixture<SqlServerTestDat
 
             Assert.Equal(0, pageCount);
             Assert.Equal(0, fieldCount);
+        }
+    }
+
+    [Fact]
+    public async Task Field_Bounding_Boxes_Round_Trip()
+    {
+        var keyBox = new BoundingBox { PageNumber = 1, X = 0.1, Y = 0.2, Width = 0.3, Height = 0.04 };
+        var valueBox = new BoundingBox { PageNumber = 2, X = 0.5, Y = 0.6, Width = 0.2, Height = 0.03 };
+
+        var document = CreateNormalizedDocument();
+        var field = document.Fields.Single(f => f.Name == "applicant name");
+        field.KeyBoundingBox = keyBox;
+        field.ValueBoundingBox = valueBox;
+
+        await using (var context = _database.CreateContext())
+        {
+            context.NormalizedDocuments.Add(document);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _database.CreateContext())
+        {
+            var loaded = await context.NormalizedDocuments
+                .SingleAsync(d => d.Id == document.Id);
+
+            var reloaded = loaded.Fields.Single(f => f.Name == "applicant name");
+            Assert.Equal(keyBox, reloaded.KeyBoundingBox);
+            Assert.Equal(valueBox, reloaded.ValueBoundingBox);
+
+            // Fields extracted before regions existed keep null boxes rather
+            // than materializing an empty one.
+            var withoutRegions = loaded.Fields.Single(f => f.Name == "applicant signature");
+            Assert.Null(withoutRegions.KeyBoundingBox);
+            Assert.Null(withoutRegions.ValueBoundingBox);
         }
     }
 }
