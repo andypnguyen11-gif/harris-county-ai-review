@@ -202,6 +202,22 @@ public class DateRuleTests
     }
 
     [Fact]
+    public async Task Prefers_The_Key_Region_Over_The_Value_Region_When_The_Date_Is_Empty()
+    {
+        var keyBox = RegionOn(2, 0.1);
+        var valueBox = RegionOn(2, 0.5);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithDateField("application date", null, page: 2, keyBox: keyBox, valueBox: valueBox)
+            .Build();
+        var rule = new DateRule("Application date", "application date");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Missing, result.Status);
+        Assert.Equal(keyBox, result.BoundingBox);
+    }
+
+    [Fact]
     public async Task Reports_No_Region_When_The_Date_Field_Was_Never_Found()
     {
         var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)

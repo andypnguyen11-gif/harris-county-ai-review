@@ -143,6 +143,22 @@ public class RequiredFieldRuleTests
     }
 
     [Fact]
+    public async Task Prefers_The_Key_Region_Over_The_Value_Region_When_The_Field_Is_Empty()
+    {
+        var keyBox = RegionOn(1, 0.1);
+        var valueBox = RegionOn(1, 0.5);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithTextField("hcad account number", null, page: 1, keyBox: keyBox, valueBox: valueBox)
+            .Build();
+        var rule = new RequiredFieldRule("HCAD account number", "hcad account number");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Missing, result.Status);
+        Assert.Equal(keyBox, result.BoundingBox);
+    }
+
+    [Fact]
     public async Task Falls_Back_To_The_Key_Region_When_There_Is_No_Value_Region()
     {
         var keyBox = RegionOn(1, 0.1);
