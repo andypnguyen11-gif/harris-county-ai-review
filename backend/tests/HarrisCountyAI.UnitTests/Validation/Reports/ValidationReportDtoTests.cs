@@ -1,11 +1,53 @@
 using HarrisCountyAI.Application.Validation;
 using HarrisCountyAI.Domain.Entities;
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.UnitTests.Validation.Reports;
 
 public class ValidationReportDtoTests
 {
+    private static ValidationReport ReportWith(BoundingBox? box) => new()
+    {
+        Id = Guid.NewGuid(),
+        CaseId = Guid.NewGuid(),
+        WorkflowType = WorkflowType.FloodplainDevelopmentPermit,
+        CreatedAt = DateTime.UtcNow,
+        Items =
+        [
+            new ValidationReportItem
+            {
+                Id = Guid.NewGuid(),
+                Order = 0,
+                RuleName = "RequiredFieldRule(HCAD account number)",
+                Requirement = "HCAD account number",
+                ValidationType = ValidationType.Deterministic,
+                Status = ValidationStatus.Missing,
+                Message = "Field 'hcad account number' is present but has no value.",
+                PageNumber = box?.PageNumber,
+                BoundingBox = box,
+            },
+        ],
+    };
+
+    [Fact]
+    public void Exposes_The_Region_On_The_Item()
+    {
+        var box = new BoundingBox { PageNumber = 1, X = 0.1, Y = 0.2, Width = 0.3, Height = 0.04 };
+
+        var dto = ValidationReportDto.FromEntity(ReportWith(box));
+
+        Assert.Equal(box, dto.Items.Single().BoundingBox);
+    }
+
+    [Fact]
+    public void Leaves_The_Region_Null_When_The_Item_Has_None()
+    {
+        var dto = ValidationReportDto.FromEntity(ReportWith(box: null));
+
+        Assert.Null(dto.Items.Single().BoundingBox);
+    }
+
     private static ValidationReportItem Item(int order, string requirement) => new()
     {
         Id = Guid.NewGuid(),

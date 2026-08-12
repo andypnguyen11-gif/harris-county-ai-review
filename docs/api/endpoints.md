@@ -150,13 +150,17 @@ Routed under `/api/cases/{caseId:guid}/validation`.
 | `GET /api/cases/{caseId}/validation/{reportId}` | `200` with that specific report; `404` if absent. |
 
 Each report item carries `ruleName`, `requirement`, `validationType` (`Deterministic` or `Semantic`),
-`status`, `message`, and — where known — `extractedValue`, `documentId`, `documentType`, and
-`pageNumber`.
+`status`, `message`, and — where known — `extractedValue`, `documentId`, `documentType`,
+`pageNumber`, and `boundingBox`.
 
 `status` is one of `Complete`, `Missing`, `Invalid`, `PotentiallyIncomplete`, `NeedsHumanReview`,
 `UnableToDetermine`. The last two are load-bearing rather than filler: `NeedsHumanReview` means the
 rule identified a decision it must not make, and `UnableToDetermine` means a check could not run to a
 conclusion. Neither is ever silently coerced into a pass.
+
+`boundingBox` is a nullable region — `pageNumber`, `x`, `y`, `width`, and `height` — normalized to
+0–1 fractions of the page's width and height, with the origin at the top-left corner. It is `null`
+when the finding could not be located on the page.
 
 ---
 

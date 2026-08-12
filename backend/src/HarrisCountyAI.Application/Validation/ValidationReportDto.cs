@@ -1,5 +1,6 @@
 using HarrisCountyAI.Domain.Entities;
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.Application.Validation;
 
@@ -33,7 +34,8 @@ public sealed record ValidationReportItemDto(
     string? ExtractedValue,
     Guid? DocumentId,
     DocumentType? DocumentType,
-    int? PageNumber)
+    int? PageNumber,
+    BoundingBox? BoundingBox)
 {
     public static ValidationReportItemDto FromEntity(ValidationReportItem item) => new(
         item.Id,
@@ -45,5 +47,6 @@ public sealed record ValidationReportItemDto(
         item.ExtractedValue,
         item.DocumentId,
         item.DocumentType,
-        item.PageNumber);
+        item.PageNumber,
+        item.BoundingBox);
 }
