@@ -1,5 +1,6 @@
 using HarrisCountyAI.Domain.Enums;
 using HarrisCountyAI.Domain.Validation;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.Application.Validation.Rules;
 
@@ -43,6 +44,8 @@ public sealed class SignatureRule : ValidationRuleBase
                 $"Signature field '{_fieldNames.First()}' was not found in the submitted documents."));
         }
 
+        var markBox = match.Field.ValueBoundingBox ?? match.Field.KeyBoundingBox;
+
         if (match.Field.IsSigned == true)
         {
             return Task.FromResult(Result(
@@ -50,13 +53,15 @@ public sealed class SignatureRule : ValidationRuleBase
                 $"Signature field '{match.Field.Name}' is signed.",
                 extractedValue: match.Field.Value,
                 sourceDocumentId: match.Document.Id,
-                page: match.Field.PageNumber));
+                page: markBox?.PageNumber ?? match.Field.PageNumber,
+                boundingBox: markBox));
         }
 
         return Task.FromResult(Result(
             ValidationStatus.Missing,
             $"Signature field '{match.Field.Name}' is present but not signed.",
             sourceDocumentId: match.Document.Id,
-            page: match.Field.PageNumber));
+            page: markBox?.PageNumber ?? match.Field.PageNumber,
+            boundingBox: markBox));
     }
 }

@@ -1,5 +1,6 @@
 using HarrisCountyAI.Application.Validation.Rules;
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.UnitTests.Validation.Rules;
 
@@ -74,5 +75,57 @@ public class SignatureRuleTests
         var result = await Rule().ValidateAsync(context, CancellationToken.None);
 
         Assert.Equal(ValidationStatus.UnableToDetermine, result.Status);
+    }
+
+    private static BoundingBox MarkRegion(int pageNumber) => new()
+    {
+        PageNumber = pageNumber,
+        X = 0.15,
+        Y = 0.8,
+        Width = 0.25,
+        Height = 0.04,
+    };
+
+    [Fact]
+    public async Task Reports_The_Mark_Region_When_The_Signature_Is_Present()
+    {
+        var region = MarkRegion(2);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithSignature("applicant signature", isSigned: true, page: 2, valueBox: region)
+            .Build();
+        var rule = new SignatureRule("Applicant signature", "applicant signature");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Complete, result.Status);
+        Assert.Equal(region, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_The_Mark_Region_When_The_Signature_Is_Present_But_Unsigned()
+    {
+        var region = MarkRegion(2);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithSignature("applicant signature", isSigned: false, page: 2, valueBox: region)
+            .Build();
+        var rule = new SignatureRule("Applicant signature", "applicant signature");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Missing, result.Status);
+        Assert.Equal(region, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_No_Region_When_The_Signature_Field_Was_Never_Found()
+    {
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithTextField("owner name", "Trenton Okafor")
+            .Build();
+        var rule = new SignatureRule("Applicant signature", "applicant signature");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Null(result.BoundingBox);
     }
 }
