@@ -1,6 +1,8 @@
 using Azure;
+using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using HarrisCountyAI.Application.Search.Indexing;
+using HarrisCountyAI.Infrastructure.Resilience;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -37,7 +39,10 @@ public static class SearchServiceCollectionExtensions
         services.AddSingleton(provider =>
         {
             var options = provider.GetRequiredService<IOptions<SearchOptions>>().Value;
-            return new SearchIndexClient(new Uri(options.Endpoint), new AzureKeyCredential(options.ApiKey));
+            return new SearchIndexClient(
+                new Uri(options.Endpoint),
+                new AzureKeyCredential(options.ApiKey),
+                new SearchClientOptions().WithResilience(provider.GetResilienceOptions()));
         });
 
         services.AddSingleton<ISearchIndexGateway, AzureSearchIndexGateway>();

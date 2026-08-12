@@ -2,7 +2,11 @@ using System.Collections.Concurrent;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using HarrisCountyAI.Application.Common.Exceptions;
 using HarrisCountyAI.Application.Documents;
+using HarrisCountyAI.Infrastructure.Resilience;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace HarrisCountyAI.Infrastructure.Azure.BlobStorage;
@@ -13,21 +17,33 @@ namespace HarrisCountyAI.Infrastructure.Azure.BlobStorage;
 /// <see cref="DocumentStorageContainer"/> maps to a container name from
 /// <see cref="BlobStorageOptions"/>.
 /// </summary>
+/// <remarks>
+/// Storage failures are separated into two kinds. A blob that is not there is
+/// reported as a <see cref="FileNotFoundException"/>, because "the file is
+/// gone" is an answer callers can act on — the document viewer turns it into a
+/// 404 with its own explanation. Everything else (a refused connection, a
+/// throttled account, a 5xx) becomes an
+/// <see cref="ExternalServiceUnavailableException"/>, which the API reports as
+/// storage being down rather than as the caller's mistake.
+/// </remarks>
 public sealed class AzureBlobDocumentStorageService : IDocumentStorageService
 {
     private readonly BlobServiceClient _blobServiceClient;
     private readonly BlobStorageOptions _options;
+    private readonly ILogger<AzureBlobDocumentStorageService> _logger;
     private readonly ConcurrentDictionary<string, Task> _containerInitializations = new();
 
     public AzureBlobDocumentStorageService(
         BlobServiceClient blobServiceClient,
-        IOptions<BlobStorageOptions> options)
+        IOptions<BlobStorageOptions> options,
+        ILogger<AzureBlobDocumentStorageService>? logger = null)
     {
         _blobServiceClient = blobServiceClient;
         _options = options.Value;
+        _logger = logger ?? NullLogger<AzureBlobDocumentStorageService>.Instance;
     }
 
-    public async Task<string> UploadAsync(
+    public Task<string> UploadAsync(
         DocumentStorageContainer container,
         string blobPath,
         string contentType,
@@ -38,63 +54,79 @@ public sealed class AzureBlobDocumentStorageService : IDocumentStorageService
         ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
         ArgumentNullException.ThrowIfNull(content);
 
-        var blobClient = await GetBlobClientAsync(container, blobPath, cancellationToken);
-
-        var uploadOptions = new BlobUploadOptions
+        return Execute("upload", async token =>
         {
-            HttpHeaders = new BlobHttpHeaders { ContentType = contentType },
-        };
+            var blobClient = await GetBlobClientAsync(container, blobPath, token);
 
-        await blobClient.UploadAsync(content, uploadOptions, cancellationToken);
-        return blobPath;
+            var uploadOptions = new BlobUploadOptions
+            {
+                HttpHeaders = new BlobHttpHeaders { ContentType = contentType },
+            };
+
+            await blobClient.UploadAsync(content, uploadOptions, token);
+            return blobPath;
+        }, cancellationToken);
     }
 
-    public async Task<Stream> DownloadAsync(
+    public Task<Stream> DownloadAsync(
         DocumentStorageContainer container,
         string blobPath,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(blobPath);
 
-        var blobClient = await GetBlobClientAsync(container, blobPath, cancellationToken);
+        return Execute("download", async token =>
+        {
+            var blobClient = await GetBlobClientAsync(container, blobPath, token);
 
-        try
-        {
-            var response = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken);
-            return response.Value.Content;
-        }
-        catch (RequestFailedException ex) when (ex.Status == 404)
-        {
-            throw new FileNotFoundException(
-                $"Blob '{blobPath}' was not found in container '{GetContainerName(container)}'.",
-                blobPath,
-                ex);
-        }
+            try
+            {
+                var response = await blobClient.DownloadStreamingAsync(cancellationToken: token);
+                return response.Value.Content;
+            }
+            catch (RequestFailedException ex) when (ex.Status == 404)
+            {
+                throw new FileNotFoundException(
+                    $"Blob '{blobPath}' was not found in container '{GetContainerName(container)}'.",
+                    blobPath,
+                    ex);
+            }
+        }, cancellationToken);
     }
 
-    public async Task<bool> DeleteAsync(
+    public Task<bool> DeleteAsync(
         DocumentStorageContainer container,
         string blobPath,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(blobPath);
 
-        var blobClient = await GetBlobClientAsync(container, blobPath, cancellationToken);
-        var response = await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
-        return response.Value;
+        return Execute("delete", async token =>
+        {
+            var blobClient = await GetBlobClientAsync(container, blobPath, token);
+            var response = await blobClient.DeleteIfExistsAsync(cancellationToken: token);
+            return response.Value;
+        }, cancellationToken);
     }
 
-    public async Task<bool> ExistsAsync(
+    public Task<bool> ExistsAsync(
         DocumentStorageContainer container,
         string blobPath,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(blobPath);
 
-        var blobClient = await GetBlobClientAsync(container, blobPath, cancellationToken);
-        var response = await blobClient.ExistsAsync(cancellationToken);
-        return response.Value;
+        return Execute("exists", async token =>
+        {
+            var blobClient = await GetBlobClientAsync(container, blobPath, token);
+            var response = await blobClient.ExistsAsync(token);
+            return response.Value;
+        }, cancellationToken);
     }
+
+    private Task<T> Execute<T>(string operation, Func<CancellationToken, Task<T>> action, CancellationToken cancellationToken)
+        => AzureOperationExecutor.ExecuteAsync(
+            ExternalServiceNames.DocumentStorage, operation, action, cancellationToken, _logger);
 
     private string GetContainerName(DocumentStorageContainer container) => container switch
     {

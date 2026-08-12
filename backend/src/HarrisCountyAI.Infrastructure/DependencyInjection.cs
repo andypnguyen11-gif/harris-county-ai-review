@@ -7,6 +7,7 @@ using HarrisCountyAI.Infrastructure.Azure.LanguageModels;
 using HarrisCountyAI.Infrastructure.Azure.Search;
 using HarrisCountyAI.Infrastructure.Persistence;
 using HarrisCountyAI.Infrastructure.Persistence.Repositories;
+using HarrisCountyAI.Infrastructure.Resilience;
 using HarrisCountyAI.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +21,10 @@ public static class DependencyInjection
     {
         var connectionString = configuration.GetConnectionString("Database")
             ?? throw new InvalidOperationException("Connection string 'Database' is not configured.");
+
+        // Registered first: every Azure client factory below reads this budget
+        // when it builds its client options.
+        services.AddAzureResilience(configuration);
 
         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<ICaseRepository, CaseRepository>();

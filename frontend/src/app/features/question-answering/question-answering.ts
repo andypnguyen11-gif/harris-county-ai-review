@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
+import { ApiError, toApiError } from '../../core/errors/api-error';
 import { Case } from '../../core/models/case.model';
 import { CitationTarget } from '../../core/models/citation-target.model';
 import {
@@ -12,6 +13,7 @@ import {
 import { CaseService } from '../../core/services/case.service';
 import { QuestionAnsweringService } from '../../core/services/question-answering.service';
 import { Citation } from '../../shared/components/citation/citation';
+import { ErrorMessage } from '../../shared/components/error-message/error-message';
 import { DocumentViewer } from '../document-viewer/document-viewer';
 
 /**
@@ -26,7 +28,7 @@ import { DocumentViewer } from '../document-viewer/document-viewer';
  */
 @Component({
   selector: 'app-question-answering',
-  imports: [ReactiveFormsModule, Citation, DocumentViewer],
+  imports: [ReactiveFormsModule, Citation, ErrorMessage, DocumentViewer],
   templateUrl: './question-answering.html',
   styleUrl: './question-answering.scss',
 })
@@ -39,7 +41,8 @@ export class QuestionAnswering {
   protected readonly scopeLabels = QUESTION_SCOPE_LABELS;
 
   protected readonly asking = signal(false);
-  protected readonly askError = signal(false);
+  /** The failure that stopped the question being answered, or null. */
+  protected readonly askError = signal<ApiError | null>(null);
   protected readonly response = signal<QuestionResponse | null>(null);
   /** The question the current response answers, kept for display after the box is edited. */
   protected readonly askedQuestion = signal('');
@@ -54,7 +57,8 @@ export class QuestionAnswering {
   /** Cases available for the Case scope; null until first loaded. */
   protected readonly cases = signal<Case[] | null>(null);
   protected readonly casesLoading = signal(false);
-  protected readonly casesError = signal(false);
+  /** The failure that stopped the case list loading, or null. */
+  protected readonly casesError = signal<ApiError | null>(null);
   protected readonly caseRequiredError = signal(false);
 
   protected readonly form = this.formBuilder.group({
@@ -77,14 +81,14 @@ export class QuestionAnswering {
 
   protected loadCases(): void {
     this.casesLoading.set(true);
-    this.casesError.set(false);
+    this.casesError.set(null);
     this.caseService.getCases().subscribe({
       next: (cases) => {
         this.cases.set(cases);
         this.casesLoading.set(false);
       },
-      error: () => {
-        this.casesError.set(true);
+      error: (failure: unknown) => {
+        this.casesError.set(toApiError(failure));
         this.casesLoading.set(false);
       },
     });
@@ -105,7 +109,7 @@ export class QuestionAnswering {
     }
 
     this.asking.set(true);
-    this.askError.set(false);
+    this.askError.set(null);
     this.caseRequiredError.set(false);
     this.response.set(null);
     this.askedQuestion.set(question);
@@ -124,8 +128,8 @@ export class QuestionAnswering {
         this.response.set(response);
         this.asking.set(false);
       },
-      error: () => {
-        this.askError.set(true);
+      error: (failure: unknown) => {
+        this.askError.set(toApiError(failure));
         this.asking.set(false);
       },
     });

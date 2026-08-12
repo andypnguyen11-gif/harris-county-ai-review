@@ -1,4 +1,5 @@
 using HarrisCountyAI.Application.Common.AI;
+using HarrisCountyAI.Application.Common.Exceptions;
 using HarrisCountyAI.Infrastructure.Azure.LanguageModels;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -126,9 +127,12 @@ public class AzureLanguageModelServiceTests
                 return CreateCompletion();
             });
 
-        var exception = await Assert.ThrowsAsync<TimeoutException>(
+        var exception = await Assert.ThrowsAsync<ExternalServiceTimeoutException>(
             () => service.GenerateAsync(CreateRequest(), CancellationToken.None));
 
+        // Still a TimeoutException, so callers that already catch one are unaffected.
+        Assert.IsAssignableFrom<TimeoutException>(exception);
+        Assert.Equal(ExternalServiceNames.LanguageModel, exception.ServiceName);
         Assert.Contains("gpt-unit-test", exception.Message);
         Assert.Contains("1s", exception.Message);
         Assert.IsAssignableFrom<OperationCanceledException>(exception.InnerException);
@@ -187,6 +191,41 @@ public class AzureLanguageModelServiceTests
 
         Assert.Equal(0, response.Usage.InputTokens);
         Assert.Equal(0, response.Usage.OutputTokens);
+    }
+
+    [Theory]
+    [InlineData(429)]
+    [InlineData(500)]
+    [InlineData(503)]
+    [InlineData(401)]
+    public async Task GenerateAsync_Reports_An_Endpoint_Failure_As_A_Dependency_Outage(int status)
+    {
+        var service = new TestableAzureLanguageModelService(
+            CreateOptions(),
+            (_, _, _) => throw FakeClientResultExceptions.WithStatus(status));
+
+        var exception = await Assert.ThrowsAsync<ExternalServiceUnavailableException>(
+            () => service.GenerateAsync(CreateRequest(), CancellationToken.None));
+
+        Assert.Equal(ExternalServiceNames.LanguageModel, exception.ServiceName);
+        Assert.Equal(status, exception.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task GenerateAsync_Rejects_A_Completion_With_No_Usable_Content(string content)
+    {
+        // An empty completion is model noise, not an answer. Failing here saves
+        // every caller from having to recognise the same empty string.
+        var service = new TestableAzureLanguageModelService(
+            CreateOptions(),
+            (_, _, _) => Task.FromResult(CreateCompletion(content)));
+
+        var exception = await Assert.ThrowsAsync<MalformedModelResponseException>(
+            () => service.GenerateAsync(CreateRequest(), CancellationToken.None));
+
+        Assert.Equal(ExternalServiceNames.LanguageModel, exception.ServiceName);
     }
 
     [Fact]

@@ -1,7 +1,10 @@
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Diagnostics;
 using Azure.AI.OpenAI;
 using HarrisCountyAI.Application.Common.AI;
+using HarrisCountyAI.Application.Common.Exceptions;
+using HarrisCountyAI.Infrastructure.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenAI.Chat;
@@ -14,20 +17,33 @@ namespace HarrisCountyAI.Infrastructure.Azure.LanguageModels;
 /// propagates caller cancellation, captures token usage, and emits structured
 /// logs (prompt contents are logged at Debug level only, never at Information).
 /// </summary>
+/// <remarks>
+/// Three failure shapes are distinguished, because callers respond to them
+/// differently: the endpoint refusing or erroring becomes an
+/// <see cref="ExternalServiceUnavailableException"/>, exceeding the request
+/// budget becomes an <see cref="ExternalServiceTimeoutException"/>, and a
+/// completion carrying no text at all becomes a
+/// <see cref="MalformedModelResponseException"/> rather than an empty
+/// <see cref="ModelResponse"/> that every caller would then have to
+/// re-diagnose.
+/// </remarks>
 public class AzureLanguageModelService : ILanguageModelService
 {
     private readonly LanguageModelOptions _options;
+    private readonly AzureResilienceOptions _resilience;
     private readonly ILogger<AzureLanguageModelService> _logger;
     private readonly Lazy<ChatClient> _chatClient;
 
     public AzureLanguageModelService(
         IOptions<LanguageModelOptions> options,
-        ILogger<AzureLanguageModelService> logger)
+        ILogger<AzureLanguageModelService> logger,
+        IOptions<AzureResilienceOptions>? resilience = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
 
         _options = options.Value;
+        _resilience = resilience?.Value ?? new AzureResilienceOptions();
         _logger = logger;
         _chatClient = new Lazy<ChatClient>(CreateChatClient);
     }
@@ -92,12 +108,47 @@ public class AzureLanguageModelService : ILanguageModelService
                 _options.TimeoutSeconds,
                 stopwatch.Elapsed.TotalMilliseconds);
 
-            throw new TimeoutException(
+            throw new ExternalServiceTimeoutException(
+                ExternalServiceNames.LanguageModel,
                 $"Language model request to deployment '{_options.Deployment}' timed out after {_options.TimeoutSeconds}s.",
                 innerException);
         }
+        catch (ClientResultException exception)
+        {
+            // The endpoint answered with a failure — throttled, erroring, or
+            // rejecting our credentials — after the SDK exhausted its retries.
+            _logger.LogWarning(
+                exception,
+                "Language model request failed. Deployment={Deployment} Status={Status} Transient={Transient} ElapsedMs={ElapsedMs}",
+                _options.Deployment,
+                exception.Status,
+                TransientFailureClassifier.IsTransient(exception),
+                stopwatch.Elapsed.TotalMilliseconds);
+
+            throw new ExternalServiceUnavailableException(
+                ExternalServiceNames.LanguageModel,
+                $"Language model deployment '{_options.Deployment}' returned status {exception.Status}.",
+                exception,
+                exception.Status);
+        }
 
         stopwatch.Stop();
+
+        var content = string.Concat(completion.Content.Select(part => part.Text));
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            // An empty completion is not a usable answer. Failing here keeps
+            // every caller from having to recognise the same empty string.
+            _logger.LogWarning(
+                "Language model returned an empty completion. Deployment={Deployment} FinishReason={FinishReason} ElapsedMs={ElapsedMs}",
+                _options.Deployment,
+                completion.FinishReason,
+                stopwatch.Elapsed.TotalMilliseconds);
+
+            throw new MalformedModelResponseException(
+                $"Language model deployment '{_options.Deployment}' returned no content "
+                + $"(finish reason '{completion.FinishReason}').");
+        }
 
         var usage = completion.Usage is null
             ? ModelUsage.Empty
@@ -105,7 +156,7 @@ public class AzureLanguageModelService : ILanguageModelService
 
         var response = new ModelResponse
         {
-            Content = string.Concat(completion.Content.Select(part => part.Text)),
+            Content = content,
             FinishReason = completion.FinishReason.ToString(),
             Usage = usage,
             ModelDeployment = _options.Deployment,
@@ -143,7 +194,17 @@ public class AzureLanguageModelService : ILanguageModelService
 
     private ChatClient CreateChatClient()
     {
-        var client = new AzureOpenAIClient(new Uri(_options.Endpoint), new ApiKeyCredential(_options.ApiKey));
+        // The SDK retries transient failures (429 and 5xx) within the request's
+        // own timeout budget; anything left over surfaces as a
+        // ClientResultException that GenerateAsync translates.
+        var clientOptions = new AzureOpenAIClientOptions
+        {
+            NetworkTimeout = TimeSpan.FromSeconds(_resilience.NetworkTimeoutSeconds),
+            RetryPolicy = new ClientRetryPolicy(maxRetries: Math.Max(0, _resilience.MaxRetryAttempts)),
+        };
+
+        var client = new AzureOpenAIClient(
+            new Uri(_options.Endpoint), new ApiKeyCredential(_options.ApiKey), clientOptions);
         return client.GetChatClient(_options.Deployment);
     }
 }

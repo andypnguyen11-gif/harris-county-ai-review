@@ -10,10 +10,10 @@
   <div class="state-panel" role="status">
     <p>Loading cases…</p>
   </div>
-} @else if (error()) {
+} @else if (error(); as failure) {
   <div class="state-panel state-panel--error" role="alert">
     <h2>Unable to load cases</h2>
-    <p>The case list could not be retrieved. Verify the API is running and try again.</p>
+    <app-error-message [error]="failure" [alert]="false" />
     <button type="button" class="btn btn--secondary" (click)="load()">Retry</button>
   </div>
 } @else if (cases().length === 0) {

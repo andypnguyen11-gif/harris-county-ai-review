@@ -1,0 +1,15 @@
+@if (error(); as failure) {
+  <div class="error-message__body" [attr.role]="role()">
+    <p class="error-message__text">{{ failure.message }}</p>
+
+    @if (canRetry()) {
+      <button type="button" class="btn btn--secondary btn--small" (click)="onRetry()">Retry</button>
+    }
+
+    @if (failure.correlationId; as correlationId) {
+      <p class="error-message__reference">
+        Reference id: <code class="error-message__id">{{ correlationId }}</code>
+      </p>
+    }
+  </div>
+}
