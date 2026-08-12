@@ -55,6 +55,12 @@ public class DocumentProcessingService : IDocumentProcessingService
         var stopwatch = Stopwatch.StartNew();
         await SetStatusAsync(document, DocumentProcessingStatus.Extracting, cancellationToken);
 
+        _logger.LogInformation(
+            "Extraction started for document {DocumentId} ({FileName}) in case {CaseId}.",
+            document.Id,
+            document.FileName,
+            document.CaseId);
+
         try
         {
             var extracted = await ExtractAsync(document, cancellationToken);

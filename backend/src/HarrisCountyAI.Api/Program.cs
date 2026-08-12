@@ -6,6 +6,7 @@ using HarrisCountyAI.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddObservability();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -20,6 +21,7 @@ builder.Services.AddApiAuthentication(builder.Configuration);
 builder.Services.AddApiAuthorization();
 
 var app = builder.Build();
+app.UseObservability();
 
 if (app.Environment.IsDevelopment())
 {

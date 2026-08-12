@@ -1,0 +1,92 @@
+# Observability
+
+How the backend is instrumented so that any request — and eventually any AI response — can be
+traced from the HTTP call down to the evidence that produced it.
+
+## Logging configuration
+
+Logging is wired in one place: `ObservabilityExtensions` in
+`backend/src/HarrisCountyAI.Api/Extensions/ObservabilityExtensions.cs`. `Program.cs` only calls
+`builder.AddObservability()` and `app.UseObservability()`.
+
+| Environment | Provider | Format |
+|---|---|---|
+| Development | Simple console | Single-line, `HH:mm:ss` timestamps, scopes included |
+| All others | JSON console | Single-line JSON, UTC ISO-8601 timestamps, scopes included |
+
+JSON console output makes every structured log property (`{DocumentId}`, `{StatusCode}`, …) a
+parseable field for log aggregators. Always log with named message-template placeholders, never
+string interpolation, so the properties survive as structured data.
+
+## Correlation ids
+
+`CorrelationIdMiddleware` runs first in the pipeline:
+
+- An incoming `X-Correlation-Id` header is honored when it is 1–64 characters of
+  `[A-Za-z0-9-_.:]`; anything else (missing, overlong, unsafe characters) is replaced with a
+  generated 32-character id.
+- The id is returned on every response in `X-Correlation-Id`, stored in
+  `HttpContext.Items["CorrelationId"]`, and pushed onto the logging scope, so every log line
+  written while handling the request carries a `CorrelationId` property.
+- Callers (the Angular frontend, scripts, support engineers reproducing an issue) can supply their
+  own id to stitch a browser action to the backend logs.
+
+## Request logging
+
+`RequestLoggingMiddleware` writes one structured event per request with `RequestMethod`,
+`RequestPath`, `StatusCode`, and `ElapsedMilliseconds`. Unhandled exceptions are logged with the
+exception and rethrown, so error handling behavior is unchanged.
+
+## Domain pipeline events
+
+Key pipeline stages log structured events through `ILogger<T>`:
+
+| Stage | Source | Event |
+|---|---|---|
+| Document uploaded | `UploadDocumentHandler` | Document id, file name, size, type, case id |
+| Extraction started | `DocumentProcessingService` | Document id, file name, case id |
+| Extraction/normalization completed | `DocumentProcessingService` | Duration, page and field counts |
+| Extraction failed | `DocumentProcessingService` | Exception, duration |
+| Validation rule failure | `DocumentValidationService` | Rule name, case id, exception |
+
+## AI request telemetry
+
+`AiRequestTelemetry` (`backend/src/HarrisCountyAI.Application/Common/Telemetry/`) defines the
+metadata captured for every AI question-answering request:
+
+```text
+Request ID, User ID, Case ID, Question, Model deployment, Prompt version,
+Search filters, Retrieved chunk IDs, Retrieval scores, Reranking scores,
+Latency, Token usage, Response status, Errors
+```
+
+`IAiRequestTelemetryLogger` is the contract question-answering handlers call once per request
+(success or failure); `AiRequestTelemetryLogger`
+(`backend/src/HarrisCountyAI.Infrastructure/Telemetry/`) emits it as a single structured log
+event. The question-answering pipeline is not built yet; when it lands it must record its requests
+through this interface so answers can be traced to the model, prompt, and retrieved chunks that
+produced them.
+
+## What is never logged
+
+- Raw document content — neither uploaded case documents nor extracted text/normalized fields.
+- Retrieved chunk **text** — telemetry carries chunk ids and scores only.
+- Secrets or connection strings.
+
+Identifiers (case ids, document ids, file names) and the user's question are acceptable log
+content; document bodies are not.
+
+## Application Insights
+
+`Microsoft.ApplicationInsights.AspNetCore` telemetry is enabled only when
+`ApplicationInsights:ConnectionString` is configured. The committed `appsettings.json` keeps it
+empty, so local runs and tests emit console logs only; the real connection string is supplied via
+environment configuration in Azure (App Service settings / Key Vault), never committed.
+
+## Verifying locally
+
+```bash
+cd backend
+dotnet test --filter "FullyQualifiedName~CorrelationId"
+curl -i http://localhost:5000/health -H "X-Correlation-Id: my-trace-1"   # echoes the header back
+```
