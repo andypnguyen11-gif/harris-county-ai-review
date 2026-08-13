@@ -17,8 +17,22 @@ public sealed class LanguageModelOptions
     /// <summary>API key for the Azure OpenAI resource. Supply via configuration or environment only.</summary>
     public string ApiKey { get; set; } = string.Empty;
 
-    /// <summary>Name of the model deployment to call.</summary>
+    /// <summary>
+    /// Name of the model deployment to call. This is the name the deployment was
+    /// given in the Azure OpenAI resource, which is not the name of the model
+    /// behind it: a deployment called <c>chat</c> may serve <c>gpt-5-mini</c>,
+    /// and the resource is addressed only by the former. Naming the model here
+    /// is answered with a 404 on every request.
+    /// </summary>
     public string Deployment { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the deployment accepts a temperature. Reasoning models — the
+    /// o-series and GPT-5 — support only their own default and reject any
+    /// request that names another, so against those this is false and the
+    /// temperature is left off the request entirely.
+    /// </summary>
+    public bool SupportsTemperature { get; set; } = true;
 
     /// <summary>Per-request timeout in seconds. Defaults to 60.</summary>
     public int TimeoutSeconds { get; set; } = 60;

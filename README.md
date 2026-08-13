@@ -176,11 +176,21 @@ supply values before `dotnet run` will start:
 cd backend/src/HarrisCountyAI.Api
 
 DocumentIntelligence__Endpoint=... DocumentIntelligence__ApiKey=... \
-LanguageModel__Endpoint=...       LanguageModel__ApiKey=... \
+LanguageModel__Endpoint=...       LanguageModel__ApiKey=...       LanguageModel__Deployment=... \
 Search__Endpoint=...              Search__ApiKey=... \
-Embeddings__Endpoint=...          Embeddings__ApiKey=... \
+Embeddings__Endpoint=...          Embeddings__ApiKey=...          Embeddings__Deployment=... \
 dotnet run --launch-profile http
 ```
+
+The two `Deployment` values are the names the deployments were given in the Azure OpenAI resource,
+which are **not** the names of the models behind them — a deployment called `chat` may serve
+`gpt-5-mini`. Azure routes on the deployment name alone, so naming the model is answered with a 404
+on every request. `az cognitiveservices account deployment list -n <resource> -g <group>` lists what
+the resource actually has.
+
+`LanguageModel:SupportsTemperature` (`false` by default, since this project runs a reasoning model)
+governs whether a temperature is sent at all. Reasoning models — the o-series and GPT-5 — support
+only their own default and reject any request that names another.
 
 The API listens on `http://localhost:5096` (`https://localhost:7074` with the `https` profile),
 applies EF Core migrations on startup in Development, and serves Swagger UI at

@@ -7,6 +7,7 @@ using HarrisCountyAI.Application.Common.Exceptions;
 using HarrisCountyAI.Infrastructure.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenAI;
 using OpenAI.Chat;
 
 namespace HarrisCountyAI.Infrastructure.Azure.LanguageModels;
@@ -54,9 +55,16 @@ public class AzureLanguageModelService : ILanguageModelService
 
         var chatOptions = new ChatCompletionOptions
         {
-            Temperature = request.Temperature,
             MaxOutputTokenCount = request.MaxOutputTokens ?? _options.MaxOutputTokens,
         };
+
+        if (_options.SupportsTemperature)
+        {
+            // Omitted rather than clamped for a model that has only one: a
+            // reasoning model rejects the whole request over a temperature it
+            // does not support, so the way to ask for its default is silence.
+            chatOptions.Temperature = request.Temperature;
+        }
 
         if (request.ExpectsJsonResponse)
         {
@@ -197,14 +205,30 @@ public class AzureLanguageModelService : ILanguageModelService
         // The SDK retries transient failures (429 and 5xx) within the request's
         // own timeout budget; anything left over surfaces as a
         // ClientResultException that GenerateAsync translates.
-        var clientOptions = new AzureOpenAIClientOptions
+        var clientOptions = new OpenAIClientOptions
         {
+            Endpoint = ChatEndpoint(_options.Endpoint),
             NetworkTimeout = TimeSpan.FromSeconds(_resilience.NetworkTimeoutSeconds),
             RetryPolicy = new ClientRetryPolicy(maxRetries: Math.Max(0, _resilience.MaxRetryAttempts)),
         };
 
-        var client = new AzureOpenAIClient(
-            new Uri(_options.Endpoint), new ApiKeyCredential(_options.ApiKey), clientOptions);
+        // The plain client against Azure's endpoint, not AzureOpenAIClient.
+        // The token cap is `max_completion_tokens` in the request body, and the
+        // Azure client rewrites it to the retired `max_tokens` — at every
+        // service version it offers — which a reasoning model rejects outright
+        // ("Unsupported parameter: 'max_tokens' ... Use 'max_completion_tokens'
+        // instead"), failing every evaluation. Azure's OpenAI-compatible route
+        // takes the request as written, and takes the API key as a bearer
+        // token, so nothing else about this changes.
+        var client = new OpenAIClient(new ApiKeyCredential(_options.ApiKey), clientOptions);
         return client.GetChatClient(_options.Deployment);
     }
+
+    /// <summary>
+    /// The OpenAI-compatible route on an Azure OpenAI resource. Built by
+    /// appending rather than with <see cref="Uri"/> resolution, which would
+    /// drop a path the endpoint already carries.
+    /// </summary>
+    internal static Uri ChatEndpoint(string resourceEndpoint)
+        => new($"{resourceEndpoint.TrimEnd('/')}/openai/v1");
 }
