@@ -39,4 +39,24 @@ public sealed class LanguageModelOptions
 
     /// <summary>Default maximum output tokens when a request does not specify its own limit.</summary>
     public int MaxOutputTokens { get; set; } = 1024;
+
+    /// <summary>
+    /// Output tokens added to a caller's budget to pay for a reasoning model's
+    /// hidden reasoning, in tokens. Zero for a model that does not reason.
+    /// </summary>
+    /// <remarks>
+    /// A caller's token budget is a budget for the answer it has to parse and
+    /// store. A reasoning model spends the same allowance on reasoning it never
+    /// returns, and it reasons first: exhaust the cap and the response comes
+    /// back with a finish reason of <c>length</c> and no content at all, so a
+    /// budget that would have been generous for the answer produces nothing.
+    /// <para>
+    /// Sizing the reserve rather than inflating every caller's budget keeps the
+    /// two concerns separate — a caller still says how long an answer it wants,
+    /// and the deployment says how much thinking it needs to get there. Unused
+    /// reserve costs nothing; it is a ceiling, not a reservation, and only
+    /// tokens actually generated are billed.
+    /// </para>
+    /// </remarks>
+    public int ReasoningTokenReserve { get; set; }
 }
