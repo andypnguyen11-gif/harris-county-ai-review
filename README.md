@@ -15,6 +15,42 @@ from the county's regulations to the rules in code.
 
 ---
 
+## Live demo
+
+**<https://agreeable-sea-039f9a40f.7.azurestaticapps.net>**
+
+Sign in as `dev.reviewer` — no password — and open **Ask a Question**. It runs against a search index
+holding the real Harris County corpus: 949 chunks across 20 documents, including both versions of the
+floodplain regulations, the FEMA Elevation and Floodproofing certificates, and the county's LOMR vs
+LOMR-F guidelines.
+
+Questions that answer well, each cited back to a page:
+
+> *How high must the lowest floor of a new house be built in the floodplain?*
+> *What is the difference between a LOMR and a LOMR-F?*
+> *When is a floodproofing certificate required instead of an elevation certificate?*
+
+And one that should not answer at all:
+
+> *Who won the 2024 World Series?*
+
+It returns **insufficient evidence** rather than an answer, which is the behavior worth checking —
+retrieval finds nothing relevant, so no model is asked to be creative about it.
+
+**This is a demo environment, and it is deliberately insecure.** It runs
+`Authentication:Mode=LocalDevelopment`, so anyone who can reach the URL can mint an Administrator
+token. It holds no real Harris County data and never should. Do not treat it as a reference for how
+to deploy this — see [`docs/deployment/dev-environment.md`](docs/deployment/dev-environment.md) for
+the Entra ID path.
+
+One known gap: sign in as `dev.admin` and the **Knowledge Base** screen is empty, and no citation has
+a source document to open. The corpus was indexed during evaluation work, before this infrastructure
+existed, so its chunks live in Azure AI Search while the document records and original PDFs never
+made it to the deployed SQL and Blob. Question answering is unaffected — retrieval reads the index,
+and each citation carries its own title, section, and page number.
+
+---
+
 ## The engineering principle
 
 > **Use deterministic software for deterministic work, retrieval for knowledge, and LLM reasoning
@@ -121,13 +157,13 @@ useful than a feature list.
 | Semantic validation, RAG question answering, dual-source comparison, citation resolution | **Built and tested**, with the model and search services replaced at their interfaces by scripted fakes |
 | Auth (local JWT), role policies, prompt-injection defenses, correlation ids, AI telemetry | **Built and tested** |
 | Azure AI Search, Document Intelligence, Azure OpenAI, Blob Storage | **Integration code is written and unit-tested with mocked SDK seams.** Only two Azure AI Search tests and three evaluation runs ever call a live service, and they skip unless you opt in |
-| The Harris County reference corpus | **Not ingested.** No county PDFs are committed to this repo, and nothing seeds the search index. Ingestion is an operator action through the knowledge-base API |
+| The Harris County reference corpus | **Not in this repo, and not seeded by anything here.** No county PDFs are committed and nothing seeds the search index; ingestion is an operator action through the knowledge-base API. The [live demo](#live-demo) has a corpus because one was ingested by hand |
 | Evaluation numbers | **Fixture runs only.** Every committed metric comes from synthetic fixtures and says nothing about production quality |
-| Azure deployment | **Bicep and a GitHub Actions workflow exist and have never been run** against real resources |
+| Azure deployment | **Deployed and running** — see the [live demo](#live-demo). The Bicep and the GitHub Actions workflow have now been executed end to end against real Azure resources. The deployed instance is a demo: insecure auth, no real data |
 
-The honest summary: the *software* is complete and covered by tests; the *deployment and the
-measurement of real-world quality* are not, and the docs say so everywhere rather than in one
-buried caveat.
+The honest summary: the *software* is complete and covered by tests, and it now runs on real Azure
+against a real corpus; what is still missing is any *measurement of real-world quality*, and a
+deployment posture fit for real data. The docs say so everywhere rather than in one buried caveat.
 
 ---
 
@@ -422,8 +458,12 @@ and verified against the code, not hypothetical.
 
 **Operational maturity.**
 
-- The deployment workflow has never been run. It requires one-time operator setup (federated
-  identity, a GitHub environment, secrets), and the Bicep templates must be deployed first.
+- The deployment workflow has been run against a single development environment only, and that
+  environment runs with insecure demo auth. It requires one-time operator setup (federated identity,
+  a GitHub environment, secrets), and the Bicep templates must be deployed first.
+- The deployed environment's SQL and Blob hold no knowledge-base records, because its search index
+  was populated separately. Bringing them into sync means clearing the index and re-ingesting
+  through the API, so all three stores are written by the same operation.
 - Extraction, ingestion, and validation are synchronous inside their HTTP request. There is no
   worker, no queue, and no job status beyond the row's own status column.
 - Deactivating a knowledge-base document does not remove its chunks from the search index, so a
