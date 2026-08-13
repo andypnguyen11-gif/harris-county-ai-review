@@ -292,6 +292,16 @@ jobs:
             --startup-project src/HarrisCountyAI.Infrastructure/HarrisCountyAI.Infrastructure.csproj \
             --output "${{ runner.temp }}/migrations.sql"
 
+          # EF writes the script as UTF-8 with a BOM. The Linux build of sqlcmd
+          # has no codepage option to tell it so — -f is Windows-only — and it
+          # reads the BOM bytes as part of the first statement. Strip them here,
+          # where the encoding is known, rather than asking the tool to cope.
+          if [ "$(head -c 3 "${{ runner.temp }}/migrations.sql" | xxd -p)" = "efbbbf" ]; then
+            tail -c +4 "${{ runner.temp }}/migrations.sql" > "${{ runner.temp }}/migrations.tmp"
+            mv "${{ runner.temp }}/migrations.tmp" "${{ runner.temp }}/migrations.sql"
+            echo "Stripped a UTF-8 BOM from the migration script."
+          fi
+
           echo "Generated $(wc -l < "${{ runner.temp }}/migrations.sql") lines of SQL."
 
       - uses: actions/upload-artifact@v4
@@ -334,7 +344,9 @@ jobs:
           # on whatever SQL tooling happens to be baked into the runner.
           #   -b  stop and exit non-zero on the first SQL error
           #   -N  encrypt the connection (required by Azure SQL)
-          #   -f 65001  the EF script is UTF-8 with a BOM
+          #   -l  login timeout, in seconds
+          # The script's UTF-8 BOM is stripped when it is generated: this build
+          # of sqlcmd has no codepage option to hand it instead.
           docker run --rm \
             -v "${{ runner.temp }}:/scripts:ro" \
             -e SQLCMDPASSWORD \
@@ -343,7 +355,7 @@ jobs:
               -S "tcp:${SQL_FQDN},1433" \
               -d "$AZURE_SQL_DATABASE_NAME" \
               -U "$SQL_ADMIN_LOGIN" \
-              -N -b -l 60 -f 65001 \
+              -N -b -l 60 \
               -i /scripts/migrations.sql
 
       # ------------------------------------------------------------------
