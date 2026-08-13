@@ -438,27 +438,48 @@ describe('DocumentViewer', () => {
     expect(open).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * A stub that mimics a real ResizeObserver: it records the callback and,
+   * like the browser API, delivers one notification the moment `.observe()`
+   * is called even though nothing has actually resized yet. The component
+   * must ignore that first delivery (see the dedicated test below) so a
+   * genuine resize is only whatever the test fires afterward.
+   */
+  function fakeResizeObserverClass(): {
+    ctor: new (callback: () => void) => { observe(): void; disconnect(): void };
+    notifiers: Array<() => void>;
+  } {
+    const notifiers: Array<() => void> = [];
+    class FakeResizeObserver {
+      constructor(private readonly callback: () => void) {}
+      observe(): void {
+        notifiers.push(this.callback);
+        this.callback();
+      }
+      disconnect(): void {}
+    }
+    return { ctor: FakeResizeObserver, notifiers };
+  }
+
   it('re-renders the page when its container is resized', async () => {
-    const observers: Array<() => void> = [];
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        constructor(callback: () => void) {
-          observers.push(callback);
-        }
-        observe(): void {}
-        disconnect(): void {}
-      },
-    );
-    // Restricted to the timer APIs: Angular's zoneless whenStable() settles
-    // through a real queueMicrotask, and faking that too (vitest's default)
-    // hangs the harness rather than the debounce this test is driving.
+    const { ctor, notifiers } = fakeResizeObserverClass();
+    vi.stubGlobal('ResizeObserver', ctor);
+    // Restricted to the timer APIs this component's debounce actually uses.
+    // vitest's default toFake set (determined empirically — every other
+    // faked API was ruled out individually) also fakes requestAnimationFrame,
+    // which Angular's zoneless whenStable() relies on to settle; faking it
+    // alongside setTimeout hangs the harness rather than the debounce this
+    // test is driving.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
     await setup(caseTarget());
+    const wrapper = el().querySelector('.document-viewer__viewport') as HTMLElement;
+    Object.defineProperty(wrapper, 'clientWidth', { value: 400, configurable: true });
     const initial = renderPage.mock.calls.length;
 
-    observers.forEach((notify) => notify());
+    // notifiers[0] already fired once as the observe()-time notification
+    // above; this is the genuine resize.
+    notifiers.forEach((notify) => notify());
     vi.advanceTimersByTime(200);
     await fixture.whenStable();
 
@@ -474,6 +495,50 @@ describe('DocumentViewer', () => {
 
     expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
     expect(renderPage).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('ignores the notification ResizeObserver delivers when observation begins', async () => {
+    // Per spec, a real ResizeObserver fires once immediately on the first
+    // observe() call even though nothing has resized. Treating that as a
+    // real resize would re-render every document on open or page turn, and
+    // risk a second render racing the one the effect already triggered.
+    const { ctor } = fakeResizeObserverClass();
+    vi.stubGlobal('ResizeObserver', ctor);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await setup(caseTarget());
+    const wrapper = el().querySelector('.document-viewer__viewport') as HTMLElement;
+    // A valid width, so only the initial-notification guard (not the
+    // zero-width guard) is what suppresses the render in this test.
+    Object.defineProperty(wrapper, 'clientWidth', { value: 400, configurable: true });
+    const initial = renderPage.mock.calls.length;
+
+    vi.advanceTimersByTime(200);
+    await fixture.whenStable();
+
+    expect(renderPage.mock.calls.length).toBe(initial);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('does not re-render when the container has collapsed to zero width', async () => {
+    const { ctor, notifiers } = fakeResizeObserverClass();
+    vi.stubGlobal('ResizeObserver', ctor);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await setup(caseTarget());
+    // jsdom reports every element's clientWidth as 0 by default; left
+    // unstubbed here, that stands in for a container genuinely collapsed to
+    // zero width.
+    const initial = renderPage.mock.calls.length;
+
+    notifiers.forEach((notify) => notify());
+    vi.advanceTimersByTime(200);
+    await fixture.whenStable();
+
+    expect(renderPage.mock.calls.length).toBe(initial);
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 });

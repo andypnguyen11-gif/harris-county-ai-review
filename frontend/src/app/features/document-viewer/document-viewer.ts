@@ -256,7 +256,18 @@ export class DocumentViewer implements OnDestroy {
       return;
     }
 
+    // A ResizeObserver delivers one notification the instant observation
+    // begins, even though nothing has resized. Reacting to it would
+    // re-render every document on open or page turn, and risk that render
+    // racing the one the effect above already triggered on the same canvas.
+    let sawInitialNotification = false;
+
     this.resizeObserver = new ResizeObserver(() => {
+      if (!sawInitialNotification) {
+        sawInitialNotification = true;
+        return;
+      }
+
       // A drag fires this per frame; re-render once it settles.
       if (this.resizeTimer !== null) {
         clearTimeout(this.resizeTimer);
@@ -264,7 +275,9 @@ export class DocumentViewer implements OnDestroy {
 
       this.resizeTimer = setTimeout(() => {
         const handle = this.handle();
-        if (handle !== null) {
+        // A container mid-collapse (e.g. its column being dragged shut)
+        // reports zero width; there is nothing useful to render there.
+        if (handle !== null && container.clientWidth > 0) {
           void this.draw(handle, this.pageNumber(), canvas);
         }
       }, 150);
