@@ -28,6 +28,40 @@ One resource group per environment holds everything:
 `rg-harriscountyai-<env>` (e.g. `rg-harriscountyai-dev`). The templates
 deploy at resource-group scope; create the group first.
 
+## Regions
+
+Three region parameters, because not every resource can live in the same place:
+
+| Parameter | Covers | Dev value |
+| --- | --- | --- |
+| `location` | Storage, Search, Document Intelligence, Azure OpenAI, App Insights | `eastus` |
+| `computeLocation` | App Service plan and web app, Azure SQL server and database | `centralus` |
+| `staticWebAppLocation` | Static Web App (limited regional availability) | `eastus2` |
+
+`computeLocation` is split out because App Service and Azure SQL are the two
+resources a subscription is most likely to refuse, and they refuse per region.
+The dev subscription is a Free Trial, which reports a **Total VMs quota of 0**
+for App Service and **ProvisioningDisabled** for Azure SQL across `eastus`,
+`eastus2`, `westus2` and `westeurope`. `centralus` permits both.
+
+Moving compute rather than moving everything is deliberate: Azure AI Search
+holds the ingested corpus, and standing it up in another region means
+re-running extraction and embedding over every document. Data stays put;
+compute moves. The cross-region hop is a few milliseconds and is not
+measurable against extraction or model inference. SQL is the chattiest
+dependency, so it travels with the App Service rather than staying behind.
+
+Before changing a region, probe it — the refusals appear at preflight, so
+`az deployment group validate` reports them without creating anything:
+
+```bash
+az deployment group validate \
+  -g rg-harriscountyai-dev \
+  -f infra/main.bicep \
+  -p infra/main.bicepparam \
+  -p computeLocation=<candidate-region>
+```
+
 ## Deploying
 
 ```bash

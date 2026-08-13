@@ -25,8 +25,36 @@ param location string = resourceGroup().location
 @description('Region for the Static Web App (limited regional availability).')
 param staticWebAppLocation string = 'eastus2'
 
+// App Service and Azure SQL are the two resources a subscription is most
+// likely to refuse outright, and they refuse per region: App Service plans
+// count against a "Total VMs" quota that is zero in most regions on a Free
+// Trial subscription, and Azure SQL reports ProvisioningDisabled in regions
+// where the subscription is not permitted to create servers. Both refusals
+// surface at preflight, before anything is created.
+//
+// They are separated from `location` so the compute tier can move to a region
+// that permits it without relocating the AI services — which is not a free
+// move, because Azure AI Search holds the ingested corpus and rebuilding it
+// elsewhere means re-running extraction and embedding over every document.
+// Keeping data in place and moving compute is the cheaper half.
+//
+// The cross-region hop costs a few milliseconds per call, which is not
+// measurable against Document Intelligence extraction or model inference. The
+// database is the chattiest dependency, so it stays with the App Service.
+@description('Region for the App Service plan and Azure SQL. Defaults to `location`; override when the subscription cannot provision compute or SQL there.')
+param computeLocation string = location
+
 @description('Storage account names cannot contain hyphens and must be globally unique, so the name is a parameter rather than derived. Defaults to a deterministic unique name for new environments.')
 param storageAccountName string = 'stharrisai${uniqueString(resourceGroup().id)}'
+
+// Like the storage account, a SQL logical server name is globally unique —
+// it becomes a public DNS name under database.windows.net — so it is a
+// parameter rather than a derived value. A name is also claimed by a *failed*
+// create and stays bound to that attempt's region afterwards, which makes a
+// deployment that failed on a region restriction unable to retry elsewhere
+// under the same name. Being able to override the name is what unblocks that.
+@description('SQL logical server name (globally unique under database.windows.net). Defaults to the derived name.')
+param sqlServerName string = 'sql-${baseName}-${environmentName}'
 
 @description('Administrator login for the SQL server.')
 param sqlAdministratorLogin string
@@ -79,8 +107,8 @@ module openAi 'modules/openai.bicep' = {
 module sql 'modules/sql.bicep' = {
   name: 'sql'
   params: {
-    sqlServerName: 'sql-${baseName}-${environmentName}'
-    location: location
+    sqlServerName: sqlServerName
+    location: computeLocation
     administratorLogin: sqlAdministratorLogin
     administratorLoginPassword: sqlAdministratorPassword
   }
@@ -91,7 +119,7 @@ module appService 'modules/app-service.bicep' = {
   params: {
     appServicePlanName: 'plan-${baseName}-${environmentName}'
     webAppName: 'app-${baseName}-${environmentName}'
-    location: location
+    location: computeLocation
     appInsightsConnectionString: appInsights.outputs.connectionString
   }
 }
