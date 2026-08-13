@@ -1,3 +1,5 @@
+using HarrisCountyAI.Domain.ValueObjects;
+
 namespace HarrisCountyAI.Application.Documents.Extraction;
 
 /// <summary>A checkbox or radio button recognized on a document page.</summary>
@@ -16,4 +18,7 @@ public sealed record ExtractedSelectionMark
 
     /// <summary>1-based page number the mark appears on.</summary>
     public required int PageNumber { get; init; }
+
+    /// <summary>Region of the mark itself, when it was located.</summary>
+    public BoundingBox? BoundingBox { get; init; }
 }

@@ -1,5 +1,6 @@
 using System.Globalization;
 using HarrisCountyAI.Application.Documents.Extraction;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.IntegrationTests.EndToEnd;
 
@@ -46,7 +47,10 @@ internal static class FloodplainSubmission
         [
             Field("ADDRESS", "4732 Cypresswood Dr, Spring, TX 77379"),
             Field("HCAD ACCOUNT NUMBER", "1234567890123"),
-            Field("OWNER NAME", "Jane P. Smith"),
+            Field(
+                "OWNER NAME",
+                "Jane P. Smith",
+                valueBox: new BoundingBox { PageNumber = 1, X = 0.12, Y = 0.34, Width = 0.56, Height = 0.07 }),
             Field("PRINT NAME", "Robert Chen"),
             Field("Initials", "RC"),
             // A signature field with no captured value reads as unsigned.
@@ -153,12 +157,13 @@ internal static class FloodplainSubmission
             ExtractedAt = DateTime.UtcNow,
         };
 
-    private static ExtractedField Field(string key, string? value) => new()
+    private static ExtractedField Field(string key, string? value, BoundingBox? valueBox = null) => new()
     {
         Key = key,
         Value = value,
         Confidence = 0.95,
         PageNumber = 1,
+        ValueBoundingBox = valueBox,
     };
 
     private static ExtractedSelectionMark Mark(string name, bool selected) => new()

@@ -1,5 +1,6 @@
 using HarrisCountyAI.Domain.Enums;
 using HarrisCountyAI.Domain.Validation;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.Application.Validation.Rules;
 
@@ -62,7 +63,7 @@ public sealed class CheckboxRule : ValidationRuleBase
             return Task.FromResult(gated);
         }
 
-        var foundAny = false;
+        FieldMatch? firstFound = null;
         foreach (var nameVariants in _checkboxes)
         {
             var match = context.FindField(nameVariants, _documentType);
@@ -71,25 +72,32 @@ public sealed class CheckboxRule : ValidationRuleBase
                 continue;
             }
 
-            foundAny = true;
+            firstFound ??= match;
+
             if (match.Field.IsChecked == true)
             {
+                var checkedBox = match.Field.ValueBoundingBox ?? match.Field.KeyBoundingBox;
                 return Task.FromResult(Result(
                     ValidationStatus.Complete,
                     $"Checkbox '{match.Field.Name}' is checked.",
                     extractedValue: match.Field.Name,
                     sourceDocumentId: match.Document.Id,
-                    page: match.Field.PageNumber));
+                    page: checkedBox?.PageNumber ?? match.Field.PageNumber,
+                    boundingBox: checkedBox));
             }
         }
 
-        if (foundAny)
+        if (firstFound is { } found)
         {
+            var foundBox = found.Field.ValueBoundingBox ?? found.Field.KeyBoundingBox;
             return Task.FromResult(Result(
                 ValidationStatus.Missing,
                 _checkboxes.Count == 1
                     ? $"Checkbox '{_checkboxes[0].First()}' is present but not checked."
-                    : $"None of the checkboxes for '{Requirement}' are checked."));
+                    : $"None of the checkboxes for '{Requirement}' are checked.",
+                sourceDocumentId: found.Document.Id,
+                page: foundBox?.PageNumber ?? found.Field.PageNumber,
+                boundingBox: foundBox));
         }
 
         return Task.FromResult(Result(

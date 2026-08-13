@@ -1,6 +1,7 @@
 using System.Globalization;
 using HarrisCountyAI.Domain.Enums;
 using HarrisCountyAI.Domain.Validation;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.Application.Validation.Rules;
 
@@ -65,6 +66,9 @@ public sealed class DateRule : ValidationRuleBase
                 $"Date field '{_fieldNames.First()}' was not found in the submitted documents."));
         }
 
+        var labelBox = match.Field.KeyBoundingBox ?? match.Field.ValueBoundingBox;
+        var valueBox = match.Field.ValueBoundingBox ?? match.Field.KeyBoundingBox;
+
         var rawValue = match.Field.Value;
         if (string.IsNullOrWhiteSpace(rawValue))
         {
@@ -72,7 +76,8 @@ public sealed class DateRule : ValidationRuleBase
                 ValidationStatus.Missing,
                 $"Date field '{match.Field.Name}' is present but has no value.",
                 sourceDocumentId: match.Document.Id,
-                page: match.Field.PageNumber));
+                page: labelBox?.PageNumber ?? match.Field.PageNumber,
+                boundingBox: labelBox));
         }
 
         if (!TryParseDate(rawValue.Trim(), out var date))
@@ -82,7 +87,8 @@ public sealed class DateRule : ValidationRuleBase
                 $"Value '{rawValue}' in field '{match.Field.Name}' could not be read as a date.",
                 extractedValue: rawValue,
                 sourceDocumentId: match.Document.Id,
-                page: match.Field.PageNumber));
+                page: valueBox?.PageNumber ?? match.Field.PageNumber,
+                boundingBox: valueBox));
         }
 
         var today = _utcNow().Date;
@@ -93,7 +99,8 @@ public sealed class DateRule : ValidationRuleBase
                 $"Date '{rawValue}' in field '{match.Field.Name}' is in the future.",
                 extractedValue: rawValue,
                 sourceDocumentId: match.Document.Id,
-                page: match.Field.PageNumber));
+                page: valueBox?.PageNumber ?? match.Field.PageNumber,
+                boundingBox: valueBox));
         }
 
         if (_maxAge is { } maxAge && date.Date < today - maxAge)
@@ -103,7 +110,8 @@ public sealed class DateRule : ValidationRuleBase
                 $"Date '{rawValue}' in field '{match.Field.Name}' is older than the allowed {maxAge.Days} days.",
                 extractedValue: rawValue,
                 sourceDocumentId: match.Document.Id,
-                page: match.Field.PageNumber));
+                page: valueBox?.PageNumber ?? match.Field.PageNumber,
+                boundingBox: valueBox));
         }
 
         return Task.FromResult(Result(
@@ -111,7 +119,8 @@ public sealed class DateRule : ValidationRuleBase
             $"Field '{match.Field.Name}' contains a valid date.",
             extractedValue: rawValue,
             sourceDocumentId: match.Document.Id,
-            page: match.Field.PageNumber));
+            page: valueBox?.PageNumber ?? match.Field.PageNumber,
+            boundingBox: valueBox));
     }
 
     private static bool TryParseDate(string value, out DateTime date) =>

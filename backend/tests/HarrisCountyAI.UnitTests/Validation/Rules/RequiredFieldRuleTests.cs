@@ -1,5 +1,6 @@
 using HarrisCountyAI.Application.Validation.Rules;
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.UnitTests.Validation.Rules;
 
@@ -99,5 +100,110 @@ public class RequiredFieldRuleTests
 
         Assert.Equal(ValidationStatus.UnableToDetermine, result.Status);
         Assert.Contains("PermitApplication", result.Message);
+    }
+
+    private static BoundingBox RegionOn(int pageNumber, double x) => new()
+    {
+        PageNumber = pageNumber,
+        X = x,
+        Y = 0.3,
+        Width = 0.2,
+        Height = 0.03,
+    };
+
+    [Fact]
+    public async Task Reports_The_Value_Region_When_The_Field_Has_A_Value()
+    {
+        var keyBox = RegionOn(1, 0.1);
+        var valueBox = RegionOn(1, 0.5);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithTextField("owner name", "Trenton Okafor", page: 1, keyBox: keyBox, valueBox: valueBox)
+            .Build();
+        var rule = new RequiredFieldRule("Owner name", "owner name");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Complete, result.Status);
+        Assert.Equal(valueBox, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_The_Key_Region_When_The_Field_Is_Present_But_Empty()
+    {
+        var keyBox = RegionOn(1, 0.1);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithTextField("hcad account number", null, page: 1, keyBox: keyBox)
+            .Build();
+        var rule = new RequiredFieldRule("HCAD account number", "hcad account number");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Missing, result.Status);
+        Assert.Equal(keyBox, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Prefers_The_Key_Region_Over_The_Value_Region_When_The_Field_Is_Empty()
+    {
+        var keyBox = RegionOn(1, 0.1);
+        var valueBox = RegionOn(1, 0.5);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithTextField("hcad account number", null, page: 1, keyBox: keyBox, valueBox: valueBox)
+            .Build();
+        var rule = new RequiredFieldRule("HCAD account number", "hcad account number");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Missing, result.Status);
+        Assert.Equal(keyBox, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Falls_Back_To_The_Key_Region_When_There_Is_No_Value_Region()
+    {
+        var keyBox = RegionOn(1, 0.1);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithTextField("owner name", "Trenton Okafor", page: 1, keyBox: keyBox)
+            .Build();
+        var rule = new RequiredFieldRule("Owner name", "owner name");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(keyBox, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_No_Region_When_The_Field_Was_Never_Found()
+    {
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithTextField("owner name", "Trenton Okafor")
+            .Build();
+        var rule = new RequiredFieldRule("Block", "block");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Missing, result.Status);
+        Assert.Null(result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_The_Page_Of_The_Region_It_Chose()
+    {
+        // The label sits on page 1 and the value wraps onto page 2. The
+        // reported page must follow the box that was reported.
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithTextField(
+                "project description",
+                "Placing fill across the rear third of the lot",
+                page: 1,
+                keyBox: RegionOn(1, 0.1),
+                valueBox: RegionOn(2, 0.1))
+            .Build();
+        var rule = new RequiredFieldRule("Project description", "project description");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(2, result.BoundingBox?.PageNumber);
+        Assert.Equal(2, result.Page);
     }
 }

@@ -1,5 +1,6 @@
 using HarrisCountyAI.Application.Validation.Rules;
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.UnitTests.Validation.Rules;
 
@@ -134,5 +135,79 @@ public class CheckboxRuleTests
         var result = await rule.ValidateAsync(context, CancellationToken.None);
 
         Assert.Equal(ValidationStatus.UnableToDetermine, result.Status);
+    }
+
+    private static BoundingBox MarkRegion(int pageNumber) => new()
+    {
+        PageNumber = pageNumber,
+        X = 0.15,
+        Y = 0.8,
+        Width = 0.25,
+        Height = 0.04,
+    };
+
+    [Fact]
+    public async Task Reports_The_Mark_Region_When_A_Checkbox_Is_Checked()
+    {
+        var region = MarkRegion(1);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithCheckbox("accessory building", isChecked: true, page: 1, valueBox: region)
+            .Build();
+        var rule = new CheckboxRule("Type of construction", "accessory building");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Complete, result.Status);
+        Assert.Equal(region, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_Document_Page_And_Region_When_A_Checkbox_Is_Found_But_Unchecked()
+    {
+        var region = MarkRegion(1);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithCheckbox("accessory building", isChecked: false, page: 1, valueBox: region)
+            .Build();
+        var rule = new CheckboxRule("Type of construction", "accessory building");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Missing, result.Status);
+        Assert.Equal(document.Id, result.SourceDocumentId);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(region, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_The_First_Found_Region_When_No_Checkbox_In_A_Group_Is_Checked()
+    {
+        var firstRegion = MarkRegion(1);
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithCheckbox("single family dwelling", isChecked: false, page: 1, valueBox: firstRegion)
+            .WithCheckbox("swimming pool", isChecked: false, page: 1, valueBox: MarkRegion(2))
+            .Build();
+        var rule = new CheckboxRule(
+            "Type of construction",
+            [["single family dwelling"], ["swimming pool"]]);
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Missing, result.Status);
+        Assert.Equal(firstRegion, result.BoundingBox);
+    }
+
+    [Fact]
+    public async Task Reports_No_Region_When_No_Checkbox_Was_Found_At_All()
+    {
+        var document = new NormalizedDocumentBuilder(DocumentType.PermitApplication)
+            .WithTextField("owner name", "Trenton Okafor")
+            .Build();
+        var rule = new CheckboxRule("Type of construction", "accessory building");
+
+        var result = await rule.ValidateAsync(NormalizedDocumentBuilder.ContextFor(document), CancellationToken.None);
+
+        Assert.Equal(ValidationStatus.Missing, result.Status);
+        Assert.Null(result.SourceDocumentId);
+        Assert.Null(result.BoundingBox);
     }
 }

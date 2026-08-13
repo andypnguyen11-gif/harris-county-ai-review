@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using HarrisCountyAI.Application.Search.Indexing;
 using HarrisCountyAI.Infrastructure.Azure.Search;
 using HarrisCountyAI.IntegrationTests.Persistence;
@@ -94,6 +95,18 @@ public class ReviewWorkflowEndToEndTests : EndToEndTestBase, IClassFixture<SqlSe
         Assert.Equal("Jane P. Smith", ownerName.GetProperty("extractedValue").GetString());
         Assert.Equal("PermitApplication", ownerName.GetProperty("documentType").GetString());
         Assert.Equal(1, ownerName.GetProperty("pageNumber").GetInt32());
+
+        // The wire shape a reviewer's browser actually consumes: boundingBox and
+        // its members must be camelCased exactly this way, or the frontend reads
+        // undefined. GetProperty throws if the name is wrong, so reaching each
+        // value by its exact camelCased string is itself the assertion.
+        var boundingBox = ownerName.GetProperty("boundingBox");
+        Assert.Equal(JsonValueKind.Object, boundingBox.ValueKind);
+        Assert.Equal(1, boundingBox.GetProperty("pageNumber").GetInt32());
+        Assert.Equal(0.12, boundingBox.GetProperty("x").GetDouble());
+        Assert.Equal(0.34, boundingBox.GetProperty("y").GetDouble());
+        Assert.Equal(0.56, boundingBox.GetProperty("width").GetDouble());
+        Assert.Equal(0.07, boundingBox.GetProperty("height").GetDouble());
 
         // The item's document id resolves to a file the reviewer can open.
         var documentId = ownerName.GetProperty("documentId").GetGuid();

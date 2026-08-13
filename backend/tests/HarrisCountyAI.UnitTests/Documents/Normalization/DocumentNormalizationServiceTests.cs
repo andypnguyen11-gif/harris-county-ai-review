@@ -1,6 +1,7 @@
 using HarrisCountyAI.Application.Documents.Extraction;
 using HarrisCountyAI.Application.Documents.Normalization;
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.UnitTests.Documents.Normalization;
 
@@ -9,6 +10,15 @@ public class DocumentNormalizationServiceTests
     private readonly DocumentNormalizationService _service = new();
     private static readonly Guid CaseId = Guid.NewGuid();
     private static readonly Guid DocumentId = Guid.NewGuid();
+
+    private static BoundingBox Box(int pageNumber, double x) => new()
+    {
+        PageNumber = pageNumber,
+        X = x,
+        Y = 0.2,
+        Width = 0.1,
+        Height = 0.02,
+    };
 
     private static ExtractedDocument Extracted(
         IReadOnlyList<ExtractedPage>? pages = null,
@@ -235,5 +245,58 @@ public class DocumentNormalizationServiceTests
     public void Null_Extraction_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => _service.Normalize(CaseId, DocumentType.Other, null!));
+    }
+
+    [Fact]
+    public void Carries_Both_Regions_Onto_The_Normalized_Field()
+    {
+        var normalized = _service.Normalize(CaseId, DocumentType.PermitApplication, Extracted(
+            keyValuePairs:
+            [
+                new ExtractedField
+                {
+                    Key = "Owner Name:",
+                    Value = "Trenton Okafor",
+                    PageNumber = 1,
+                    KeyBoundingBox = Box(1, 0.1),
+                    ValueBoundingBox = Box(1, 0.4),
+                },
+            ]));
+
+        var field = Assert.Single(normalized.Fields);
+        Assert.Equal(Box(1, 0.1), field.KeyBoundingBox);
+        Assert.Equal(Box(1, 0.4), field.ValueBoundingBox);
+    }
+
+    [Fact]
+    public void Leaves_Regions_Null_When_Extraction_Reported_None()
+    {
+        var normalized = _service.Normalize(CaseId, DocumentType.PermitApplication, Extracted(
+            keyValuePairs: [new ExtractedField { Key = "Owner Name:", Value = "Trenton Okafor", PageNumber = 1 }]));
+
+        var field = Assert.Single(normalized.Fields);
+        Assert.Null(field.KeyBoundingBox);
+        Assert.Null(field.ValueBoundingBox);
+    }
+
+    [Fact]
+    public void Puts_A_Selection_Marks_Region_On_The_Value_Box()
+    {
+        var normalized = _service.Normalize(CaseId, DocumentType.PermitApplication, Extracted(
+            selectionMarks:
+            [
+                new ExtractedSelectionMark
+                {
+                    Name = "Accessory Building",
+                    IsSelected = true,
+                    PageNumber = 1,
+                    BoundingBox = Box(1, 0.05),
+                },
+            ]));
+
+        var field = Assert.Single(normalized.Fields);
+        Assert.Equal(FieldKind.Checkbox, field.Kind);
+        Assert.Equal(Box(1, 0.05), field.ValueBoundingBox);
+        Assert.Null(field.KeyBoundingBox);
     }
 }

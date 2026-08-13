@@ -1,4 +1,5 @@
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.Domain.Validation;
 
@@ -26,4 +27,11 @@ public sealed class ValidationResult
 
     /// <summary>Name of the rule instance that produced this result.</summary>
     public required string RuleName { get; init; }
+
+    /// <summary>
+    /// Region of the source document the evidence was read from, when it could
+    /// be located. Null means no region was reported — the finding cannot be
+    /// pointed at on the page, and must say so rather than guess.
+    /// </summary>
+    public BoundingBox? BoundingBox { get; init; }
 }

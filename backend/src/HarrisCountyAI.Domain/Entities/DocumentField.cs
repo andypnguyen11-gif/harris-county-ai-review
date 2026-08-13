@@ -1,4 +1,5 @@
 using HarrisCountyAI.Domain.Enums;
+using HarrisCountyAI.Domain.ValueObjects;
 
 namespace HarrisCountyAI.Domain.Entities;
 
@@ -31,4 +32,14 @@ public class DocumentField
 
     /// <summary>1-based page number the field appears on, when resolvable.</summary>
     public int? PageNumber { get; set; }
+
+    /// <summary>Region of the field's printed label, when it was located.</summary>
+    public BoundingBox? KeyBoundingBox { get; set; }
+
+    /// <summary>
+    /// Region of the field's recognized value, when it was located. For a
+    /// checkbox or signature recognized as a selection mark this holds the
+    /// mark's own region, and <see cref="KeyBoundingBox"/> stays null.
+    /// </summary>
+    public BoundingBox? ValueBoundingBox { get; set; }
 }

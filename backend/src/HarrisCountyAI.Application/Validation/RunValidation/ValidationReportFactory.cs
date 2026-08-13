@@ -56,6 +56,7 @@ public static class ValidationReportFactory
             DocumentId = source?.DocumentId,
             DocumentType = source?.DocumentType,
             PageNumber = result.Page,
+            BoundingBox = result.BoundingBox,
         };
     }
 }
