@@ -1,10 +1,20 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, effect, inject, input, output, signal } from '@angular/core';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import {
+  Component,
+  ElementRef,
+  OnDestroy,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 
 import { CitationTarget } from '../../core/models/citation-target.model';
 import { CITATION_SOURCE_LABELS } from '../../core/models/question-answer.model';
 import { DocumentService } from '../../core/services/document.service';
+import { PdfDocumentHandle, PdfRenderService } from '../../core/services/pdf-render.service';
 
 /** What the viewer is currently showing. */
 export type ViewerState =
@@ -42,7 +52,7 @@ export type ViewerState =
 })
 export class DocumentViewer implements OnDestroy {
   private readonly documentService = inject(DocumentService);
-  private readonly sanitizer = inject(DomSanitizer);
+  private readonly pdf = inject(PdfRenderService);
 
   /** The source to show; null closes the viewer. */
   readonly target = input<CitationTarget | null>(null);
@@ -51,35 +61,61 @@ export class DocumentViewer implements OnDestroy {
   readonly closed = output<void>();
 
   protected readonly state = signal<ViewerState>('idle');
-  protected readonly fileUrl = signal<SafeResourceUrl | null>(null);
   protected readonly sourceLabels = CITATION_SOURCE_LABELS;
 
-  /** The object URL currently held, so it can be released when it is replaced. */
-  private objectUrl: string | null = null;
+  /** The canvas only exists while the state is 'rendered'. */
+  private readonly canvas = viewChild<ElementRef<HTMLCanvasElement>>('pdfCanvas');
+  private readonly handle = signal<PdfDocumentHandle | null>(null);
+
+  /** The page being shown; a citation without a page opens at the first. */
+  protected readonly pageNumber = signal(1);
 
   constructor() {
     effect(() => {
       const target = this.target();
-      this.release();
+      this.pageNumber.set(target?.page ?? 1);
 
       if (target === null) {
+        this.release();
         this.state.set('idle');
         return;
       }
 
       if (target.source === 'County') {
         // County documents are published by the county, not stored here.
+        this.release();
         this.state.set('external');
         return;
       }
 
       if (!target.caseId) {
         // A case document can only be fetched through its case.
+        this.release();
         this.state.set('unavailable');
         return;
       }
 
-      this.load(target.caseId, target.documentId, target.page);
+      // Turning to another page of the document already open is not a reload.
+      if (this.loadedDocumentId === target.documentId && this.handle() !== null) {
+        return;
+      }
+
+      this.release();
+      this.load(target.caseId, target.documentId);
+    });
+
+    // Rendering has to wait for the canvas, which the template only creates
+    // once the state is 'rendered'. Depending on the view query rather than
+    // calling render inline is what sequences the two.
+    effect(() => {
+      const canvas = this.canvas()?.nativeElement;
+      const handle = this.handle();
+      const page = this.pageNumber();
+      if (!canvas || !handle) {
+        return;
+      }
+
+      void this.draw(handle, page, canvas);
     });
   }
 
@@ -100,7 +136,8 @@ export class DocumentViewer implements OnDestroy {
   protected retry(): void {
     const target = this.target();
     if (target?.source === 'Case' && target.caseId) {
-      this.load(target.caseId, target.documentId, target.page);
+      this.release();
+      this.load(target.caseId, target.documentId);
     }
   }
 
@@ -108,17 +145,21 @@ export class DocumentViewer implements OnDestroy {
     this.closed.emit();
   }
 
-  private load(caseId: string, documentId: string, page: number | null): void {
+  private loadedDocumentId: string | null = null;
+
+  private load(caseId: string, documentId: string): void {
     this.state.set('loading');
     this.documentService.getDocumentContent(caseId, documentId).subscribe({
-      next: (blob) => {
-        this.release();
-        this.objectUrl = URL.createObjectURL(blob);
-        // The page fragment is how a browser's built-in PDF viewer is told
-        // where to open; a viewer that ignores it simply opens at page one.
-        const url = page === null ? this.objectUrl : `${this.objectUrl}#page=${page}`;
-        this.fileUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
-        this.state.set('rendered');
+      next: async (blob) => {
+        try {
+          const handle = await this.pdf.open(blob);
+          this.loadedDocumentId = documentId;
+          this.handle.set(handle);
+          this.state.set('rendered');
+        } catch {
+          // The file arrived but pdf.js could not parse it.
+          this.state.set('error');
+        }
       },
       error: (error: HttpErrorResponse) => {
         // 404 covers both "no such document" and "its file is gone"; either
@@ -128,13 +169,23 @@ export class DocumentViewer implements OnDestroy {
     });
   }
 
-  /** Releases the object URL so a long review session does not leak blobs. */
-  private release(): void {
-    if (this.objectUrl !== null) {
-      URL.revokeObjectURL(this.objectUrl);
-      this.objectUrl = null;
+  private async draw(
+    handle: PdfDocumentHandle,
+    page: number,
+    canvas: HTMLCanvasElement,
+  ): Promise<void> {
+    const width = canvas.parentElement?.clientWidth || canvas.clientWidth || 800;
+    try {
+      await handle.renderPage(page, canvas, width);
+    } catch {
+      this.state.set('error');
     }
+  }
 
-    this.fileUrl.set(null);
+  /** Closes the open document so a long review session does not leak memory. */
+  private release(): void {
+    this.handle()?.destroy();
+    this.handle.set(null);
+    this.loadedDocumentId = null;
   }
 }

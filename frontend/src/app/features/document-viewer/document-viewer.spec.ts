@@ -4,10 +4,14 @@ import { Subject, of, throwError } from 'rxjs';
 
 import { CitationTarget } from '../../core/models/citation-target.model';
 import { DocumentService } from '../../core/services/document.service';
+import { PdfRenderService } from '../../core/services/pdf-render.service';
 import { DocumentViewer } from './document-viewer';
 
 describe('DocumentViewer', () => {
   let getDocumentContent: ReturnType<typeof vi.fn>;
+  let renderPage: ReturnType<typeof vi.fn>;
+  let destroyHandle: ReturnType<typeof vi.fn>;
+  let open: ReturnType<typeof vi.fn>;
   let fixture: ComponentFixture<DocumentViewer>;
 
   function caseTarget(overrides: Partial<CitationTarget> = {}): CitationTarget {
@@ -39,7 +43,10 @@ describe('DocumentViewer', () => {
   async function setup(target: CitationTarget | null): Promise<void> {
     TestBed.configureTestingModule({
       imports: [DocumentViewer],
-      providers: [{ provide: DocumentService, useValue: { getDocumentContent } }],
+      providers: [
+        { provide: DocumentService, useValue: { getDocumentContent } },
+        { provide: PdfRenderService, useValue: { open } },
+      ],
     });
     fixture = TestBed.createComponent(DocumentViewer);
     fixture.componentRef.setInput('target', target);
@@ -57,6 +64,17 @@ describe('DocumentViewer', () => {
 
   beforeEach(() => {
     getDocumentContent = vi.fn(() => of(new Blob(['%PDF-1.7'], { type: 'application/pdf' })));
+    renderPage = vi.fn(async () => ({ width: 800, height: 1035 }));
+    destroyHandle = vi.fn();
+    // No explicit PdfDocumentHandle return-type annotation here: the object
+    // literal's members are the loosely typed mocks above, and this is only
+    // ever consumed through `useValue` (untyped), matching how every other
+    // spec in this codebase hands a fake service to `useValue`.
+    open = vi.fn(async () => ({
+      pageCount: 4,
+      renderPage,
+      destroy: destroyHandle,
+    }));
   });
 
   it('shows nothing until a source is selected', async () => {
@@ -66,31 +84,64 @@ describe('DocumentViewer', () => {
     expect(getDocumentContent).not.toHaveBeenCalled();
   });
 
-  it('renders a case document and fetches it from its case', async () => {
+  it('renders a case document to a canvas', async () => {
     await setup(caseTarget());
 
     expect(getDocumentContent).toHaveBeenCalledWith('case-1', 'doc-1');
-    const frame = el().querySelector<HTMLIFrameElement>('.document-viewer__frame');
-    expect(frame).not.toBeNull();
-    expect(frame!.getAttribute('title')).toContain('application.pdf');
+    expect(open).toHaveBeenCalled();
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+    expect(el().querySelector('iframe')).toBeNull();
   });
 
-  it('opens the rendered document at the cited page', async () => {
+  it('renders the cited page', async () => {
     await setup(caseTarget({ page: 5 }));
 
-    const frame = el().querySelector<HTMLIFrameElement>('.document-viewer__frame');
-    expect(frame!.getAttribute('src')).toContain('#page=5');
-    expect(el().querySelector('.document-viewer__hint')?.textContent).toContain('page 5');
+    expect(renderPage).toHaveBeenCalledWith(5, expect.anything(), expect.any(Number));
   });
 
-  it('renders without a page fragment when the citation names no page', async () => {
+  it('renders the first page when the citation names none', async () => {
     await setup(caseTarget({ page: null }));
 
-    const frame = el().querySelector<HTMLIFrameElement>('.document-viewer__frame');
-    expect(frame!.getAttribute('src')).not.toContain('#page=');
-    expect(el().querySelector('.document-viewer__hint')?.textContent).toContain(
-      'does not name a page',
+    expect(renderPage).toHaveBeenCalledWith(1, expect.anything(), expect.any(Number));
+  });
+
+  it('re-renders when the page changes without re-opening the file', async () => {
+    await setup(caseTarget({ page: 2 }));
+    expect(open).toHaveBeenCalledTimes(1);
+
+    await setTarget(caseTarget({ page: 3 }));
+
+    expect(renderPage).toHaveBeenLastCalledWith(3, expect.anything(), expect.any(Number));
+    // Same document — fetching and parsing it again would be wasted work.
+    expect(getDocumentContent).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it('destroys the open document when the source changes', async () => {
+    await setup(caseTarget());
+
+    await setTarget(caseTarget({ documentId: 'doc-2' }));
+
+    expect(destroyHandle).toHaveBeenCalled();
+    expect(getDocumentContent).toHaveBeenLastCalledWith('case-1', 'doc-2');
+  });
+
+  it('destroys the open document on teardown', async () => {
+    await setup(caseTarget());
+
+    fixture.destroy();
+
+    expect(destroyHandle).toHaveBeenCalled();
+  });
+
+  it('reports an unreadable PDF as an error rather than a blank canvas', async () => {
+    open = vi.fn(() => Promise.reject(new Error('Invalid PDF structure')));
+    await setup(caseTarget());
+
+    expect(el().querySelector('.state-panel--error')?.textContent).toContain(
+      'The document could not be loaded',
     );
+    expect(el().querySelector('.document-viewer__canvas')).toBeNull();
   });
 
   it('shows a loading state while the file is in flight', async () => {
@@ -103,15 +154,19 @@ describe('DocumentViewer', () => {
     pending.next(new Blob(['%PDF-1.7']));
     pending.complete();
     await fixture.whenStable();
+    // The signal write that follows the awaited pdf.open() schedules its
+    // change detection outside the zone task whenStable() tracks, so the
+    // view is not guaranteed to reflect the new state after a single call.
+    await fixture.whenStable();
 
-    expect(el().querySelector('.document-viewer__frame')).not.toBeNull();
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
   });
 
   it('links out to a county document instead of fetching it', async () => {
     await setup(countyTarget());
 
     expect(getDocumentContent).not.toHaveBeenCalled();
-    expect(el().querySelector('.document-viewer__frame')).toBeNull();
+    expect(el().querySelector('.document-viewer__canvas')).toBeNull();
     const link = el().querySelector<HTMLAnchorElement>('.document-viewer__external a');
     expect(link?.getAttribute('href')).toBe('https://www.hcfcd.org/regulations#page=17');
     expect(link?.textContent).toContain('Open page 17');
@@ -158,7 +213,7 @@ describe('DocumentViewer', () => {
 
     const panel = el().querySelector('.state-panel--error');
     expect(panel?.textContent).toContain('The document file is unavailable');
-    expect(el().querySelector('.document-viewer__frame')).toBeNull();
+    expect(el().querySelector('.document-viewer__canvas')).toBeNull();
     // The metadata stays on screen so the reviewer can still find the document.
     expect(el().textContent).toContain('application.pdf');
   });
@@ -185,7 +240,7 @@ describe('DocumentViewer', () => {
     el().querySelector<HTMLButtonElement>('.state-panel--error button')!.click();
     await fixture.whenStable();
 
-    expect(el().querySelector('.document-viewer__frame')).not.toBeNull();
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
   });
 
   it('explains that a case citation without a case cannot be opened', async () => {
@@ -205,16 +260,5 @@ describe('DocumentViewer', () => {
     el().querySelector<HTMLButtonElement>('.document-viewer__header button')!.click();
 
     expect(closed).toHaveLength(1);
-  });
-
-  it('releases the previous file when the source changes', async () => {
-    const revoke = vi.spyOn(URL, 'revokeObjectURL');
-    await setup(caseTarget());
-
-    await setTarget(caseTarget({ documentId: 'doc-2' }));
-
-    expect(revoke).toHaveBeenCalled();
-    expect(getDocumentContent).toHaveBeenLastCalledWith('case-1', 'doc-2');
-    revoke.mockRestore();
   });
 });

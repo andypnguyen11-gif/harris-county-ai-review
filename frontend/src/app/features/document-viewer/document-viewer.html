@@ -30,15 +30,17 @@
       }
 
       @case ('rendered') {
-        <iframe
-          class="document-viewer__frame"
-          [src]="fileUrl()"
-          [title]="'Document: ' + source.title"
-        ></iframe>
+        <div class="document-viewer__page">
+          <canvas
+            #pdfCanvas
+            class="document-viewer__canvas"
+            [attr.aria-label]="'Page ' + pageNumber() + ' of ' + source.title"
+            role="img"
+          ></canvas>
+        </div>
         <p class="document-viewer__hint">
           @if (source.page !== null) {
-            Opened at page {{ source.page }}. If your browser's viewer does not jump there
-            automatically, scroll to page {{ source.page }}.
+            Showing page {{ source.page }}.
           } @else {
             This citation does not name a page.
           }
