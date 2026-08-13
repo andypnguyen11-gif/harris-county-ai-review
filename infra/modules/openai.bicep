@@ -29,8 +29,16 @@ param embeddingModelName string = 'text-embedding-3-small'
 @description('Embedding model version.')
 param embeddingModelVersion string = '1'
 
-@description('Throughput capacity (thousands of tokens per minute) per deployment.')
-param deploymentCapacity int = 10
+// Capacity is a per-minute rate limit, not a spend commitment: a GlobalStandard
+// deployment bills per token generated, so headroom that goes unused costs
+// nothing. The two deployments are sized separately because they are throttled
+// by completely different workloads, and a single shared value silently
+// starves one of them.
+@description('Chat throughput capacity, in thousands of tokens per minute. Sized for interactive question answering, where several reviewers can be waiting on answers at once and a 429 surfaces as a failed answer.')
+param chatDeploymentCapacity int = 100
+
+@description('Embedding throughput capacity, in thousands of tokens per minute. Sized for corpus ingestion, which embeds a whole document in tight batches and is the heaviest token burst the system produces.')
+param embeddingDeploymentCapacity int = 250
 
 resource openAi 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   name: accountName
@@ -49,7 +57,7 @@ resource chatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-1
   name: chatDeploymentName
   sku: {
     name: 'GlobalStandard'
-    capacity: deploymentCapacity
+    capacity: chatDeploymentCapacity
   }
   properties: {
     model: {
@@ -59,7 +67,7 @@ resource chatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-1
     }
     versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
     raiPolicyName: 'Microsoft.DefaultV2'
-    currentCapacity: deploymentCapacity
+    currentCapacity: chatDeploymentCapacity
   }
 }
 
@@ -69,7 +77,7 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
   name: embeddingDeploymentName
   sku: {
     name: 'GlobalStandard'
-    capacity: deploymentCapacity
+    capacity: embeddingDeploymentCapacity
   }
   properties: {
     model: {
@@ -79,7 +87,7 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
     }
     versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
     raiPolicyName: 'Microsoft.DefaultV2'
-    currentCapacity: deploymentCapacity
+    currentCapacity: embeddingDeploymentCapacity
   }
   dependsOn: [
     chatDeployment
