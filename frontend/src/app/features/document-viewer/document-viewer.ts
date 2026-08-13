@@ -229,11 +229,47 @@ export class DocumentViewer implements OnDestroy {
     });
   }
 
-  private async draw(
+  /**
+   * Renders run one at a time. pdf.js rejects a second render against a canvas
+   * it is already drawing into ("Cannot use the same canvas during multiple
+   * render() operations"), and clicking from a finding on one page to a
+   * finding on another before the first render settles — the whole point of
+   * the feature — is exactly that. Each render therefore waits for the one
+   * before it to settle, whatever its outcome.
+   */
+  private drawQueue: Promise<void> = Promise.resolve();
+
+  /**
+   * Bumped by every draw request. A queued render whose token is stale by the
+   * time its turn comes has been superseded by a later page, and is dropped.
+   */
+  private drawToken = 0;
+
+  private draw(handle: PdfDocumentHandle, page: number, canvas: HTMLCanvasElement): Promise<void> {
+    const token = ++this.drawToken;
+    const render = this.drawQueue.then(() => this.render(handle, page, canvas, token));
+    // The queue itself must never hold a rejection, or one unexpected failure
+    // would leave every later render waiting on a promise that never settles
+    // into a `then`.
+    this.drawQueue = render.catch(() => undefined);
+    return render;
+  }
+
+  private async render(
     handle: PdfDocumentHandle,
     page: number,
     canvas: HTMLCanvasElement,
+    token: number,
   ): Promise<void> {
+    if (token !== this.drawToken || this.handle() !== handle) {
+      // Superseded while an earlier render held the canvas: this page is no
+      // longer the one being shown, and its document may already be closed.
+      // Drawing it would be overwritten at once and failing it would report a
+      // problem with a page nobody is looking at, so it is dropped silently —
+      // the render that superseded it is the one that sets the state.
+      return;
+    }
+
     // Render at the width of the box the overlay covers — the page surface,
     // whose content width is the viewport's, so the boxes stay percentages of
     // the page whatever the column does.
@@ -241,7 +277,15 @@ export class DocumentViewer implements OnDestroy {
     try {
       await handle.renderPage(page, canvas, width);
     } catch {
+      if (token !== this.drawToken) {
+        // Superseded mid-render; the failure belongs to a page already gone.
+        return;
+      }
+
       this.state.set('error');
+      // Forget which document is open so that turning to another page reloads
+      // it rather than short-circuiting straight back into this failed state.
+      this.loadedDocumentId = null;
     }
   }
 

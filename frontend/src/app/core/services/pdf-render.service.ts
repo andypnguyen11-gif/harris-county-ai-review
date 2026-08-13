@@ -43,37 +43,59 @@ export class PdfRenderService {
     const loadingTask = pdfjs.getDocument({ data });
     const document = await loadingTask.promise;
 
+    /**
+     * Renders through this handle run one at a time. pdf.js throws "Cannot use
+     * the same canvas during multiple render() operations" when a second
+     * render starts against a canvas the first is still drawing into, and the
+     * `canvas.width` assignment below would in any case blank what the first
+     * render had already painted. A caller may therefore ask for a new page
+     * whenever it likes without tracking what is still in flight.
+     */
+    let queue: Promise<unknown> = Promise.resolve();
+
+    const drawPage = async (
+      pageNumber: number,
+      canvas: HTMLCanvasElement,
+      cssWidth: number,
+    ): Promise<RenderedPageSize> => {
+      // Rendering targets `canvas` in this pdf.js version's RenderParameters
+      // (canvasContext is retained only for backwards compatibility), but
+      // the 2D context is still required up front so a canvas that cannot
+      // be drawn into fails loudly before pdf.js is asked to use it.
+      const context = canvas.getContext('2d');
+      if (context === null) {
+        throw new Error('The canvas has no 2D context to render into.');
+      }
+
+      const page = await document.getPage(pageNumber);
+      const unscaled = page.getViewport({ scale: 1 });
+      // The page is drawn to fill the width it was given; its height follows.
+      const scale = cssWidth / unscaled.width;
+      const ratio = window.devicePixelRatio || 1;
+      const viewport = page.getViewport({ scale: scale * ratio });
+
+      canvas.width = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+
+      const size: RenderedPageSize = {
+        width: Math.round(viewport.width / ratio),
+        height: Math.round(viewport.height / ratio),
+      };
+      canvas.style.width = `${size.width}px`;
+      canvas.style.height = `${size.height}px`;
+
+      await page.render({ canvas, viewport }).promise;
+      return size;
+    };
+
     return {
       pageCount: document.numPages,
-      renderPage: async (pageNumber, canvas, cssWidth) => {
-        // Rendering targets `canvas` in this pdf.js version's RenderParameters
-        // (canvasContext is retained only for backwards compatibility), but
-        // the 2D context is still required up front so a canvas that cannot
-        // be drawn into fails loudly before pdf.js is asked to use it.
-        const context = canvas.getContext('2d');
-        if (context === null) {
-          throw new Error('The canvas has no 2D context to render into.');
-        }
-
-        const page = await document.getPage(pageNumber);
-        const unscaled = page.getViewport({ scale: 1 });
-        // The page is drawn to fill the width it was given; its height follows.
-        const scale = cssWidth / unscaled.width;
-        const ratio = window.devicePixelRatio || 1;
-        const viewport = page.getViewport({ scale: scale * ratio });
-
-        canvas.width = Math.round(viewport.width);
-        canvas.height = Math.round(viewport.height);
-
-        const size: RenderedPageSize = {
-          width: Math.round(viewport.width / ratio),
-          height: Math.round(viewport.height / ratio),
-        };
-        canvas.style.width = `${size.width}px`;
-        canvas.style.height = `${size.height}px`;
-
-        await page.render({ canvas, viewport }).promise;
-        return size;
+      renderPage: (pageNumber, canvas, cssWidth) => {
+        const render = queue.then(() => drawPage(pageNumber, canvas, cssWidth));
+        // The queue holds the outcome of the last render but never its
+        // rejection: a failed page must not stop the next one from starting.
+        queue = render.catch(() => undefined);
+        return render;
       },
       destroy: () => {
         // PDFDocumentProxy (the object `loadingTask.promise` resolves to) has

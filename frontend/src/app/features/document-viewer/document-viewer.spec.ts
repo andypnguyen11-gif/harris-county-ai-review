@@ -63,6 +63,16 @@ describe('DocumentViewer', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  /**
+   * Lets a promise chain that spans several ticks — a queued render waiting on
+   * the one before it — run to completion, then settles the view. Awaiting
+   * whenStable alone yields only a tick or two of microtasks.
+   */
+  async function settle(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await fixture.whenStable();
+  }
+
   function box(overrides: Partial<BoundingBox> = {}): BoundingBox {
     return { pageNumber: 2, x: 0.1, y: 0.2, width: 0.3, height: 0.04, ...overrides };
   }
@@ -213,6 +223,101 @@ describe('DocumentViewer', () => {
     // Only the current target's handle is kept and rendered.
     expect(doc3Handle.destroy).not.toHaveBeenCalled();
     expect(doc3Handle.renderPage).toHaveBeenCalled();
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+  });
+
+  describe('overlapping renders', () => {
+    /**
+     * Replaces renderPage with one that never settles on its own, handing the
+     * test the resolve/reject of every call it receives. A real page render
+     * takes tens to hundreds of milliseconds, which is long enough for a
+     * reviewer to click through to another finding.
+     */
+    function deferredRenders(): Array<{ resolve: () => void; reject: () => void }> {
+      const pending: Array<{ resolve: () => void; reject: () => void }> = [];
+      renderPage = vi.fn(
+        () =>
+          new Promise((resolve, reject) => {
+            pending.push({
+              resolve: () => resolve({ width: 800, height: 1035 }),
+              reject: () => reject(new Error('Render failed')),
+            });
+          }),
+      );
+      return pending;
+    }
+
+    it('starts the next render only once the one in flight has settled', async () => {
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+      expect(renderPage).toHaveBeenCalledTimes(1);
+
+      // The reviewer clicks a finding on another page before the first page
+      // has finished rendering. pdf.js rejects a second render against a
+      // canvas it is still drawing into, so this one has to wait.
+      await setTarget(caseTarget({ page: 4 }));
+      expect(renderPage).toHaveBeenCalledTimes(1);
+
+      pending[0].resolve();
+      await settle();
+
+      expect(renderPage).toHaveBeenCalledTimes(2);
+      expect(renderPage).toHaveBeenLastCalledWith(4, expect.anything(), expect.any(Number));
+      expect(el().querySelector('.state-panel--error')).toBeNull();
+      expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+    });
+
+    it('ignores a superseded render instead of leaving the viewer stuck', async () => {
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+      await setTarget(caseTarget({ page: 4 }));
+
+      // The superseded render fails — a cancellation, or a "same canvas"
+      // throw from a pdf.js that saw both. Its outcome belongs to a page
+      // nobody is looking at any more, so it must not become an error panel
+      // and must not leave the viewer loading forever either.
+      pending[0].reject();
+      await settle();
+      pending[1].resolve();
+      await settle();
+
+      expect(renderPage).toHaveBeenCalledTimes(2);
+      expect(el().querySelector('.state-panel--error')).toBeNull();
+      expect(el().querySelector('[role="status"]')).toBeNull();
+      expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+    });
+
+    it('drops a render two page turns have already overtaken', async () => {
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+      await setTarget(caseTarget({ page: 2 }));
+      await setTarget(caseTarget({ page: 3 }));
+
+      pending[0].resolve();
+      await settle();
+
+      // Only the page the reviewer is actually on is drawn; the one they
+      // passed through is not worth a render nobody would see.
+      expect(renderPage).toHaveBeenCalledTimes(2);
+      expect(renderPage).toHaveBeenLastCalledWith(3, expect.anything(), expect.any(Number));
+    });
+  });
+
+  it('recovers from a failed render when the reviewer turns the page', async () => {
+    renderPage = vi.fn(async () => {
+      throw new Error('Render failed');
+    });
+    await setup(caseTarget({ page: 2 }));
+    await settle();
+    expect(el().querySelector('.state-panel--error')).not.toBeNull();
+
+    // The failed document is no longer treated as loaded, so a page turn
+    // reloads it rather than short-circuiting back into the error panel.
+    renderPage.mockResolvedValue({ width: 800, height: 1035 });
+    await setTarget(caseTarget({ page: 3 }));
+    await settle();
+
+    expect(el().querySelector('.state-panel--error')).toBeNull();
     expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
   });
 

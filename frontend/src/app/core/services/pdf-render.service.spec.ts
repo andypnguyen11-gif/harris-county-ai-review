@@ -14,6 +14,11 @@ vi.mock('pdfjs-dist', () => ({
   getDocument: (...args: unknown[]) => getDocument(...args),
 }));
 
+/** Lets every pending microtask run, whatever depth of promise chain. */
+function flushMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('PdfRenderService', () => {
   let service: PdfRenderService;
 
@@ -95,6 +100,52 @@ describe('PdfRenderService', () => {
     handle.destroy();
 
     expect(destroy).toHaveBeenCalled();
+  });
+
+  it('renders one page at a time so two renders cannot share a canvas', async () => {
+    // pdf.js throws "Cannot use the same canvas during multiple render()
+    // operations" if a second render starts against a canvas the first is
+    // still drawing into, and the second render's canvas.width assignment
+    // blanks what the first had painted. A caller turning pages faster than
+    // they render must not have to know that.
+    const finish: Array<() => void> = [];
+    render.mockImplementation(() => ({
+      promise: new Promise<void>((resolve) => finish.push(resolve)),
+    }));
+    // These mocks are module-level, so their call counts carry across tests.
+    render.mockClear();
+    getPage.mockClear();
+    const canvas = fakeCanvas();
+    const handle = await service.open(new Blob(['%PDF-1.7']));
+
+    const first = handle.renderPage(1, canvas, 612);
+    const second = handle.renderPage(2, canvas, 612);
+    await flushMicrotasks();
+
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(getPage).toHaveBeenCalledTimes(1);
+
+    finish[0]();
+    await first;
+    await flushMicrotasks();
+    expect(render).toHaveBeenCalledTimes(2);
+
+    finish[1]();
+    await second;
+    expect(getPage.mock.calls).toEqual([[1], [2]]);
+  });
+
+  it('starts the next render after one fails rather than stalling on it', async () => {
+    getPage.mockRejectedValueOnce(new Error('Invalid page request.'));
+    const canvas = fakeCanvas();
+    const handle = await service.open(new Blob(['%PDF-1.7']));
+
+    await expect(handle.renderPage(9, canvas, 612)).rejects.toThrow(/Invalid page request/);
+
+    await expect(handle.renderPage(1, canvas, 612)).resolves.toEqual({
+      width: 612,
+      height: 792,
+    });
   });
 
   it('fails loudly when the canvas has no 2D context', async () => {
