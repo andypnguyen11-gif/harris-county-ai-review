@@ -32,6 +32,24 @@ export type ViewerState =
   | 'error';
 
 /**
+ * Zoom steps, as multiples of the width that fits the viewer. A reviewer
+ * reading small print on a scanned form needs more than the column can show,
+ * so the page is allowed to outgrow it and scroll.
+ */
+const ZOOM_LEVELS = [1, 1.25, 1.5, 2, 2.5, 3];
+
+/**
+ * How much room the viewer must gain before the page is redrawn to fill it.
+ * Roughly a scrollbar: a page that has just lost one must not grow back into
+ * the space it freed, or a page whose height straddles the viewer's own
+ * summons the scrollbar, shrinks, dismisses it, grows, and pulses between the
+ * two sizes forever. `scrollbar-gutter: stable` keeps that from arising where
+ * it is supported; this holds the line where it is not. Room lost is a
+ * different matter and always redraws — see the resize handler.
+ */
+const RESIZE_GROWTH_THRESHOLD_PX = 24;
+
+/**
  * A box to draw over the rendered page. The viewer draws what it is given and
  * decides nothing: which findings become regions, and which one is active, is
  * the calling screen's policy.
@@ -91,6 +109,14 @@ export class DocumentViewer implements OnDestroy {
   readonly notice = input<string | null>(null);
 
   protected readonly state = signal<ViewerState>('idle');
+
+  /**
+   * Whether the canvas holds a page. Until it does it is the browser's default
+   * 300x150, and showing that flashes a small white box in place of the page
+   * each time a document is opened.
+   */
+  protected readonly painted = signal(false);
+
   protected readonly sourceLabels = CITATION_SOURCE_LABELS;
 
   /** The canvas only exists while the state is 'rendered'. */
@@ -103,6 +129,14 @@ export class DocumentViewer implements OnDestroy {
 
   /** The page being shown; a citation without a page opens at the first. */
   protected readonly pageNumber = signal(1);
+
+  /** How much larger than the fitted width the page is drawn. */
+  protected readonly zoom = signal(1);
+  protected readonly zoomLabel = computed(() =>
+    this.zoom() === 1 ? 'Fit' : `${Math.round(this.zoom() * 100)}%`,
+  );
+  protected readonly canZoomIn = computed(() => this.zoom() < ZOOM_LEVELS[ZOOM_LEVELS.length - 1]);
+  protected readonly canZoomOut = computed(() => this.zoom() > ZOOM_LEVELS[0]);
 
   /** Regions whose box belongs to the page currently rendered. */
   protected readonly visibleRegions = computed(() =>
@@ -168,8 +202,19 @@ export class DocumentViewer implements OnDestroy {
         return;
       }
 
-      void this.draw(handle, page, canvas);
+      // Read inside the effect, not inside the render it starts: a render runs
+      // as a later microtask, where a signal read would not be tracked, and a
+      // zoom the reviewer asks for has to re-render the page.
+      void this.draw(handle, page, canvas, this.renderWidth());
       this.observe(canvas);
+    });
+
+    // A finding on the page already shown re-points the boxes without
+    // re-rendering anything, so bringing the new one into view has to follow
+    // the regions rather than the render.
+    effect(() => {
+      this.visibleRegions();
+      this.revealActiveRegion();
     });
   }
 
@@ -197,6 +242,54 @@ export class DocumentViewer implements OnDestroy {
 
   protected close(): void {
     this.closed.emit();
+  }
+
+  protected zoomIn(): void {
+    this.zoom.set(ZOOM_LEVELS.find((level) => level > this.zoom()) ?? this.zoom());
+  }
+
+  protected zoomOut(): void {
+    this.zoom.set([...ZOOM_LEVELS].reverse().find((level) => level < this.zoom()) ?? this.zoom());
+  }
+
+  /**
+   * The width to draw the page at: the viewer's own content width, so a fitted
+   * page needs no horizontal scrolling, multiplied by the zoom. The overlay's
+   * boxes are percentages of the page surface, which wraps the canvas at
+   * whatever size this produces, so zooming needs no geometry of its own.
+   */
+  private renderWidth(): number {
+    // jsdom measures nothing; the fallback keeps rendering exercisable there.
+    const available = this.viewport()?.nativeElement.clientWidth || 800;
+    return Math.round(available * this.zoom());
+  }
+
+  /**
+   * Puts the box the reviewer asked to see in the middle of the viewer. The
+   * page is usually taller than the box showing it — and, zoomed in, wider —
+   * so without this the reviewer clicks "View page" and has to hunt for the
+   * highlight the click was meant to show them.
+   */
+  private revealActiveRegion(): void {
+    const viewport = this.viewport()?.nativeElement;
+    const canvas = this.canvas()?.nativeElement;
+    const active = this.visibleRegions().find((region) => region.active);
+    if (!viewport || !canvas || !active) {
+      return;
+    }
+
+    const pageHeight = canvas.clientHeight;
+    const pageWidth = canvas.clientWidth;
+    if (pageHeight === 0 || pageWidth === 0) {
+      // Nothing is laid out yet; the render that follows reveals it instead.
+      return;
+    }
+
+    const centreY = (active.box.y + active.box.height / 2) * pageHeight;
+    const centreX = (active.box.x + active.box.width / 2) * pageWidth;
+    // The browser clamps both to what there is to scroll.
+    viewport.scrollTop = Math.max(0, centreY - viewport.clientHeight / 2);
+    viewport.scrollLeft = Math.max(0, centreX - viewport.clientWidth / 2);
   }
 
   private loadedDocumentId: string | null = null;
@@ -259,9 +352,17 @@ export class DocumentViewer implements OnDestroy {
    */
   private drawToken = 0;
 
-  private draw(handle: PdfDocumentHandle, page: number, canvas: HTMLCanvasElement): Promise<void> {
+  /** The width the page on screen was drawn at, or null while there is none. */
+  private lastRenderWidth: number | null = null;
+
+  private draw(
+    handle: PdfDocumentHandle,
+    page: number,
+    canvas: HTMLCanvasElement,
+    width: number,
+  ): Promise<void> {
     const token = ++this.drawToken;
-    const render = this.drawQueue.then(() => this.render(handle, page, canvas, token));
+    const render = this.drawQueue.then(() => this.render(handle, page, canvas, token, width));
     // The queue itself must never hold a rejection, or one unexpected failure
     // would leave every later render waiting on a promise that never settles
     // into a `then`.
@@ -274,6 +375,7 @@ export class DocumentViewer implements OnDestroy {
     page: number,
     canvas: HTMLCanvasElement,
     token: number,
+    width: number,
   ): Promise<void> {
     if (token !== this.drawToken || this.handle() !== handle) {
       // Superseded while an earlier render held the canvas: this page is no
@@ -284,12 +386,11 @@ export class DocumentViewer implements OnDestroy {
       return;
     }
 
-    // Render at the width of the box the overlay covers — the page surface,
-    // whose content width is the viewport's, so the boxes stay percentages of
-    // the page whatever the column does.
-    const width = canvas.parentElement?.clientWidth || canvas.clientWidth || 800;
     try {
       await handle.renderPage(page, canvas, width);
+      this.painted.set(true);
+      this.lastRenderWidth = width;
+      this.revealActiveRegion();
     } catch {
       if (token !== this.drawToken || this.handle() !== handle) {
         // Superseded mid-render; the failure belongs to a page already gone, or
@@ -343,9 +444,22 @@ export class DocumentViewer implements OnDestroy {
         const handle = this.handle();
         // A container mid-collapse (e.g. its column being dragged shut)
         // reports zero width; there is nothing useful to render there.
-        if (handle !== null && container.clientWidth > 0) {
-          void this.draw(handle, this.pageNumber(), canvas);
+        if (handle === null || container.clientWidth <= 0) {
+          return;
         }
+
+        // A container that has narrowed is redrawn however slightly it moved:
+        // the page is sized in pixels, so anything else leaves it spilling out
+        // of the box. Room gained is only worth a redraw when there is a real
+        // gain in sharpness to be had — growing back into the space a
+        // disappearing scrollbar just released only summons it again.
+        const width = this.renderWidth();
+        const last = this.lastRenderWidth;
+        if (last !== null && width >= last && width - last < RESIZE_GROWTH_THRESHOLD_PX) {
+          return;
+        }
+
+        void this.draw(handle, this.pageNumber(), canvas, width);
       }, 150);
     });
     this.resizeObserver.observe(container);
@@ -370,5 +484,9 @@ export class DocumentViewer implements OnDestroy {
     this.handle()?.destroy();
     this.handle.set(null);
     this.loadedDocumentId = null;
+    // Nothing is on screen: no width for a later resize to compare against,
+    // and the next document gets a canvas of its own to fill before it shows.
+    this.lastRenderWidth = null;
+    this.painted.set(false);
   }
 }

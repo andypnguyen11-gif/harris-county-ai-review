@@ -133,7 +133,11 @@
   }
 
   &__reference {
-    margin: 0.25rem 0 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0.375rem 0 0;
     font-size: 0.8125rem;
     color: var(--color-text-muted);
   }
@@ -171,7 +175,11 @@
  */
 .report-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /*
+   * The evidence column takes the larger share: a finding is a line or two of
+   * text, while the page it came from has to be legible at a glance.
+   */
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: 1.5rem;
   align-items: start;
 }

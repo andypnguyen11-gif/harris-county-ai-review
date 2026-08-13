@@ -63,6 +63,11 @@ describe('DocumentViewer', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  /** The scroll container the page is drawn into and measured against. */
+  function viewportEl(): HTMLElement {
+    return el().querySelector('.document-viewer__viewport') as HTMLElement;
+  }
+
   /**
    * Lets a promise chain that spans several ticks — a queued render waiting on
    * the one before it — run to completion, then settles the view. Awaiting
@@ -198,17 +203,105 @@ describe('DocumentViewer', () => {
     expect(surface?.parentElement?.classList.contains('document-viewer__viewport')).toBe(true);
   });
 
-  it('renders the page at the width of the box the overlay covers', async () => {
+  it('renders the page at the width of the viewer it has to fit', async () => {
     await setup(caseTarget({ page: 2 }));
-    const surface = el().querySelector('.document-viewer__page-surface') as HTMLElement;
-    Object.defineProperty(surface, 'clientWidth', { value: 640, configurable: true });
+    Object.defineProperty(viewportEl(), 'clientWidth', { value: 640, configurable: true });
 
-    // A page turn re-renders, this time with the surface measurable.
+    // A page turn re-renders, this time with the viewer measurable.
     await setTarget(caseTarget({ page: 3 }));
 
-    // The rendered page has to be exactly as wide as the box the percentage
-    // boxes are drawn against, or the two disagree.
+    // A page fitted to the viewer's content width needs no horizontal
+    // scrolling, and the surface the boxes are drawn against wraps it exactly.
     expect(renderPage).toHaveBeenLastCalledWith(3, expect.anything(), 640);
+  });
+
+  describe('zoom', () => {
+    function zoomButton(direction: 'in' | 'out'): HTMLButtonElement {
+      return el().querySelector(`[aria-label="Zoom ${direction}"]`) as HTMLButtonElement;
+    }
+
+    async function click(button: HTMLButtonElement): Promise<void> {
+      button.click();
+      await settle();
+    }
+
+    it('draws the page larger than the viewer when zoomed in', async () => {
+      // Reviewers read small print on scanned forms; a page fitted to the
+      // column is not always legible. The page is allowed to outgrow the box
+      // and scroll rather than being capped at what fits.
+      await setup(caseTarget({ page: 2 }));
+      Object.defineProperty(viewportEl(), 'clientWidth', { value: 600, configurable: true });
+
+      await click(zoomButton('in'));
+
+      expect(renderPage).toHaveBeenLastCalledWith(2, expect.anything(), 750);
+      expect(el().querySelector('.document-viewer__zoom-level')?.textContent).toContain('125%');
+    });
+
+    it('steps back down to a fitted page and stops there', async () => {
+      await setup(caseTarget({ page: 2 }));
+      Object.defineProperty(viewportEl(), 'clientWidth', { value: 600, configurable: true });
+      await click(zoomButton('in'));
+
+      await click(zoomButton('out'));
+
+      expect(renderPage).toHaveBeenLastCalledWith(2, expect.anything(), 600);
+      expect(el().querySelector('.document-viewer__zoom-level')?.textContent).toContain('Fit');
+      // Nothing below a fitted page: a page smaller than the box it sits in
+      // is harder to read, not easier.
+      expect(zoomButton('out').disabled).toBe(true);
+    });
+
+    it('offers no zoom until there is a page to zoom', async () => {
+      getDocumentContent = vi.fn(() => new Subject<Blob>().asObservable());
+      await setup(caseTarget());
+
+      expect(zoomButton('in')).toBeNull();
+    });
+  });
+
+  it('scrolls the box the reviewer asked for into the middle of the viewer', async () => {
+    // The page is usually taller than the box showing it, and zoomed in it is
+    // wider too. Without this the reviewer clicks "View page" and has to hunt
+    // for the highlight the click was meant to show them.
+    await setup(caseTarget({ page: 2 }));
+    const canvas = el().querySelector('.document-viewer__canvas') as HTMLElement;
+    Object.defineProperty(canvas, 'clientHeight', { value: 1000, configurable: true });
+    Object.defineProperty(canvas, 'clientWidth', { value: 800, configurable: true });
+    Object.defineProperty(viewportEl(), 'clientHeight', { value: 500, configurable: true });
+    // jsdom lays nothing out and never scrolls, so scrollTop has to be made
+    // observable to assert what the component asks the browser to do.
+    let scrollTop = 0;
+    Object.defineProperty(viewportEl(), 'scrollTop', {
+      get: () => scrollTop,
+      set: (value: number) => (scrollTop = value),
+      configurable: true,
+    });
+
+    await setRegions([region({ active: true, box: box({ y: 0.8, height: 0.04 }) })]);
+
+    // The box's middle sits 820px down a 1000px page; half the viewer's height
+    // above that puts it in the centre.
+    expect(scrollTop).toBeCloseTo(570);
+  });
+
+  it('leaves the scroll position alone when no box is active', async () => {
+    await setup(caseTarget({ page: 2 }));
+    const canvas = el().querySelector('.document-viewer__canvas') as HTMLElement;
+    Object.defineProperty(canvas, 'clientHeight', { value: 1000, configurable: true });
+    Object.defineProperty(canvas, 'clientWidth', { value: 800, configurable: true });
+    let scrollTop = 0;
+    Object.defineProperty(viewportEl(), 'scrollTop', {
+      get: () => scrollTop,
+      set: (value: number) => (scrollTop = value),
+      configurable: true,
+    });
+
+    await setRegions([region({ active: false, box: box({ y: 0.8 }) })]);
+
+    // A citation with no box of its own opens the page at the top, where a
+    // reader starts.
+    expect(scrollTop).toBe(0);
   });
 
   it('destroys a handle superseded by a later target instead of orphaning or showing it', async () => {
@@ -270,6 +363,34 @@ describe('DocumentViewer', () => {
       );
       return pending;
     }
+
+    it('keeps the page hidden until it has been drawn into', async () => {
+      // An undrawn canvas is the browser's default 300x150. Showing it would
+      // flash a small white box in place of the page on every open.
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+      const surface = (): Element | null => el().querySelector('.document-viewer__page-surface');
+      expect(surface()?.classList.contains('is-hidden')).toBe(true);
+
+      pending[0].resolve();
+      await settle();
+
+      expect(surface()?.classList.contains('is-hidden')).toBe(false);
+    });
+
+    it('hides the page again while the next document loads', async () => {
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+      pending[0].resolve();
+      await settle();
+
+      await setTarget(caseTarget({ documentId: 'doc-2' }));
+
+      // A second document brings a canvas of its own, blank until it renders.
+      expect(
+        el().querySelector('.document-viewer__page-surface')?.classList.contains('is-hidden'),
+      ).toBe(true);
+    });
 
     it('starts the next render only once the one in flight has settled', async () => {
       const pending = deferredRenders();
@@ -435,16 +556,16 @@ describe('DocumentViewer', () => {
   it('distinguishes the two sources visually', async () => {
     await setup(countyTarget());
     expect(
-      el().querySelector('.document-viewer__source')?.classList.contains(
-        'document-viewer__source--county',
-      ),
+      el()
+        .querySelector('.document-viewer__source')
+        ?.classList.contains('document-viewer__source--county'),
     ).toBe(true);
 
     await setTarget(caseTarget());
     expect(
-      el().querySelector('.document-viewer__source')?.classList.contains(
-        'document-viewer__source--case',
-      ),
+      el()
+        .querySelector('.document-viewer__source')
+        ?.classList.contains('document-viewer__source--case'),
     ).toBe(true);
   });
 
@@ -500,7 +621,7 @@ describe('DocumentViewer', () => {
     await setup(caseTarget());
     fixture.componentInstance.closed.subscribe((value) => closed.push(value));
 
-    el().querySelector<HTMLButtonElement>('.document-viewer__header button')!.click();
+    el().querySelector<HTMLButtonElement>('.document-viewer__close')!.click();
 
     expect(closed).toHaveLength(1);
   });
@@ -537,10 +658,7 @@ describe('DocumentViewer', () => {
 
     const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
     expect(drawn).toHaveLength(2);
-    expect([...drawn].map((node) => node.dataset['regionId'])).toEqual([
-      'finding-1',
-      'finding-2',
-    ]);
+    expect([...drawn].map((node) => node.dataset['regionId'])).toEqual(['finding-1', 'finding-2']);
     expect([...drawn].map((node) => node.style.left)).toEqual(['10%', '50%']);
   });
 
@@ -562,9 +680,9 @@ describe('DocumentViewer', () => {
 
     await setRegions([region({ label: 'Owner name is missing' })]);
 
-    expect(
-      el().querySelector('.document-viewer__region')?.getAttribute('aria-label'),
-    ).toBe('Owner name is missing');
+    expect(el().querySelector('.document-viewer__region')?.getAttribute('aria-label')).toBe(
+      'Owner name is missing',
+    );
   });
 
   it('draws only regions whose page matches the rendered page', async () => {
@@ -692,6 +810,52 @@ describe('DocumentViewer', () => {
     await fixture.whenStable();
 
     expect(renderPage.mock.calls.length).toBe(initial);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  /** Resizes the viewer to `clientWidth` and lets the debounce elapse. */
+  async function resizeTo(clientWidth: number, notifiers: Array<() => void>): Promise<void> {
+    Object.defineProperty(viewportEl(), 'clientWidth', { value: clientWidth, configurable: true });
+    notifiers.forEach((notify) => notify());
+    vi.advanceTimersByTime(200);
+    await fixture.whenStable();
+  }
+
+  it('ignores the viewer growing by a scrollbar’s width', async () => {
+    // Where the scrollbar gutter is not reserved, a scrollbar takes about 15px
+    // off the content box when it appears and gives them back when it goes.
+    // Redrawing the page into that space makes it taller, which summons the
+    // scrollbar again: the viewer visibly pulsing between two sizes.
+    const { ctor, notifiers } = fakeResizeObserverClass();
+    vi.stubGlobal('ResizeObserver', ctor);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    // jsdom measures nothing, so the page was drawn at the fallback width.
+    await setup(caseTarget());
+    const initial = renderPage.mock.calls.length;
+
+    await resizeTo(815, notifiers);
+
+    expect(renderPage.mock.calls.length).toBe(initial);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('redraws a page whose viewer has narrowed, however slightly', async () => {
+    // The page is sized in pixels, so a page left at the width of a container
+    // that has since narrowed hangs out of it.
+    const { ctor, notifiers } = fakeResizeObserverClass();
+    vi.stubGlobal('ResizeObserver', ctor);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await setup(caseTarget());
+    const initial = renderPage.mock.calls.length;
+
+    await resizeTo(785, notifiers);
+
+    expect(renderPage.mock.calls.length).toBe(initial + 1);
+    expect(renderPage).toHaveBeenLastCalledWith(2, expect.anything(), 785);
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });

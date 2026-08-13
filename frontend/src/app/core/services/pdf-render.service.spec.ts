@@ -37,9 +37,11 @@ describe('PdfRenderService', () => {
   let service: PdfRenderService;
 
   /** A canvas whose 2D context is a stub — jsdom has no real one. */
-  function fakeCanvas(): HTMLCanvasElement {
+  function fakeCanvas(drawImage = vi.fn()): HTMLCanvasElement {
     const canvas = document.createElement('canvas');
-    canvas.getContext = vi.fn(() => ({}) as unknown as CanvasRenderingContext2D) as never;
+    canvas.getContext = vi.fn(
+      () => ({ drawImage }) as unknown as CanvasRenderingContext2D,
+    ) as never;
     return canvas;
   }
 
@@ -88,6 +90,34 @@ describe('PdfRenderService', () => {
     expect(canvas.height).toBe(792);
     expect(canvas.style.width).toBe('306px');
     expect(canvas.style.height).toBe('396px');
+  });
+
+  it('keeps the page on screen until the next one is drawn', async () => {
+    // Assigning canvas.width clears it. Rendering straight into the canvas the
+    // reviewer is looking at therefore blanks the page for as long as the
+    // render takes, which reads as a flicker when clicking from finding to
+    // finding. The page is drawn into a buffer and handed over in one step.
+    const drawImage = vi.fn();
+    const canvas = fakeCanvas(drawImage);
+    // Stands in for the page already on screen.
+    canvas.width = 111;
+    let onScreenDuringRender: number | null = null;
+    render.mockClear();
+    render.mockImplementation(() => {
+      onScreenDuringRender = canvas.width;
+      return { promise: Promise.resolve() };
+    });
+    const handle = await service.open(new Blob(['%PDF-1.7']));
+
+    await handle.renderPage(1, canvas, 612);
+
+    expect(onScreenDuringRender).toBe(111);
+    const [params] = render.mock.calls[0] as [{ canvas: HTMLCanvasElement }];
+    expect(params.canvas).not.toBe(canvas);
+    // Resized to hold the finished page and painted with it in one step.
+    expect(canvas.width).toBe(params.canvas.width);
+    expect(canvas.width).not.toBe(111);
+    expect(drawImage).toHaveBeenCalledWith(params.canvas, 0, 0);
   });
 
   it('renders the requested page', async () => {

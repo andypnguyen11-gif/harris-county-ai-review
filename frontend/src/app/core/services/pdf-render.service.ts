@@ -53,15 +53,23 @@ export class PdfRenderService {
      */
     let queue: Promise<unknown> = Promise.resolve();
 
+    /**
+     * Pages are drawn here first, then handed to the on-screen canvas in one
+     * step. Assigning `canvas.width` clears it, so rendering straight into the
+     * canvas the reviewer is looking at blanks the page for as long as the
+     * render takes — clicking from finding to finding, that reads as a flicker.
+     * One buffer serves the whole document: renders through a handle are
+     * serialized, so only one page is ever being drawn into it.
+     */
+    let buffer: HTMLCanvasElement | null = null;
+
     const drawPage = async (
       pageNumber: number,
       canvas: HTMLCanvasElement,
       cssWidth: number,
     ): Promise<RenderedPageSize> => {
-      // Rendering targets `canvas` in this pdf.js version's RenderParameters
-      // (canvasContext is retained only for backwards compatibility), but
-      // the 2D context is still required up front so a canvas that cannot
-      // be drawn into fails loudly before pdf.js is asked to use it.
+      // The destination context is taken up front so a canvas that cannot be
+      // drawn into fails loudly before a page is rendered for it.
       const context = canvas.getContext('2d');
       if (context === null) {
         throw new Error('The canvas has no 2D context to render into.');
@@ -74,17 +82,28 @@ export class PdfRenderService {
       const ratio = window.devicePixelRatio || 1;
       const viewport = page.getViewport({ scale: scale * ratio });
 
-      canvas.width = Math.round(viewport.width);
-      canvas.height = Math.round(viewport.height);
+      const width = Math.round(viewport.width);
+      const height = Math.round(viewport.height);
+      buffer ??= canvas.ownerDocument.createElement('canvas');
+      buffer.width = width;
+      buffer.height = height;
+
+      // Rendering targets a canvas in this pdf.js version's RenderParameters
+      // (canvasContext is retained only for backwards compatibility).
+      await page.render({ canvas: buffer, viewport }).promise;
 
       const size: RenderedPageSize = {
-        width: Math.round(viewport.width / ratio),
-        height: Math.round(viewport.height / ratio),
+        width: Math.round(width / ratio),
+        height: Math.round(height / ratio),
       };
+      // Resize and paint in one go. The canvas holds the previous page until
+      // this point and the new one from here on; it is never blank, and never
+      // sized for a page that has not been drawn onto it yet.
+      canvas.width = width;
+      canvas.height = height;
       canvas.style.width = `${size.width}px`;
       canvas.style.height = `${size.height}px`;
-
-      await page.render({ canvas, viewport }).promise;
+      context.drawImage(buffer, 0, 0);
       return size;
     };
 
@@ -98,6 +117,14 @@ export class PdfRenderService {
         return render;
       },
       destroy: () => {
+        // A page-sized bitmap is worth releasing rather than waiting for the
+        // closure to be collected.
+        if (buffer !== null) {
+          buffer.width = 0;
+          buffer.height = 0;
+          buffer = null;
+        }
+
         // PDFDocumentProxy (the object `loadingTask.promise` resolves to) has
         // no destroy() of its own in this pdf.js version — only cleanup(),
         // which frees caches but leaves the worker running. Full teardown,

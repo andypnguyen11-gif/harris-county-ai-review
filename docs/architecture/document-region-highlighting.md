@@ -312,7 +312,26 @@ inform whether the viewer keeps a fallback path. It does not block PR-A.
   the page scrolls. Anchoring the overlay there draws every box too high by
   that ratio and leaves the boxes stationary while the page scrolls beneath
   them. The wrapper takes the canvas's height, so a percentage is a
-  percentage of the page. Scrolling and overflow stay on the viewport.
+  percentage of the page. Scrolling and overflow stay on the viewport, and the
+  wrapper is sized to its content so it still holds the page exactly when a
+  zoom makes the page wider than the viewport.
+- The page is drawn at the viewport's content width times the zoom, and the
+  viewport is a **fixed height with a reserved scrollbar gutter**. A page drawn
+  to the width of the box it scrolls in otherwise summons a scrollbar, is
+  redrawn narrower into the width the scrollbar left, loses the scrollbar, and
+  is redrawn wider — the viewer pulsing between two sizes for as long as the
+  page's height lands either side of the box's own. A resize that gains less
+  than a scrollbar's width is ignored for the same reason; one that loses any
+  width is always redrawn, since the page is sized in pixels and would
+  otherwise hang out of its box.
+- A page is rendered into an off-screen canvas and copied to the visible one
+  in a single step, and a canvas that holds no page yet is hidden. Assigning
+  `canvas.width` clears it, so drawing straight into the canvas on screen
+  blanks the page for the length of the render — a flicker on every click.
+- The active box is scrolled to the middle of the viewport once the page is
+  drawn, and again whenever the active finding changes. The page is taller
+  than the box it is read in, so a highlight the reviewer has to go looking
+  for is a highlight the click failed to deliver.
 - Divs rather than a canvas overlay: they take CSS transitions, can be
   focusable for keyboard and screen-reader users, and need no redraw loop.
   (OpenEMR's plan specified divs; its shipped partial drifted to canvas.)

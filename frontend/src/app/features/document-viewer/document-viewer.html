@@ -19,14 +19,49 @@
         </p>
       </div>
 
-      <button type="button" class="btn btn--secondary btn--small" (click)="close()">Close</button>
+      <div class="document-viewer__actions">
+        @if (state() === 'rendered') {
+          <div class="document-viewer__zoom" role="group" aria-label="Zoom">
+            <button
+              type="button"
+              class="btn btn--secondary btn--small"
+              (click)="zoomOut()"
+              [disabled]="!canZoomOut()"
+              aria-label="Zoom out"
+            >
+              −
+            </button>
+            <span class="document-viewer__zoom-level" aria-live="polite">{{ zoomLabel() }}</span>
+            <button
+              type="button"
+              class="btn btn--secondary btn--small"
+              (click)="zoomIn()"
+              [disabled]="!canZoomIn()"
+              aria-label="Zoom in"
+            >
+              +
+            </button>
+          </div>
+        }
+        <button
+          type="button"
+          class="btn btn--secondary btn--small document-viewer__close"
+          (click)="close()"
+        >
+          Close
+        </button>
+      </div>
     </header>
 
     @switch (state()) {
       @case ('loading') {
-        <div class="state-panel" role="status">
-          <p>Loading the document…</p>
-        </div>
+        <!--
+          The shape the rendered state has — the page's box, then a line of
+          text beneath it — so opening one document after another does not
+          collapse the viewer and push everything below it up and back down.
+        -->
+        <div class="document-viewer__viewport"></div>
+        <p class="document-viewer__hint" role="status">Loading the document…</p>
       }
 
       @case ('rendered') {
@@ -36,11 +71,15 @@
             viewport: an absolutely positioned child of a scroll container is
             laid out against the container's visible area, which is shorter
             than the page whenever the page scrolls, and every box would be
-            drawn too high by that ratio. The surface is a plain block, so it
-            is exactly as wide as the viewport's content box and exactly as
-            tall as the canvas — the page itself.
+            drawn too high by that ratio. The surface is a plain block sized to
+            its content, so it is exactly the canvas's box — the page itself —
+            at any zoom.
+
+            It stays hidden until it holds a page: a canvas that has not been
+            drawn into is 300x150, and letting that show would flash a small
+            white box in place of the page every time a document is opened.
           -->
-          <div class="document-viewer__page-surface">
+          <div class="document-viewer__page-surface" [class.is-hidden]="!painted()">
             <canvas
               #pdfCanvas
               class="document-viewer__canvas"
