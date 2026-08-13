@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  computed,
   effect,
   inject,
   input,
@@ -13,6 +14,7 @@ import {
 
 import { CitationTarget } from '../../core/models/citation-target.model';
 import { CITATION_SOURCE_LABELS } from '../../core/models/question-answer.model';
+import { BoundingBox } from '../../core/models/validation.model';
 import { DocumentService } from '../../core/services/document.service';
 import { PdfDocumentHandle, PdfRenderService } from '../../core/services/pdf-render.service';
 
@@ -28,6 +30,21 @@ export type ViewerState =
   | 'unavailable'
   /** Something else went wrong fetching the file. */
   | 'error';
+
+/**
+ * A box to draw over the rendered page. The viewer draws what it is given and
+ * decides nothing: which findings become regions, and which one is active, is
+ * the calling screen's policy.
+ */
+export interface ViewerRegion {
+  /** The finding this region came from. */
+  id: string;
+  box: BoundingBox;
+  /** The region the reviewer asked for, drawn more strongly than its neighbours. */
+  active: boolean;
+  /** Accessible name — what a screen reader announces for the box. */
+  label: string;
+}
 
 /**
  * Shows the source behind a citation so a reviewer can verify an AI answer
@@ -60,6 +77,19 @@ export class DocumentViewer implements OnDestroy {
   /** Emitted when the reviewer dismisses the viewer. */
   readonly closed = output<void>();
 
+  /**
+   * Boxes to draw over the page. Optional by design: the citation flow passes
+   * none, and an empty overlay is a normal state rather than an edge case.
+   */
+  readonly regions = input<readonly ViewerRegion[]>([]);
+
+  /**
+   * Why this page carries no box, when the caller knows. Shown against the
+   * rendered page so the reviewer looking at the document gets the same
+   * explanation as the one reading the finding.
+   */
+  readonly notice = input<string | null>(null);
+
   protected readonly state = signal<ViewerState>('idle');
   protected readonly sourceLabels = CITATION_SOURCE_LABELS;
 
@@ -69,6 +99,11 @@ export class DocumentViewer implements OnDestroy {
 
   /** The page being shown; a citation without a page opens at the first. */
   protected readonly pageNumber = signal(1);
+
+  /** Regions whose box belongs to the page currently rendered. */
+  protected readonly visibleRegions = computed(() =>
+    this.regions().filter((region) => region.box.pageNumber === this.pageNumber()),
+  );
 
   constructor() {
     effect(() => {

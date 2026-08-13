@@ -37,7 +37,25 @@
             [attr.aria-label]="'Page ' + pageNumber() + ' of ' + source.title"
             role="img"
           ></canvas>
+          <div class="document-viewer__overlay">
+            @for (region of visibleRegions(); track region.id) {
+              <div
+                class="document-viewer__region"
+                [class.document-viewer__region--active]="region.active"
+                [attr.data-region-id]="region.id"
+                [attr.aria-label]="region.label"
+                role="img"
+                [style.left.%]="region.box.x * 100"
+                [style.top.%]="region.box.y * 100"
+                [style.width.%]="region.box.width * 100"
+                [style.height.%]="region.box.height * 100"
+              ></div>
+            }
+          </div>
         </div>
+        @if (notice(); as message) {
+          <p class="document-viewer__notice" role="status">{{ message }}</p>
+        }
         <p class="document-viewer__hint">
           @if (source.page !== null) {
             Showing page {{ source.page }}.

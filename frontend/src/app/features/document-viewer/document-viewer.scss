@@ -71,7 +71,8 @@
 }
 
 .document-viewer__hint,
-.document-viewer__note {
+.document-viewer__note,
+.document-viewer__notice {
   margin: 0.5rem 0 0;
   color: #6b7280;
   font-size: 0.875rem;
@@ -82,4 +83,32 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0.75rem;
+}
+
+/*
+ * Sits exactly over the canvas, which fills the page container, so a box's
+ * percentage geometry is a percentage of the page itself. A resize re-renders
+ * the canvas; the boxes follow with no recomputation.
+ */
+.document-viewer__overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.document-viewer__region {
+  position: absolute;
+  border: 2px solid rgb(163 36 44 / 55%);
+  border-radius: 2px;
+  background: rgb(163 36 44 / 10%);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.document-viewer__region--active {
+  border-color: var(--color-danger);
+  border-width: 3px;
+  background: rgb(163 36 44 / 22%);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 70%);
 }

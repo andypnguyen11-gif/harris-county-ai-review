@@ -3,9 +3,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 
 import { CitationTarget } from '../../core/models/citation-target.model';
+import { BoundingBox } from '../../core/models/validation.model';
 import { DocumentService } from '../../core/services/document.service';
 import { PdfRenderService } from '../../core/services/pdf-render.service';
-import { DocumentViewer } from './document-viewer';
+import { DocumentViewer, ViewerRegion } from './document-viewer';
 
 describe('DocumentViewer', () => {
   let getDocumentContent: ReturnType<typeof vi.fn>;
@@ -60,6 +61,19 @@ describe('DocumentViewer', () => {
 
   function el(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
+  }
+
+  function box(overrides: Partial<BoundingBox> = {}): BoundingBox {
+    return { pageNumber: 2, x: 0.1, y: 0.2, width: 0.3, height: 0.04, ...overrides };
+  }
+
+  function region(overrides: Partial<ViewerRegion> = {}): ViewerRegion {
+    return { id: 'finding-1', box: box(), active: false, label: 'Owner name', ...overrides };
+  }
+
+  async function setRegions(regions: readonly ViewerRegion[]): Promise<void> {
+    fixture.componentRef.setInput('regions', regions);
+    await fixture.whenStable();
   }
 
   beforeEach(() => {
@@ -315,5 +329,112 @@ describe('DocumentViewer', () => {
     el().querySelector<HTMLButtonElement>('.document-viewer__header button')!.click();
 
     expect(closed).toHaveLength(1);
+  });
+
+  it('draws no overlay boxes when given none', async () => {
+    await setup(caseTarget());
+
+    // The citation flow passes no regions; that is a normal open, not an error.
+    expect(el().querySelectorAll('.document-viewer__region')).toHaveLength(0);
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+  });
+
+  it('draws one box per region, positioned as a percentage of the page', async () => {
+    await setup(caseTarget());
+
+    await setRegions([region()]);
+
+    const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
+    expect(drawn).toHaveLength(1);
+    // 0.1 of the page width is 10% of the container the page fills.
+    expect(drawn[0].style.left).toBe('10%');
+    expect(drawn[0].style.top).toBe('20%');
+    expect(drawn[0].style.width).toBe('30%');
+    expect(drawn[0].style.height).toBe('4%');
+  });
+
+  it('draws a box per region and identifies each one', async () => {
+    await setup(caseTarget());
+
+    await setRegions([
+      region({ id: 'finding-1', box: box({ x: 0.1 }) }),
+      region({ id: 'finding-2', box: box({ x: 0.5 }) }),
+    ]);
+
+    const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
+    expect(drawn).toHaveLength(2);
+    expect([...drawn].map((node) => node.dataset['regionId'])).toEqual([
+      'finding-1',
+      'finding-2',
+    ]);
+    expect([...drawn].map((node) => node.style.left)).toEqual(['10%', '50%']);
+  });
+
+  it('distinguishes the active region from the others', async () => {
+    await setup(caseTarget());
+
+    await setRegions([
+      region({ id: 'finding-1', active: true }),
+      region({ id: 'finding-2', active: false }),
+    ]);
+
+    const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
+    expect(drawn[0].classList.contains('document-viewer__region--active')).toBe(true);
+    expect(drawn[1].classList.contains('document-viewer__region--active')).toBe(false);
+  });
+
+  it('names each region for assistive technology', async () => {
+    await setup(caseTarget());
+
+    await setRegions([region({ label: 'Owner name is missing' })]);
+
+    expect(
+      el().querySelector('.document-viewer__region')?.getAttribute('aria-label'),
+    ).toBe('Owner name is missing');
+  });
+
+  it('draws only regions whose page matches the rendered page', async () => {
+    await setup(caseTarget({ page: 2 }));
+
+    await setRegions([
+      region({ id: 'finding-1', box: box({ pageNumber: 2 }) }),
+      region({ id: 'finding-2', box: box({ pageNumber: 3 }) }),
+    ]);
+
+    const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
+    expect(drawn).toHaveLength(1);
+    expect(drawn[0].dataset['regionId']).toBe('finding-1');
+  });
+
+  it('repeats a no-region notice against the rendered page', async () => {
+    await setup(caseTarget());
+
+    fixture.componentRef.setInput('notice', "Couldn't locate this field on the page.");
+    await fixture.whenStable();
+
+    // The reviewer is looking at the page; the explanation belongs here too,
+    // not only beside the finding they clicked.
+    expect(el().querySelector('.document-viewer__notice')?.textContent).toContain(
+      "Couldn't locate this field on the page.",
+    );
+  });
+
+  it('shows no notice when there is nothing to explain', async () => {
+    await setup(caseTarget());
+
+    expect(el().querySelector('.document-viewer__notice')).toBeNull();
+  });
+
+  it('keeps the boxes when the region set changes without a new document', async () => {
+    await setup(caseTarget());
+    await setRegions([region({ id: 'finding-1' })]);
+
+    await setRegions([region({ id: 'finding-2' })]);
+
+    const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
+    expect(drawn).toHaveLength(1);
+    expect(drawn[0].dataset['regionId']).toBe('finding-2');
+    // Changing which findings are boxed must not refetch or reparse the file.
+    expect(open).toHaveBeenCalledTimes(1);
   });
 });
