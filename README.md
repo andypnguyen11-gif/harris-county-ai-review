@@ -192,6 +192,13 @@ the resource actually has.
 governs whether a temperature is sent at all. Reasoning models — the o-series and GPT-5 — support
 only their own default and reject any request that names another.
 
+`LanguageModel:ReasoningTokenReserve` (`2048` by default, for the same reason) is added to whatever
+output-token budget a caller asks for. A reasoning model reasons before it writes and charges both
+to the same cap, so a budget sized for the answer alone is spent before the answer starts: the
+response comes back with a finish reason of `length` and no content, which surfaces as a 502. Set
+it to `0` when pointing the app at a model that does not reason. Unused reserve costs nothing —
+it is a ceiling, and only tokens actually generated are billed.
+
 The API listens on `http://localhost:5096` (`https://localhost:7074` with the `https` profile),
 applies EF Core migrations on startup in Development, and serves Swagger UI at
 `http://localhost:5096/swagger`.
@@ -360,10 +367,11 @@ Committed values are placeholders.
 | `DocumentIntelligence:Endpoint` / `:ApiKey` | *(required)* | Document Intelligence resource |
 | `DocumentIntelligence:ModelId` | `prebuilt-layout` | Extraction model |
 | `LanguageModel:Endpoint` / `:ApiKey` | *(required)* | Azure OpenAI chat resource |
-| `LanguageModel:Deployment` | `gpt-5-mini` | Chat deployment name |
-| `LanguageModel:MaxOutputTokens` | `1024` | Cap per completion |
+| `LanguageModel:Deployment` | *(required)* | Chat deployment name, not the model name |
+| `LanguageModel:MaxOutputTokens` | `1024` | Answer budget when a caller names none |
+| `LanguageModel:ReasoningTokenReserve` | `2048` | Added to the answer budget to pay for reasoning |
 | `Embeddings:Endpoint` / `:ApiKey` | *(required)* | Azure OpenAI embeddings resource |
-| `Embeddings:Deployment` | `text-embedding-3-small` | Must produce 1536 dimensions |
+| `Embeddings:Deployment` | *(required)* | Deployment name; must produce 1536 dimensions |
 | `Embeddings:MaxBatchSize` | `16` | Texts per embedding request |
 | `Search:Endpoint` / `:ApiKey` | *(required)* | Azure AI Search service |
 | `Search:IndexName` | `harris-county-chunks` | The single shared chunk index |

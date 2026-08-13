@@ -12,7 +12,8 @@ public class AzureLanguageModelServiceTests
     private static LanguageModelOptions CreateOptions(
         int timeoutSeconds = 60,
         int maxOutputTokens = 1024,
-        bool supportsTemperature = true) => new()
+        bool supportsTemperature = true,
+        int reasoningTokenReserve = 0) => new()
     {
         Endpoint = "https://unit-test.openai.azure.com/",
         ApiKey = "unit-test-key",
@@ -20,6 +21,7 @@ public class AzureLanguageModelServiceTests
         TimeoutSeconds = timeoutSeconds,
         MaxOutputTokens = maxOutputTokens,
         SupportsTemperature = supportsTemperature,
+        ReasoningTokenReserve = reasoningTokenReserve,
     };
 
     private static ModelRequest CreateRequest() => new()
@@ -119,6 +121,87 @@ public class AzureLanguageModelServiceTests
 
         Assert.Equal(777, service.CapturedOptions!.MaxOutputTokenCount);
         Assert.Equal(0.1f, service.CapturedOptions.Temperature);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_Adds_The_Reasoning_Reserve_To_The_Callers_Answer_Budget()
+    {
+        // A reasoning model reasons before it writes, and both come out of the
+        // same cap. The caller asked for room for an 800-token answer; the
+        // deployment needs its thinking paid for on top, or the answer is never
+        // reached.
+        var service = new TestableAzureLanguageModelService(
+            CreateOptions(supportsTemperature: false, reasoningTokenReserve: 2048),
+            (_, _, _) => Task.FromResult(CreateCompletion()));
+
+        await service.GenerateAsync(CreateRequest() with { MaxOutputTokens = 800 }, CancellationToken.None);
+
+        Assert.Equal(2848, service.CapturedOptions!.MaxOutputTokenCount);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_Adds_The_Reasoning_Reserve_To_The_Configured_Default_Too()
+    {
+        var service = new TestableAzureLanguageModelService(
+            CreateOptions(maxOutputTokens: 500, reasoningTokenReserve: 1000),
+            (_, _, _) => Task.FromResult(CreateCompletion()));
+
+        await service.GenerateAsync(CreateRequest(), CancellationToken.None);
+
+        Assert.Equal(1500, service.CapturedOptions!.MaxOutputTokenCount);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_Sends_The_Budget_Unchanged_When_No_Reserve_Is_Configured()
+    {
+        // The default: a model that does not reason gets exactly what the caller asked for.
+        var service = new TestableAzureLanguageModelService(
+            CreateOptions(),
+            (_, _, _) => Task.FromResult(CreateCompletion()));
+
+        await service.GenerateAsync(CreateRequest() with { MaxOutputTokens = 800 }, CancellationToken.None);
+
+        Assert.Equal(800, service.CapturedOptions!.MaxOutputTokenCount);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_Exhausting_The_Budget_Before_Writing_Names_The_Reserve_To_Raise()
+    {
+        // The failure this reserve exists to prevent: the model spent the whole
+        // cap reasoning and returned nothing. "No content" alone sends the next
+        // reader looking for an outage.
+        var truncated = OpenAIChatModelFactory.ChatCompletion(
+            content: new ChatMessageContent(string.Empty),
+            finishReason: ChatFinishReason.Length);
+
+        var service = new TestableAzureLanguageModelService(
+            CreateOptions(supportsTemperature: false, reasoningTokenReserve: 128),
+            (_, _, _) => Task.FromResult(truncated));
+
+        var exception = await Assert.ThrowsAsync<MalformedModelResponseException>(
+            () => service.GenerateAsync(CreateRequest() with { MaxOutputTokens = 800 }, CancellationToken.None));
+
+        Assert.Contains("800 token answer budget", exception.Message);
+        Assert.Contains("reasoning reserve of 128", exception.Message);
+        Assert.Contains("LanguageModel:ReasoningTokenReserve", exception.Message);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_Empty_Completion_For_Another_Reason_Does_Not_Blame_The_Budget()
+    {
+        var empty = OpenAIChatModelFactory.ChatCompletion(
+            content: new ChatMessageContent(string.Empty),
+            finishReason: ChatFinishReason.ContentFilter);
+
+        var service = new TestableAzureLanguageModelService(
+            CreateOptions(),
+            (_, _, _) => Task.FromResult(empty));
+
+        var exception = await Assert.ThrowsAsync<MalformedModelResponseException>(
+            () => service.GenerateAsync(CreateRequest(), CancellationToken.None));
+
+        Assert.Contains("ContentFilter", exception.Message);
+        Assert.DoesNotContain("ReasoningTokenReserve", exception.Message);
     }
 
     [Fact]

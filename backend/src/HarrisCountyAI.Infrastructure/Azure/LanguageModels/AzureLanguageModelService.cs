@@ -53,9 +53,13 @@ public class AzureLanguageModelService : ILanguageModelService
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // The caller's budget covers the answer; the reserve covers the reasoning
+        // the deployment does before writing any of it. See
+        // LanguageModelOptions.ReasoningTokenReserve.
+        var answerTokens = request.MaxOutputTokens ?? _options.MaxOutputTokens;
         var chatOptions = new ChatCompletionOptions
         {
-            MaxOutputTokenCount = request.MaxOutputTokens ?? _options.MaxOutputTokens,
+            MaxOutputTokenCount = answerTokens + _options.ReasoningTokenReserve,
         };
 
         if (_options.SupportsTemperature)
@@ -148,14 +152,27 @@ public class AzureLanguageModelService : ILanguageModelService
             // An empty completion is not a usable answer. Failing here keeps
             // every caller from having to recognise the same empty string.
             _logger.LogWarning(
-                "Language model returned an empty completion. Deployment={Deployment} FinishReason={FinishReason} ElapsedMs={ElapsedMs}",
+                "Language model returned an empty completion. Deployment={Deployment} FinishReason={FinishReason} "
+                + "AnswerTokenBudget={AnswerTokens} ReasoningTokenReserve={ReasoningReserve} ElapsedMs={ElapsedMs}",
                 _options.Deployment,
                 completion.FinishReason,
+                answerTokens,
+                _options.ReasoningTokenReserve,
                 stopwatch.Elapsed.TotalMilliseconds);
+
+            // A reasoning model that runs out of tokens mid-thought has written
+            // nothing yet, so this reads as a malformed response rather than a
+            // truncated one. Naming the budget saves the next reader the trip
+            // through the SDK to work out why an empty string came back.
+            var cause = completion.FinishReason == ChatFinishReason.Length
+                ? $" — the {answerTokens} token answer budget plus a reasoning reserve of "
+                  + $"{_options.ReasoningTokenReserve} ran out before any answer was written; "
+                  + "raise LanguageModel:ReasoningTokenReserve"
+                : string.Empty;
 
             throw new MalformedModelResponseException(
                 $"Language model deployment '{_options.Deployment}' returned no content "
-                + $"(finish reason '{completion.FinishReason}').");
+                + $"(finish reason '{completion.FinishReason}'){cause}.");
         }
 
         var usage = completion.Usage is null

@@ -115,6 +115,27 @@ public class LanguageModelOptionsValidatorTests
     }
 
     [Fact]
+    public void Negative_ReasoningTokenReserve_Fails()
+    {
+        var options = CreateValidOptions();
+        options.ReasoningTokenReserve = -1;
+
+        var result = _validator.Validate(null, options);
+
+        Assert.True(result.Failed);
+        Assert.Contains("LanguageModel:ReasoningTokenReserve cannot be negative", result.FailureMessage);
+    }
+
+    [Fact]
+    public void Zero_ReasoningTokenReserve_Is_Valid_For_A_Model_That_Does_Not_Reason()
+    {
+        var options = CreateValidOptions();
+        options.ReasoningTokenReserve = 0;
+
+        Assert.True(_validator.Validate(null, options).Succeeded);
+    }
+
+    [Fact]
     public void Empty_Options_Report_All_Missing_Values_At_Once()
     {
         var result = _validator.Validate(null, new LanguageModelOptions());

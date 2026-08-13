@@ -46,6 +46,13 @@ public sealed class LanguageModelOptionsValidator : IValidateOptions<LanguageMod
             failures.Add($"LanguageModel:MaxOutputTokens must be greater than zero (was {options.MaxOutputTokens}).");
         }
 
+        if (options.ReasoningTokenReserve < 0)
+        {
+            failures.Add(
+                "LanguageModel:ReasoningTokenReserve cannot be negative (was " +
+                $"{options.ReasoningTokenReserve}). Use 0 for a model that does not reason.");
+        }
+
         return failures.Count > 0
             ? ValidateOptionsResult.Fail(failures)
             : ValidateOptionsResult.Success;
