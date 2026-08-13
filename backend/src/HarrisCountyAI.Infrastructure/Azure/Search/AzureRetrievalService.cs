@@ -29,6 +29,22 @@ namespace HarrisCountyAI.Infrastructure.Azure.Search;
 /// </remarks>
 public sealed class AzureRetrievalService : IRetrievalService
 {
+    /// <summary>
+    /// How much wider than the requested result count the search pool is when
+    /// no reranker is configured.
+    /// </summary>
+    /// <remarks>
+    /// The gateway maps the query size to <c>KNearestNeighborsCount</c> as well
+    /// as the result count, so this value is also how many candidates the
+    /// vector half of a hybrid query nominates before fusion. Sizing that pool
+    /// to the requested count starves fusion: a chunk the vector half does not
+    /// nominate cannot appear in the fused results no matter how strongly it
+    /// matches on keywords, which drops obviously relevant passages from small
+    /// result sets. Retrieving a wider pool and trimming after fusion costs one
+    /// larger search and no extra model tokens.
+    /// </remarks>
+    public const int CandidatePoolMultiplier = 3;
+
     private readonly ISearchQueryGateway _gateway;
     private readonly IEmbeddingService _embeddingService;
     private readonly RetrievalOptions _options;
@@ -85,11 +101,12 @@ public sealed class AzureRetrievalService : IRetrievalService
 
         var topK = request.TopK ?? _options.DefaultTopK;
 
-        // With reranking active, retrieve a wider candidate pool for the
-        // reranker to reorder; without it, retrieve exactly what was asked for.
+        // Always retrieve a wider candidate pool than the caller asked for: the
+        // reranker's configured pool when it is active, a multiple of the
+        // requested count otherwise. The surplus is trimmed away after fusion.
         var searchSize = RerankingActive
             ? Math.Clamp(_rerankingOptions.CandidatePoolSize, topK, RetrievalRequest.MaxTopK)
-            : topK;
+            : Math.Clamp(topK * CandidatePoolMultiplier, topK, RetrievalRequest.MaxTopK);
 
         var embeddingStopwatch = Stopwatch.StartNew();
         var embeddings = await _embeddingService.EmbedAsync([request.Query], cancellationToken);
@@ -123,12 +140,14 @@ public sealed class AzureRetrievalService : IRetrievalService
         }
 
         _logger.LogInformation(
-            "{Scope} retrieval ({Mode}) returned {ChunkCount} of {RequestedCount} requested chunks "
+            "{Scope} retrieval ({Mode}) returned {ChunkCount} chunks from a pool of {PoolSize} for a "
+            + "requested {RequestedCount} "
             + "(scores {TopScore:F4}..{LowScore:F4}; embedding {EmbeddingMs} ms, search {SearchMs} ms).",
             request.Scope,
             _options.Mode,
             chunks.Count,
             searchSize,
+            topK,
             chunks.Count > 0 ? chunks[0].Score : 0d,
             chunks.Count > 0 ? chunks[^1].Score : 0d,
             embeddingStopwatch.ElapsedMilliseconds,
@@ -136,7 +155,9 @@ public sealed class AzureRetrievalService : IRetrievalService
 
         if (!RerankingActive || chunks.Count == 0)
         {
-            return chunks;
+            // The pool was widened to give fusion enough candidates to work
+            // with; the caller still gets only what it asked for.
+            return chunks.Count > topK ? chunks[..topK] : chunks;
         }
 
         // The reranking service fails open: on any reranking problem it
