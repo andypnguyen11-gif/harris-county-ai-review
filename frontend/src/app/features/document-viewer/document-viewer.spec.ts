@@ -117,6 +117,61 @@ describe('DocumentViewer', () => {
     expect(open).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the header page badge and the canvas wrapper on separate classes', async () => {
+    await setup(caseTarget({ page: 5 }));
+
+    // Regression: the wrapper around the canvas and the header's "Page N"
+    // badge once shared the class `document-viewer__page`, so the wrapper's
+    // box styling (border, background, max-height) leaked onto the badge.
+    const badge = el().querySelector('.document-viewer__page');
+    expect(badge?.tagName).toBe('SPAN');
+    expect(badge?.textContent).toContain('Page 5');
+    expect(badge?.classList.contains('document-viewer__viewport')).toBe(false);
+
+    const wrapper = el().querySelector('.document-viewer__viewport');
+    expect(wrapper?.tagName).toBe('DIV');
+    expect(wrapper?.querySelector('.document-viewer__canvas')).not.toBeNull();
+  });
+
+  it('destroys a handle superseded by a later target instead of orphaning or showing it', async () => {
+    // fakeHandle() gives every open() call its own renderPage/destroy mocks
+    // so the test can tell which handle the component ultimately keeps.
+    function fakeHandle() {
+      return {
+        pageCount: 4,
+        renderPage: vi.fn(async () => ({ width: 800, height: 1035 })),
+        destroy: vi.fn(),
+      };
+    }
+    const resolvers: Array<(handle: ReturnType<typeof fakeHandle>) => void> = [];
+    open = vi.fn(() => new Promise((resolve) => resolvers.push(resolve)));
+
+    await setup(caseTarget({ documentId: 'doc-1' }));
+    // A second, then a third, target arrives while doc-1's open() is still
+    // pending — each triggers its own load() before any of them resolve.
+    await setTarget(caseTarget({ documentId: 'doc-2' }));
+    await setTarget(caseTarget({ documentId: 'doc-3' }));
+    expect(resolvers).toHaveLength(3);
+
+    const [doc1Handle, doc2Handle, doc3Handle] = [fakeHandle(), fakeHandle(), fakeHandle()];
+    // Resolve in the same order the requests were made, oldest first.
+    resolvers[0](doc1Handle);
+    resolvers[1](doc2Handle);
+    resolvers[2](doc3Handle);
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    // The stale responses are closed, not left open and not shown.
+    expect(doc1Handle.destroy).toHaveBeenCalled();
+    expect(doc2Handle.destroy).toHaveBeenCalled();
+    expect(doc1Handle.renderPage).not.toHaveBeenCalled();
+    expect(doc2Handle.renderPage).not.toHaveBeenCalled();
+    // Only the current target's handle is kept and rendered.
+    expect(doc3Handle.destroy).not.toHaveBeenCalled();
+    expect(doc3Handle.renderPage).toHaveBeenCalled();
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+  });
+
   it('destroys the open document when the source changes', async () => {
     await setup(caseTarget());
 

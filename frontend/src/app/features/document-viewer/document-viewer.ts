@@ -147,24 +147,44 @@ export class DocumentViewer implements OnDestroy {
 
   private loadedDocumentId: string | null = null;
 
+  /**
+   * Bumped by every `release()` and every `load()`. A pending request whose
+   * captured id no longer matches this counter when it resolves has been
+   * superseded by a later target change, so its result is discarded (and any
+   * handle it produced is destroyed) instead of overwriting the current one.
+   */
+  private loadToken = 0;
+
   private load(caseId: string, documentId: string): void {
+    const requestId = ++this.loadToken;
     this.state.set('loading');
     this.documentService.getDocumentContent(caseId, documentId).subscribe({
       next: async (blob) => {
         try {
           const handle = await this.pdf.open(blob);
+          if (requestId !== this.loadToken) {
+            // A newer target superseded this request while pdf.js was still
+            // parsing; close the handle it produced rather than orphaning it
+            // or overwriting the handle the current target is showing.
+            handle.destroy();
+            return;
+          }
           this.loadedDocumentId = documentId;
           this.handle.set(handle);
           this.state.set('rendered');
         } catch {
-          // The file arrived but pdf.js could not parse it.
-          this.state.set('error');
+          if (requestId === this.loadToken) {
+            // The file arrived but pdf.js could not parse it.
+            this.state.set('error');
+          }
         }
       },
       error: (error: HttpErrorResponse) => {
-        // 404 covers both "no such document" and "its file is gone"; either
-        // way there is nothing for the reviewer to look at here.
-        this.state.set(error.status === 404 ? 'unavailable' : 'error');
+        if (requestId === this.loadToken) {
+          // 404 covers both "no such document" and "its file is gone"; either
+          // way there is nothing for the reviewer to look at here.
+          this.state.set(error.status === 404 ? 'unavailable' : 'error');
+        }
       },
     });
   }
@@ -184,6 +204,9 @@ export class DocumentViewer implements OnDestroy {
 
   /** Closes the open document so a long review session does not leak memory. */
   private release(): void {
+    // Invalidate any request still in flight so a late response cannot
+    // resurrect a handle for a target this viewer has moved past.
+    this.loadToken++;
     this.handle()?.destroy();
     this.handle.set(null);
     this.loadedDocumentId = null;
