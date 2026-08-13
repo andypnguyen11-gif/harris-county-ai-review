@@ -9,13 +9,17 @@ namespace HarrisCountyAI.UnitTests.Infrastructure.Azure.LanguageModels;
 
 public class AzureLanguageModelServiceTests
 {
-    private static LanguageModelOptions CreateOptions(int timeoutSeconds = 60, int maxOutputTokens = 1024) => new()
+    private static LanguageModelOptions CreateOptions(
+        int timeoutSeconds = 60,
+        int maxOutputTokens = 1024,
+        bool supportsTemperature = true) => new()
     {
         Endpoint = "https://unit-test.openai.azure.com/",
         ApiKey = "unit-test-key",
         Deployment = "gpt-unit-test",
         TimeoutSeconds = timeoutSeconds,
         MaxOutputTokens = maxOutputTokens,
+        SupportsTemperature = supportsTemperature,
     };
 
     private static ModelRequest CreateRequest() => new()
@@ -72,6 +76,36 @@ public class AzureLanguageModelServiceTests
         Assert.Equal(request.UserPrompt, service.CapturedMessages[1].Content[0].Text);
         Assert.Equal(0.3f, service.CapturedOptions!.Temperature);
         Assert.Equal(256, service.CapturedOptions.MaxOutputTokenCount);
+    }
+
+    [Theory]
+    [InlineData("https://unit-test.openai.azure.com/", "https://unit-test.openai.azure.com/openai/v1")]
+    [InlineData("https://unit-test.openai.azure.com", "https://unit-test.openai.azure.com/openai/v1")]
+    public void ChatEndpoint_Addresses_The_OpenAI_Compatible_Route(string configured, string expected)
+    {
+        // Chat goes through this route rather than through AzureOpenAIClient,
+        // which rewrites the token cap to the retired `max_tokens` that a
+        // reasoning model rejects. Whether the configured endpoint carries a
+        // trailing slash is not the operator's problem.
+        Assert.Equal(expected, AzureLanguageModelService.ChatEndpoint(configured).ToString());
+    }
+
+    [Fact]
+    public async Task GenerateAsync_Omits_Temperature_For_A_Deployment_That_Has_Only_One()
+    {
+        // A reasoning model (o-series, GPT-5) supports only its own default and
+        // answers any other with 400 "Unsupported value: 'temperature'", failing
+        // the whole evaluation. Asking for its default means saying nothing.
+        var service = new TestableAzureLanguageModelService(
+            CreateOptions(supportsTemperature: false),
+            (_, _, _) => Task.FromResult(CreateCompletion()));
+
+        await service.GenerateAsync(CreateRequest() with { Temperature = 0.1f }, CancellationToken.None);
+
+        Assert.Null(service.CapturedOptions!.Temperature);
+        // The token cap is unaffected: it is sent as max_completion_tokens,
+        // which a reasoning model does accept.
+        Assert.Equal(1024, service.CapturedOptions.MaxOutputTokenCount);
     }
 
     [Fact]
