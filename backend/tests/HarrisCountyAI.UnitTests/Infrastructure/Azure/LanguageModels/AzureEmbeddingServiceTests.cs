@@ -144,6 +144,67 @@ public class AzureEmbeddingServiceTests
     }
 
     [Fact]
+    public async Task EmbedAsync_ThrottledWithRetryAfter_WaitsAsLongAsTheServiceAsked()
+    {
+        // The failure this fixes: exponential backoff would retry after 500ms,
+        // land inside the same rate-limit window, and burn the attempt.
+        _client.EnqueueFailure(FakeClientResultExceptions.WithRetryAfter(429, "8"));
+        var service = CreateService();
+
+        await service.EmbedAsync(MakeInputs(2), CancellationToken.None);
+
+        var delay = Assert.Single(_recordedDelays);
+        Assert.InRange(delay.TotalMilliseconds, 8000, 8250);
+        Assert.Equal(2, _client.ReceivedBatches.Count);
+    }
+
+    [Fact]
+    public async Task EmbedAsync_RetryAfterShorterThanBackoff_KeepsExponentialBackoff()
+    {
+        // The hint is a floor, not a replacement: a service asking for 100ms on
+        // the third retry should not undo the backoff already accumulated.
+        _client.EnqueueFailure(FakeClientResultExceptions.WithStatus(429));
+        _client.EnqueueFailure(FakeClientResultExceptions.WithStatus(429));
+        _client.EnqueueFailure(FakeClientResultExceptions.WithRetryAfter(429, "0.1"));
+        var service = CreateService();
+
+        await service.EmbedAsync(MakeInputs(2), CancellationToken.None);
+
+        Assert.Equal(3, _recordedDelays.Count);
+        Assert.InRange(_recordedDelays[2].TotalMilliseconds, 2000, 2250);
+    }
+
+    [Fact]
+    public async Task EmbedAsync_ImplausibleRetryAfter_IsCappedRatherThanStallingIngestion()
+    {
+        _client.EnqueueFailure(FakeClientResultExceptions.WithRetryAfter(503, "3600"));
+        var service = CreateService();
+
+        await service.EmbedAsync(MakeInputs(2), CancellationToken.None);
+
+        var delay = Assert.Single(_recordedDelays);
+        Assert.InRange(delay.TotalMilliseconds, 60_000, 60_250);
+    }
+
+    [Fact]
+    public async Task EmbedAsync_RetryAfterAcrossAttempts_IsHonouredEachTime()
+    {
+        _client.EnqueueFailure(FakeClientResultExceptions.WithRetryAfter(429, "5"));
+        _client.EnqueueFailure(FakeClientResultExceptions.WithRetryAfter(429, "10"));
+        _client.EnqueueFailure(FakeClientResultExceptions.WithRetryAfter(429, "15"));
+        var service = CreateService();
+
+        await service.EmbedAsync(MakeInputs(2), CancellationToken.None);
+
+        Assert.Equal(3, _recordedDelays.Count);
+        var expectedBases = new[] { 5000d, 10_000d, 15_000d };
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.InRange(_recordedDelays[i].TotalMilliseconds, expectedBases[i], expectedBases[i] + 250);
+        }
+    }
+
+    [Fact]
     public async Task EmbedAsync_TransientFailuresExhaustRetries_ThrowsClearException()
     {
         for (var i = 0; i < 4; i++)
