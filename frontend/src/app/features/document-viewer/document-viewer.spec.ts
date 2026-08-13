@@ -325,6 +325,21 @@ describe('DocumentViewer', () => {
       expect(renderPage).toHaveBeenCalledTimes(2);
       expect(renderPage).toHaveBeenLastCalledWith(3, expect.anything(), expect.any(Number));
     });
+
+    it('keeps the county link when a render is orphaned by the switch to it', async () => {
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+
+      // Clicking a county citation closes the uploaded document, and closing it
+      // rejects the render still drawing. That rejection belongs to a document
+      // nobody has open, so it must not replace the county link with an error.
+      await setTarget(countyTarget());
+      pending[0].reject();
+      await settle();
+
+      expect(el().querySelector('.state-panel--error')).toBeNull();
+      expect(el().querySelector('.document-viewer__external a')).not.toBeNull();
+    });
   });
 
   it('recovers from a failed render when the reviewer turns the page', async () => {

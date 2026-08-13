@@ -291,8 +291,11 @@ export class DocumentViewer implements OnDestroy {
     try {
       await handle.renderPage(page, canvas, width);
     } catch {
-      if (token !== this.drawToken) {
-        // Superseded mid-render; the failure belongs to a page already gone.
+      if (token !== this.drawToken || this.handle() !== handle) {
+        // Superseded mid-render; the failure belongs to a page already gone, or
+        // to a document released while it was drawing — closing a document
+        // rejects the render in flight, and that rejection must not overwrite
+        // the state the close itself set.
         return;
       }
 
