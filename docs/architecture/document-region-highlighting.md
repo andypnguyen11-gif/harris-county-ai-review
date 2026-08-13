@@ -305,6 +305,14 @@ inform whether the viewer keeps a fallback path. It does not block PR-A.
   absolutely positioned `<div>` per box, positioned with **percentage**
   `left/top/width/height`. Percentages mean resize needs no recomputation;
   only the canvas re-renders, debounced via `ResizeObserver`, to stay crisp.
+- The overlay's positioning ancestor is a **plain block wrapping the canvas**,
+  never the scrolling viewport. An absolutely positioned child resolves its
+  percentages against the containing block's padding box, and for a scroll
+  container that box is the *visible* area — shorter than the page whenever
+  the page scrolls. Anchoring the overlay there draws every box too high by
+  that ratio and leaves the boxes stationary while the page scrolls beneath
+  them. The wrapper takes the canvas's height, so a percentage is a
+  percentage of the page. Scrolling and overflow stay on the viewport.
 - Divs rather than a canvas overlay: they take CSS transitions, can be
   focusable for keyboard and screen-reader users, and need no redraw loop.
   (OpenEMR's plan specified divs; its shipped partial drifted to canvas.)
@@ -318,7 +326,13 @@ inform whether the viewer keeps a fallback path. It does not block PR-A.
 - `ValidationReportPanel` computes the box set for the open document and page
   per the [draw policy](#draw-policy) and passes it to the viewer.
 - A finding with `documentId` but no region shows **"Couldn't locate this field
-  on the page"** inline, and the viewer repeats it against the rendered page.
+  on the page"** inline, and the viewer repeats it against the rendered page —
+  but **only for the statuses the [draw policy](#draw-policy) would box**
+  (`Missing`, `Invalid`, `PotentiallyIncomplete`). A `Complete` finding with a
+  null region is "no highlight in v1," not a failure to locate anything;
+  saying otherwise under a satisfied finding teaches reviewers to ignore the
+  message where it matters. Non-issue statuses stay quiet. The viewer's copy
+  is tied to the active finding, which is always an issue.
 
 **Tests**
 

@@ -658,8 +658,7 @@ Keep `externalUrl()` and `close()` verbatim. Replace `retry()`, `load()`, and `r
 In `document-viewer.scss`, replace the `.document-viewer__frame` rule (lines 57-64) with:
 
 ```scss
-.document-viewer__page {
-  position: relative;
+.document-viewer__viewport {
   width: 100%;
   max-height: 70vh;
   overflow: auto;
@@ -668,12 +667,33 @@ In `document-viewer.scss`, replace the `.document-viewer__frame` rule (lines 57-
   background: #f9fafb;
 }
 
+/*
+ * The page: as wide as the viewport's content box and as tall as the canvas
+ * it wraps. Positioned so the overlay inside it covers the page exactly.
+ */
+.document-viewer__page-surface {
+  position: relative;
+}
+
 .document-viewer__canvas {
   display: block;
   width: 100%;
   height: auto;
 }
 ```
+
+**Scrolling and positioning must be two different elements.** The viewport
+scrolls; the page surface inside it is the positioning ancestor, and Task 3's
+overlay hangs off the surface. Do not put `position: relative` on the element
+that carries `overflow: auto`: an absolutely positioned child resolves its
+percentages against the containing block's padding box, which for a scroll
+container is the *visible* area — so every region box would be drawn too high
+by the ratio of viewport height to page height, and the boxes would sit still
+while the page scrolled underneath them. jsdom never scrolls, so no test in
+this plan can catch it; it is a browser-pass check.
+
+(The class is `__viewport`, not `__page` — `.document-viewer__page` is already
+the header's page badge.)
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
@@ -917,7 +937,11 @@ and the input beside `target`:
   readonly notice = input<string | null>(null);
 ```
 
-In `document-viewer.html`, add the overlay inside `.document-viewer__page`, after the `<canvas>`:
+In `document-viewer.html`, wrap the `<canvas>` in the `.document-viewer__page-surface`
+block added in Task 2 and put the overlay inside that same wrapper, immediately after
+the `<canvas>`. The overlay must be a sibling of the canvas inside the surface — **not**
+a child of the scrolling `.document-viewer__viewport`, for the reason given in Task 2's
+Step 5:
 
 ```html
           <div class="document-viewer__overlay">
@@ -951,9 +975,12 @@ In `document-viewer.scss`, append the notice rule to the existing
 
 ```scss
 /*
- * Sits exactly over the canvas, which fills the page container, so a box's
- * percentage geometry is a percentage of the page itself. A resize re-renders
- * the canvas; the boxes follow with no recomputation.
+ * Sits exactly over the canvas, whose height the page surface takes, so a
+ * box's percentage geometry is a percentage of the page itself. A resize
+ * re-renders the canvas; the boxes follow with no recomputation.
+ *
+ * `inset: 0` resolves against `.document-viewer__page-surface`, never against
+ * the scrolling viewport — see Task 2, Step 5.
  */
 .document-viewer__overlay {
   position: absolute;
