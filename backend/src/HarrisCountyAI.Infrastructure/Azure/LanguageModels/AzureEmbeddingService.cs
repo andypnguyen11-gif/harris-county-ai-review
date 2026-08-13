@@ -1,5 +1,6 @@
 using System.ClientModel;
 using HarrisCountyAI.Application.Search.Embeddings;
+using HarrisCountyAI.Infrastructure.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -8,14 +9,22 @@ namespace HarrisCountyAI.Infrastructure.Azure.LanguageModels;
 /// <summary>
 /// Generates embeddings through Azure OpenAI. Splits inputs into batches of at most
 /// <see cref="EmbeddingOptions.MaxBatchSize"/>, retries transient failures (HTTP 429 and 5xx)
-/// with exponential backoff plus jitter, and maps each returned vector back to the index of
-/// the input it was generated for.
+/// with exponential backoff plus jitter — or with whatever delay a throttled service asked
+/// for, when that is longer — and maps each returned vector back to the index of the input
+/// it was generated for.
 /// </summary>
 public sealed class AzureEmbeddingService : IEmbeddingService
 {
     private const int MaxRetries = 3;
     private static readonly TimeSpan BaseDelay = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan MaxJitter = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>
+    /// Ceiling on a single wait. A <c>Retry-After</c> is trusted up to this point;
+    /// beyond it the service is asking for longer than an ingestion run should sit
+    /// idle, and failing the batch is the more useful answer.
+    /// </summary>
+    private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(60);
 
     private readonly IEmbeddingBatchClient _client;
     private readonly EmbeddingOptions _options;
@@ -110,15 +119,18 @@ public sealed class AzureEmbeddingService : IEmbeddingService
             }
             catch (Exception ex) when (attempt < MaxRetries && IsTransient(ex))
             {
-                var delay = ComputeBackoff(attempt);
+                var retryAfter = RetryAfterHeader.Read(ex);
+                var delay = ComputeBackoff(attempt, retryAfter);
                 _logger.LogWarning(
                     ex,
                     "Transient embedding failure for batch of {BatchSize} inputs starting at input index " +
-                    "{InputIndex} (attempt {Attempt} of {MaxAttempts}); retrying in {Delay}.",
+                    "{InputIndex} (attempt {Attempt} of {MaxAttempts}); service asked for {RetryAfter}, " +
+                    "retrying in {Delay}.",
                     batch.Count,
                     batchStartIndex,
                     attempt + 1,
                     MaxRetries + 1,
+                    retryAfter?.ToString() ?? "no delay",
                     delay);
 
                 await _delayAsync(delay, ct).ConfigureAwait(false);
@@ -149,11 +161,26 @@ public sealed class AzureEmbeddingService : IEmbeddingService
         exception is ClientResultException clientResultException
         && (clientResultException.Status == 429 || clientResultException.Status >= 500);
 
-    private static TimeSpan ComputeBackoff(int attempt)
+    /// <summary>
+    /// How long to wait before the next attempt.
+    /// </summary>
+    /// <remarks>
+    /// A throttled Azure OpenAI deployment reports how much of its rate-limit
+    /// window is left. Retrying sooner than that is guaranteed to be throttled
+    /// again, so the hint acts as a floor: backoff never waits less than the
+    /// service asked for, and never less than its own exponential schedule.
+    /// </remarks>
+    private static TimeSpan ComputeBackoff(int attempt, TimeSpan? retryAfter)
     {
         // 500ms, 1s, 2s exponential base plus up to 250ms of jitter to avoid retry stampedes.
-        var exponential = TimeSpan.FromMilliseconds(BaseDelay.TotalMilliseconds * Math.Pow(2, attempt));
+        var delay = TimeSpan.FromMilliseconds(BaseDelay.TotalMilliseconds * Math.Pow(2, attempt));
+
+        if (retryAfter is { } requested && requested > delay)
+        {
+            delay = requested < MaxRetryDelay ? requested : MaxRetryDelay;
+        }
+
         var jitter = TimeSpan.FromMilliseconds(Random.Shared.NextDouble() * MaxJitter.TotalMilliseconds);
-        return exponential + jitter;
+        return delay + jitter;
     }
 }

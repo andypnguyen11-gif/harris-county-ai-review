@@ -10,9 +10,22 @@ namespace HarrisCountyAI.UnitTests.Infrastructure.Azure.LanguageModels;
 internal static class FakeClientResultExceptions
 {
     public static ClientResultException WithStatus(int status) =>
-        new($"Simulated failure with status {status}.", new FakePipelineResponse(status));
+        new($"Simulated failure with status {status}.", new FakePipelineResponse(status, null));
 
-    private sealed class FakePipelineResponse(int status) : PipelineResponse
+    /// <summary>
+    /// A failure that also carries a <c>Retry-After</c> header, as a throttled
+    /// Azure OpenAI deployment sends with a 429.
+    /// </summary>
+    public static ClientResultException WithRetryAfter(int status, string retryAfter) =>
+        new(
+            $"Simulated failure with status {status}.",
+            new FakePipelineResponse(status, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Retry-After"] = retryAfter,
+            }));
+
+    private sealed class FakePipelineResponse(int status, IReadOnlyDictionary<string, string>? headers)
+        : PipelineResponse
     {
         public override int Status { get; } = status;
 
@@ -22,7 +35,7 @@ internal static class FakeClientResultExceptions
 
         public override BinaryData Content { get; } = BinaryData.FromString(string.Empty);
 
-        protected override PipelineResponseHeaders HeadersCore { get; } = new FakeHeaders();
+        protected override PipelineResponseHeaders HeadersCore { get; } = new FakeHeaders(headers);
 
         public override BinaryData BufferContent(CancellationToken cancellationToken = default) => Content;
 
@@ -34,19 +47,33 @@ internal static class FakeClientResultExceptions
         }
     }
 
-    private sealed class FakeHeaders : PipelineResponseHeaders
+    private sealed class FakeHeaders(IReadOnlyDictionary<string, string>? headers) : PipelineResponseHeaders
     {
-        public override IEnumerator<KeyValuePair<string, string>> GetEnumerator() =>
-            Enumerable.Empty<KeyValuePair<string, string>>().GetEnumerator();
+        private readonly IReadOnlyDictionary<string, string> _headers =
+            headers ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        public override IEnumerator<KeyValuePair<string, string>> GetEnumerator() => _headers.GetEnumerator();
 
         public override bool TryGetValue(string name, out string? value)
         {
+            if (_headers.TryGetValue(name, out var found))
+            {
+                value = found;
+                return true;
+            }
+
             value = null;
             return false;
         }
 
         public override bool TryGetValues(string name, out IEnumerable<string>? values)
         {
+            if (_headers.TryGetValue(name, out var found))
+            {
+                values = [found];
+                return true;
+            }
+
             values = null;
             return false;
         }
