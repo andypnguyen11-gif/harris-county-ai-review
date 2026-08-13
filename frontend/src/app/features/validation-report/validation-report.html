@@ -79,6 +79,9 @@
                     {{ item.pageNumber ? 'View page ' + item.pageNumber : 'View document' }}
                   </button>
                 </p>
+                @if (item.boundingBox === null) {
+                  <p class="report-item__no-region">Couldn't locate this field on the page.</p>
+                }
               } @else if (item.pageNumber) {
                 <p class="report-item__reference">Page {{ item.pageNumber }}</p>
               }
@@ -88,7 +91,12 @@
       </section>
     }
 
-    <app-document-viewer [target]="viewerTarget()" (closed)="closeEvidence()" />
+    <app-document-viewer
+      [target]="viewerTarget()"
+      [regions]="viewerRegions()"
+      [notice]="viewerNotice()"
+      (closed)="closeEvidence()"
+    />
   } @else {
     <div class="report-placeholder">
       <p>No validation report yet.</p>

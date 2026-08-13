@@ -137,6 +137,13 @@
     font-size: 0.8125rem;
     color: var(--color-text-muted);
   }
+
+  &__no-region {
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    font-style: italic;
+    color: var(--color-text-muted);
+  }
 }
 
 .validation-type {

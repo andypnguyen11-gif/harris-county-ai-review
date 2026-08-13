@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 
+import { BoundingBox, ValidationReport } from '../../core/models/validation.model';
 import { ValidationService } from '../../core/services/validation.service';
 import { makeValidationItem, makeValidationReport } from '../../testing/validation-fixtures';
 import { ValidationReportPanel } from './validation-report';
@@ -45,6 +46,23 @@ describe('ValidationReportPanel', () => {
 
   function element(fixture: Awaited<ReturnType<typeof render>>): HTMLElement {
     return fixture.nativeElement as HTMLElement;
+  }
+
+  function box(overrides: Partial<BoundingBox> = {}): BoundingBox {
+    return { pageNumber: 1, x: 0.1, y: 0.2, width: 0.3, height: 0.04, ...overrides };
+  }
+
+  /** Renders the panel with `report` already loaded. */
+  async function openReport(report: ValidationReport) {
+    getLatestReport = vi.fn(() => of(report));
+    return render();
+  }
+
+  /** Clicks the View page button of the item at `index` in the rendered list. */
+  function viewPage(fixture: Awaited<ReturnType<typeof render>>, index: number): void {
+    element(fixture)
+      .querySelectorAll<HTMLButtonElement>('.report-item__reference button')
+      [index].click();
   }
 
   it('loads the latest report and renders items grouped by document with status and evidence', async () => {
@@ -224,7 +242,9 @@ describe('ValidationReportPanel', () => {
   });
 
   describe('evidence viewer', () => {
-    function viewButton(fixture: Awaited<ReturnType<typeof render>>): HTMLButtonElement | undefined {
+    function viewButton(
+      fixture: Awaited<ReturnType<typeof render>>,
+    ): HTMLButtonElement | undefined {
       return [...element(fixture).querySelectorAll('button')].find((button) =>
         button.textContent?.trim().startsWith('View'),
       );
@@ -287,6 +307,240 @@ describe('ValidationReportPanel', () => {
       );
       expect(viewer?.textContent).toContain('Permit Application');
       expect(viewer?.textContent).toContain('Page 3');
+    });
+  });
+
+  describe('draw policy', () => {
+    it('boxes only the issues on the open page of the open document', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            id: 'issue-here',
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box({ pageNumber: 1 }),
+          }),
+          makeValidationItem({
+            id: 'issue-other-page',
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 2,
+            boundingBox: box({ pageNumber: 2 }),
+          }),
+          makeValidationItem({
+            id: 'issue-other-document',
+            status: 'Invalid',
+            documentId: 'doc-2',
+            pageNumber: 1,
+            boundingBox: box({ pageNumber: 1 }),
+          }),
+          makeValidationItem({
+            id: 'satisfied',
+            status: 'Complete',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box({ pageNumber: 1 }),
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      viewPage(fixture, 0);
+      await fixture.whenStable();
+
+      const regions = fixture.componentInstance.viewerRegions();
+      // Reviewers are looking for failures: satisfied fields stay unboxed even
+      // though their region is present, and other pages and documents are out.
+      expect(regions.map((r) => r.id)).toEqual(['issue-here']);
+    });
+
+    it('boxes every issue on the page, not only the one clicked', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            id: 'first',
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box(),
+          }),
+          makeValidationItem({
+            id: 'second',
+            status: 'PotentiallyIncomplete',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box({ x: 0.5 }),
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      viewPage(fixture, 0);
+      await fixture.whenStable();
+
+      const regions = fixture.componentInstance.viewerRegions();
+      expect(regions.map((r) => r.id)).toEqual(['first', 'second']);
+      expect(regions.map((r) => r.active)).toEqual([true, false]);
+    });
+
+    it('clears the active box when the same finding is clicked again', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            id: 'first',
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box(),
+          }),
+          makeValidationItem({
+            id: 'second',
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box({ x: 0.5 }),
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      viewPage(fixture, 0);
+      await fixture.whenStable();
+      viewPage(fixture, 0);
+      await fixture.whenStable();
+
+      const regions = fixture.componentInstance.viewerRegions();
+      // The active state clears; the page keeps its boxes.
+      expect(regions.map((r) => r.active)).toEqual([false, false]);
+      expect(regions).toHaveLength(2);
+    });
+
+    it('opens a satisfied finding with nothing active', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            id: 'satisfied',
+            status: 'Complete',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box(),
+          }),
+          makeValidationItem({
+            id: 'issue',
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box({ x: 0.5 }),
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      viewPage(fixture, 0);
+      await fixture.whenStable();
+
+      const regions = fixture.componentInstance.viewerRegions();
+      expect(regions.map((r) => r.id)).toEqual(['issue']);
+      expect(regions.some((r) => r.active)).toBe(false);
+    });
+
+    it('names each box after the finding it came from', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            id: 'first',
+            requirement: 'Owner name',
+            message: "Field 'owner name' is present but has no value.",
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box(),
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      viewPage(fixture, 0);
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.viewerRegions()[0].label).toBe(
+        "Owner name: Field 'owner name' is present but has no value.",
+      );
+    });
+
+    it('says so when a finding cannot be located on its page', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: null,
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      expect(element(fixture).querySelector('.report-item__no-region')?.textContent).toContain(
+        "Couldn't locate this field on the page",
+      );
+    });
+
+    it('carries the no-region explanation to the viewer', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: null,
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      viewPage(fixture, 0);
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.viewerNotice()).toBe(
+        "Couldn't locate this field on the page.",
+      );
+    });
+
+    it('shows no viewer notice for a finding that was located', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box(),
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      viewPage(fixture, 0);
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.viewerNotice()).toBeNull();
+    });
+
+    it('draws no boxes when the viewer is closed', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            status: 'Missing',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: box(),
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      expect(fixture.componentInstance.viewerRegions()).toEqual([]);
     });
   });
 });
