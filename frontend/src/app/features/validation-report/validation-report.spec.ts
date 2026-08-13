@@ -241,6 +241,28 @@ describe('ValidationReportPanel', () => {
     expect(el.textContent).toContain('No validation report yet.');
   });
 
+  it('counts every status in the summary as the draw policy classifies it', async () => {
+    const report = makeValidationReport({
+      caseId,
+      items: [
+        makeValidationItem({ status: 'Complete' }),
+        makeValidationItem({ status: 'Missing' }),
+        makeValidationItem({ status: 'Invalid' }),
+        makeValidationItem({ status: 'PotentiallyIncomplete' }),
+        makeValidationItem({ status: 'NeedsHumanReview' }),
+        makeValidationItem({ status: 'UnableToDetermine' }),
+      ],
+    });
+    const fixture = await openReport(report);
+
+    // The badge count and the boxes have to agree on what an issue is.
+    const summary = element(fixture).querySelector('.report-summary')?.textContent;
+    expect(summary).toContain('1 complete');
+    expect(summary).toContain('3 issues');
+    expect(summary).toContain('2 for review');
+    expect(summary).toContain('6 checks');
+  });
+
   describe('evidence viewer', () => {
     function viewButton(
       fixture: Awaited<ReturnType<typeof render>>,
@@ -485,6 +507,53 @@ describe('ValidationReportPanel', () => {
       expect(element(fixture).querySelector('.report-item__no-region')?.textContent).toContain(
         "Couldn't locate this field on the page",
       );
+    });
+
+    it('stays quiet about a region for a finding that was never going to be boxed', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            id: 'satisfied',
+            status: 'Complete',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: null,
+          }),
+          makeValidationItem({
+            id: 'for-review',
+            status: 'NeedsHumanReview',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: null,
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      // Satisfied checks are never boxed by design, so "couldn't locate this
+      // field" is noise about something nobody went looking for — and on a
+      // case validated before regions were resolved, it is on every line.
+      expect(element(fixture).querySelector('.report-item__no-region')).toBeNull();
+    });
+
+    it('shows no viewer notice for a finding that was never going to be boxed', async () => {
+      const report = makeValidationReport({
+        items: [
+          makeValidationItem({
+            id: 'for-review',
+            status: 'NeedsHumanReview',
+            documentId: 'doc-1',
+            pageNumber: 1,
+            boundingBox: null,
+          }),
+        ],
+      });
+      const fixture = await openReport(report);
+
+      viewPage(fixture, 0);
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.viewerNotice()).toBeNull();
     });
 
     it('carries the no-region explanation to the viewer', async () => {

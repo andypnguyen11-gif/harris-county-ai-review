@@ -81,10 +81,8 @@
                         {{ item.pageNumber ? 'View page ' + item.pageNumber : 'View document' }}
                       </button>
                     </p>
-                    @if (item.boundingBox === null) {
-                      <p class="report-item__no-region">
-                        Couldn't locate this field on the page.
-                      </p>
+                    @if (explainsMissingRegion(item)) {
+                      <p class="report-item__no-region">{{ noRegionMessage }}</p>
                     }
                   } @else if (item.pageNumber) {
                     <p class="report-item__reference">Page {{ item.pageNumber }}</p>
