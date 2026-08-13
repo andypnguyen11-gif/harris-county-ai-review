@@ -305,6 +305,33 @@ inform whether the viewer keeps a fallback path. It does not block PR-A.
   absolutely positioned `<div>` per box, positioned with **percentage**
   `left/top/width/height`. Percentages mean resize needs no recomputation;
   only the canvas re-renders, debounced via `ResizeObserver`, to stay crisp.
+- The overlay's positioning ancestor is a **plain block wrapping the canvas**,
+  never the scrolling viewport. An absolutely positioned child resolves its
+  percentages against the containing block's padding box, and for a scroll
+  container that box is the *visible* area — shorter than the page whenever
+  the page scrolls. Anchoring the overlay there draws every box too high by
+  that ratio and leaves the boxes stationary while the page scrolls beneath
+  them. The wrapper takes the canvas's height, so a percentage is a
+  percentage of the page. Scrolling and overflow stay on the viewport, and the
+  wrapper is sized to its content so it still holds the page exactly when a
+  zoom makes the page wider than the viewport.
+- The page is drawn at the viewport's content width times the zoom, and the
+  viewport is a **fixed height with a reserved scrollbar gutter**. A page drawn
+  to the width of the box it scrolls in otherwise summons a scrollbar, is
+  redrawn narrower into the width the scrollbar left, loses the scrollbar, and
+  is redrawn wider — the viewer pulsing between two sizes for as long as the
+  page's height lands either side of the box's own. A resize that gains less
+  than a scrollbar's width is ignored for the same reason; one that loses any
+  width is always redrawn, since the page is sized in pixels and would
+  otherwise hang out of its box.
+- A page is rendered into an off-screen canvas and copied to the visible one
+  in a single step, and a canvas that holds no page yet is hidden. Assigning
+  `canvas.width` clears it, so drawing straight into the canvas on screen
+  blanks the page for the length of the render — a flicker on every click.
+- The active box is scrolled to the middle of the viewport once the page is
+  drawn, and again whenever the active finding changes. The page is taller
+  than the box it is read in, so a highlight the reviewer has to go looking
+  for is a highlight the click failed to deliver.
 - Divs rather than a canvas overlay: they take CSS transitions, can be
   focusable for keyboard and screen-reader users, and need no redraw loop.
   (OpenEMR's plan specified divs; its shipped partial drifted to canvas.)
@@ -318,7 +345,13 @@ inform whether the viewer keeps a fallback path. It does not block PR-A.
 - `ValidationReportPanel` computes the box set for the open document and page
   per the [draw policy](#draw-policy) and passes it to the viewer.
 - A finding with `documentId` but no region shows **"Couldn't locate this field
-  on the page"** inline, and the viewer repeats it against the rendered page.
+  on the page"** inline, and the viewer repeats it against the rendered page —
+  but **only for the statuses the [draw policy](#draw-policy) would box**
+  (`Missing`, `Invalid`, `PotentiallyIncomplete`). A `Complete` finding with a
+  null region is "no highlight in v1," not a failure to locate anything;
+  saying otherwise under a satisfied finding teaches reviewers to ignore the
+  message where it matters. Non-issue statuses stay quiet. The viewer's copy
+  is tied to the active finding, which is always an issue.
 
 **Tests**
 

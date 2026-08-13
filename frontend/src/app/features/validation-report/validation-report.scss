@@ -133,8 +133,19 @@
   }
 
   &__reference {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0.375rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+  }
+
+  &__no-region {
     margin: 0.25rem 0 0;
     font-size: 0.8125rem;
+    font-style: italic;
     color: var(--color-text-muted);
   }
 }
@@ -154,5 +165,42 @@
     background: #f0eafa;
     border-color: #cbb8ec;
     color: #4b2d83;
+  }
+}
+
+/*
+ * Findings and evidence side by side so a reviewer reads a finding and sees
+ * the page it came from without scrolling between them. The viewer sticks to
+ * the top of its column while the findings list scrolls past it.
+ */
+.report-layout {
+  display: grid;
+  /*
+   * The evidence column takes the larger share: a finding is a line or two of
+   * text, while the page it came from has to be legible at a glance.
+   */
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.report-layout__findings {
+  min-width: 0;
+}
+
+.report-layout__viewer {
+  position: sticky;
+  top: 1rem;
+  min-width: 0;
+}
+
+/* Below this the two columns are each too narrow to read, so they stack. */
+@media (max-width: 1100px) {
+  .report-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-layout__viewer {
+    position: static;
   }
 }

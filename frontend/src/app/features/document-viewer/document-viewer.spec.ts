@@ -3,11 +3,16 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Subject, of, throwError } from 'rxjs';
 
 import { CitationTarget } from '../../core/models/citation-target.model';
+import { BoundingBox } from '../../core/models/validation.model';
 import { DocumentService } from '../../core/services/document.service';
-import { DocumentViewer } from './document-viewer';
+import { PdfRenderService } from '../../core/services/pdf-render.service';
+import { DocumentViewer, ViewerRegion } from './document-viewer';
 
 describe('DocumentViewer', () => {
   let getDocumentContent: ReturnType<typeof vi.fn>;
+  let renderPage: ReturnType<typeof vi.fn>;
+  let destroyHandle: ReturnType<typeof vi.fn>;
+  let open: ReturnType<typeof vi.fn>;
   let fixture: ComponentFixture<DocumentViewer>;
 
   function caseTarget(overrides: Partial<CitationTarget> = {}): CitationTarget {
@@ -39,7 +44,10 @@ describe('DocumentViewer', () => {
   async function setup(target: CitationTarget | null): Promise<void> {
     TestBed.configureTestingModule({
       imports: [DocumentViewer],
-      providers: [{ provide: DocumentService, useValue: { getDocumentContent } }],
+      providers: [
+        { provide: DocumentService, useValue: { getDocumentContent } },
+        { provide: PdfRenderService, useValue: { open } },
+      ],
     });
     fixture = TestBed.createComponent(DocumentViewer);
     fixture.componentRef.setInput('target', target);
@@ -55,8 +63,49 @@ describe('DocumentViewer', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  /** The scroll container the page is drawn into and measured against. */
+  function viewportEl(): HTMLElement {
+    return el().querySelector('.document-viewer__viewport') as HTMLElement;
+  }
+
+  /**
+   * Lets a promise chain that spans several ticks — a queued render waiting on
+   * the one before it — run to completion, then settles the view. Awaiting
+   * whenStable alone yields only a tick or two of microtasks.
+   */
+  async function settle(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await fixture.whenStable();
+  }
+
+  function box(overrides: Partial<BoundingBox> = {}): BoundingBox {
+    return { pageNumber: 2, x: 0.1, y: 0.2, width: 0.3, height: 0.04, ...overrides };
+  }
+
+  function region(overrides: Partial<ViewerRegion> = {}): ViewerRegion {
+    return { id: 'finding-1', box: box(), active: false, label: 'Owner name', ...overrides };
+  }
+
+  async function setRegions(regions: readonly ViewerRegion[]): Promise<void> {
+    fixture.componentRef.setInput('regions', regions);
+    await fixture.whenStable();
+  }
+
   beforeEach(() => {
     getDocumentContent = vi.fn(() => of(new Blob(['%PDF-1.7'], { type: 'application/pdf' })));
+    renderPage = vi.fn(async () => ({ width: 800, height: 1035 }));
+    destroyHandle = vi.fn();
+    // No explicit PdfDocumentHandle return-type annotation here: the object
+    // literal's members are the loosely typed mocks above, and this is only
+    // ever consumed through `useValue` (untyped), matching how every other
+    // spec in this codebase hands a fake service to `useValue`.
+    open = vi.fn(async () => ({
+      // Longer than any page these tests cite, so only the test that is about
+      // an out-of-range page has to think about the page count.
+      pageCount: 12,
+      renderPage,
+      destroy: destroyHandle,
+    }));
   });
 
   it('shows nothing until a source is selected', async () => {
@@ -66,31 +115,397 @@ describe('DocumentViewer', () => {
     expect(getDocumentContent).not.toHaveBeenCalled();
   });
 
-  it('renders a case document and fetches it from its case', async () => {
+  it('renders a case document to a canvas', async () => {
     await setup(caseTarget());
 
     expect(getDocumentContent).toHaveBeenCalledWith('case-1', 'doc-1');
-    const frame = el().querySelector<HTMLIFrameElement>('.document-viewer__frame');
-    expect(frame).not.toBeNull();
-    expect(frame!.getAttribute('title')).toContain('application.pdf');
+    expect(open).toHaveBeenCalled();
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+    expect(el().querySelector('iframe')).toBeNull();
   });
 
-  it('opens the rendered document at the cited page', async () => {
+  it('renders the cited page', async () => {
     await setup(caseTarget({ page: 5 }));
 
-    const frame = el().querySelector<HTMLIFrameElement>('.document-viewer__frame');
-    expect(frame!.getAttribute('src')).toContain('#page=5');
-    expect(el().querySelector('.document-viewer__hint')?.textContent).toContain('page 5');
+    expect(renderPage).toHaveBeenCalledWith(5, expect.anything(), expect.any(Number));
   });
 
-  it('renders without a page fragment when the citation names no page', async () => {
+  it('renders the first page when the citation names none', async () => {
     await setup(caseTarget({ page: null }));
 
-    const frame = el().querySelector<HTMLIFrameElement>('.document-viewer__frame');
-    expect(frame!.getAttribute('src')).not.toContain('#page=');
+    expect(renderPage).toHaveBeenCalledWith(1, expect.anything(), expect.any(Number));
+  });
+
+  it('shows the nearest page it has when the citation names one the document lacks', async () => {
+    // Asking pdf.js for a page past the end rejects outright, and a citation
+    // can name one: an AI produced it, or the document was re-uploaded
+    // shorter since the page number was recorded.
+    open = vi.fn(async () => ({ pageCount: 4, renderPage, destroy: destroyHandle }));
+    await setup(caseTarget({ page: 9 }));
+
+    expect(renderPage).toHaveBeenLastCalledWith(4, expect.anything(), expect.any(Number));
+    expect(el().querySelector('.state-panel--error')).toBeNull();
     expect(el().querySelector('.document-viewer__hint')?.textContent).toContain(
-      'does not name a page',
+      'This document has no page 9; showing page 4.',
     );
+    // The label follows the page actually drawn, not the one asked for.
+    expect(el().querySelector('.document-viewer__canvas')?.getAttribute('aria-label')).toBe(
+      'Page 4 of application.pdf',
+    );
+
+    await setTarget(caseTarget({ page: 0 }));
+
+    expect(renderPage).toHaveBeenLastCalledWith(1, expect.anything(), expect.any(Number));
+  });
+
+  it('re-renders when the page changes without re-opening the file', async () => {
+    await setup(caseTarget({ page: 2 }));
+    expect(open).toHaveBeenCalledTimes(1);
+
+    await setTarget(caseTarget({ page: 3 }));
+
+    expect(renderPage).toHaveBeenLastCalledWith(3, expect.anything(), expect.any(Number));
+    // Same document — fetching and parsing it again would be wasted work.
+    expect(getDocumentContent).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the header page badge and the canvas wrapper on separate classes', async () => {
+    await setup(caseTarget({ page: 5 }));
+
+    // Regression: the wrapper around the canvas and the header's "Page N"
+    // badge once shared the class `document-viewer__page`, so the wrapper's
+    // box styling (border, background, max-height) leaked onto the badge.
+    const badge = el().querySelector('.document-viewer__page');
+    expect(badge?.tagName).toBe('SPAN');
+    expect(badge?.textContent).toContain('Page 5');
+    expect(badge?.classList.contains('document-viewer__viewport')).toBe(false);
+
+    const wrapper = el().querySelector('.document-viewer__viewport');
+    expect(wrapper?.tagName).toBe('DIV');
+    expect(wrapper?.querySelector('.document-viewer__canvas')).not.toBeNull();
+  });
+
+  it('lays the overlay over the page rather than over the scroll container', async () => {
+    await setup(caseTarget());
+    await setRegions([region()]);
+
+    // The boxes are percentages of whatever the overlay is positioned
+    // against. An abspos child of the scroll container covers its *visible*
+    // area, so on a page taller than the viewport every box would be drawn
+    // too high; the overlay must be a child of the page surface instead.
+    // jsdom lays nothing out, so this asserts the structure the geometry
+    // depends on rather than the geometry itself.
+    const surface = el().querySelector('.document-viewer__page-surface');
+    expect(surface).not.toBeNull();
+    expect(el().querySelector('.document-viewer__overlay')?.parentElement).toBe(surface);
+    expect(el().querySelector('.document-viewer__canvas')?.parentElement).toBe(surface);
+    expect(surface?.parentElement?.classList.contains('document-viewer__viewport')).toBe(true);
+  });
+
+  it('renders the page at the width of the viewer it has to fit', async () => {
+    await setup(caseTarget({ page: 2 }));
+    Object.defineProperty(viewportEl(), 'clientWidth', { value: 640, configurable: true });
+
+    // A page turn re-renders, this time with the viewer measurable.
+    await setTarget(caseTarget({ page: 3 }));
+
+    // A page fitted to the viewer's content width needs no horizontal
+    // scrolling, and the surface the boxes are drawn against wraps it exactly.
+    expect(renderPage).toHaveBeenLastCalledWith(3, expect.anything(), 640);
+  });
+
+  describe('zoom', () => {
+    function zoomButton(direction: 'in' | 'out'): HTMLButtonElement {
+      return el().querySelector(`[aria-label="Zoom ${direction}"]`) as HTMLButtonElement;
+    }
+
+    async function click(button: HTMLButtonElement): Promise<void> {
+      button.click();
+      await settle();
+    }
+
+    it('draws the page larger than the viewer when zoomed in', async () => {
+      // Reviewers read small print on scanned forms; a page fitted to the
+      // column is not always legible. The page is allowed to outgrow the box
+      // and scroll rather than being capped at what fits.
+      await setup(caseTarget({ page: 2 }));
+      Object.defineProperty(viewportEl(), 'clientWidth', { value: 600, configurable: true });
+
+      await click(zoomButton('in'));
+
+      expect(renderPage).toHaveBeenLastCalledWith(2, expect.anything(), 750);
+      expect(el().querySelector('.document-viewer__zoom-level')?.textContent).toContain('125%');
+    });
+
+    it('steps back down to a fitted page and stops there', async () => {
+      await setup(caseTarget({ page: 2 }));
+      Object.defineProperty(viewportEl(), 'clientWidth', { value: 600, configurable: true });
+      await click(zoomButton('in'));
+
+      await click(zoomButton('out'));
+
+      expect(renderPage).toHaveBeenLastCalledWith(2, expect.anything(), 600);
+      expect(el().querySelector('.document-viewer__zoom-level')?.textContent).toContain('Fit');
+      // Nothing below a fitted page: a page smaller than the box it sits in
+      // is harder to read, not easier.
+      expect(zoomButton('out').disabled).toBe(true);
+    });
+
+    it('offers no zoom until there is a page to zoom', async () => {
+      getDocumentContent = vi.fn(() => new Subject<Blob>().asObservable());
+      await setup(caseTarget());
+
+      expect(zoomButton('in')).toBeNull();
+    });
+  });
+
+  it('scrolls the box the reviewer asked for into the middle of the viewer', async () => {
+    // The page is usually taller than the box showing it, and zoomed in it is
+    // wider too. Without this the reviewer clicks "View page" and has to hunt
+    // for the highlight the click was meant to show them.
+    await setup(caseTarget({ page: 2 }));
+    const canvas = el().querySelector('.document-viewer__canvas') as HTMLElement;
+    Object.defineProperty(canvas, 'clientHeight', { value: 1000, configurable: true });
+    Object.defineProperty(canvas, 'clientWidth', { value: 800, configurable: true });
+    Object.defineProperty(viewportEl(), 'clientHeight', { value: 500, configurable: true });
+    // jsdom lays nothing out and never scrolls, so scrollTop has to be made
+    // observable to assert what the component asks the browser to do.
+    let scrollTop = 0;
+    Object.defineProperty(viewportEl(), 'scrollTop', {
+      get: () => scrollTop,
+      set: (value: number) => (scrollTop = value),
+      configurable: true,
+    });
+
+    await setRegions([region({ active: true, box: box({ y: 0.8, height: 0.04 }) })]);
+
+    // The box's middle sits 820px down a 1000px page; half the viewer's height
+    // above that puts it in the centre.
+    expect(scrollTop).toBeCloseTo(570);
+  });
+
+  it('leaves the scroll position alone when no box is active', async () => {
+    await setup(caseTarget({ page: 2 }));
+    const canvas = el().querySelector('.document-viewer__canvas') as HTMLElement;
+    Object.defineProperty(canvas, 'clientHeight', { value: 1000, configurable: true });
+    Object.defineProperty(canvas, 'clientWidth', { value: 800, configurable: true });
+    let scrollTop = 0;
+    Object.defineProperty(viewportEl(), 'scrollTop', {
+      get: () => scrollTop,
+      set: (value: number) => (scrollTop = value),
+      configurable: true,
+    });
+
+    await setRegions([region({ active: false, box: box({ y: 0.8 }) })]);
+
+    // A citation with no box of its own opens the page at the top, where a
+    // reader starts.
+    expect(scrollTop).toBe(0);
+  });
+
+  it('destroys a handle superseded by a later target instead of orphaning or showing it', async () => {
+    // fakeHandle() gives every open() call its own renderPage/destroy mocks
+    // so the test can tell which handle the component ultimately keeps.
+    function fakeHandle() {
+      return {
+        pageCount: 4,
+        renderPage: vi.fn(async () => ({ width: 800, height: 1035 })),
+        destroy: vi.fn(),
+      };
+    }
+    const resolvers: Array<(handle: ReturnType<typeof fakeHandle>) => void> = [];
+    open = vi.fn(() => new Promise((resolve) => resolvers.push(resolve)));
+
+    await setup(caseTarget({ documentId: 'doc-1' }));
+    // A second, then a third, target arrives while doc-1's open() is still
+    // pending — each triggers its own load() before any of them resolve.
+    await setTarget(caseTarget({ documentId: 'doc-2' }));
+    await setTarget(caseTarget({ documentId: 'doc-3' }));
+    expect(resolvers).toHaveLength(3);
+
+    const [doc1Handle, doc2Handle, doc3Handle] = [fakeHandle(), fakeHandle(), fakeHandle()];
+    // Resolve in the same order the requests were made, oldest first.
+    resolvers[0](doc1Handle);
+    resolvers[1](doc2Handle);
+    resolvers[2](doc3Handle);
+    await fixture.whenStable();
+    await fixture.whenStable();
+
+    // The stale responses are closed, not left open and not shown.
+    expect(doc1Handle.destroy).toHaveBeenCalled();
+    expect(doc2Handle.destroy).toHaveBeenCalled();
+    expect(doc1Handle.renderPage).not.toHaveBeenCalled();
+    expect(doc2Handle.renderPage).not.toHaveBeenCalled();
+    // Only the current target's handle is kept and rendered.
+    expect(doc3Handle.destroy).not.toHaveBeenCalled();
+    expect(doc3Handle.renderPage).toHaveBeenCalled();
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+  });
+
+  describe('overlapping renders', () => {
+    /**
+     * Replaces renderPage with one that never settles on its own, handing the
+     * test the resolve/reject of every call it receives. A real page render
+     * takes tens to hundreds of milliseconds, which is long enough for a
+     * reviewer to click through to another finding.
+     */
+    function deferredRenders(): Array<{ resolve: () => void; reject: () => void }> {
+      const pending: Array<{ resolve: () => void; reject: () => void }> = [];
+      renderPage = vi.fn(
+        () =>
+          new Promise((resolve, reject) => {
+            pending.push({
+              resolve: () => resolve({ width: 800, height: 1035 }),
+              reject: () => reject(new Error('Render failed')),
+            });
+          }),
+      );
+      return pending;
+    }
+
+    it('keeps the page hidden until it has been drawn into', async () => {
+      // An undrawn canvas is the browser's default 300x150. Showing it would
+      // flash a small white box in place of the page on every open.
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+      const surface = (): Element | null => el().querySelector('.document-viewer__page-surface');
+      expect(surface()?.classList.contains('is-hidden')).toBe(true);
+
+      pending[0].resolve();
+      await settle();
+
+      expect(surface()?.classList.contains('is-hidden')).toBe(false);
+    });
+
+    it('hides the page again while the next document loads', async () => {
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+      pending[0].resolve();
+      await settle();
+
+      await setTarget(caseTarget({ documentId: 'doc-2' }));
+
+      // A second document brings a canvas of its own, blank until it renders.
+      expect(
+        el().querySelector('.document-viewer__page-surface')?.classList.contains('is-hidden'),
+      ).toBe(true);
+    });
+
+    it('starts the next render only once the one in flight has settled', async () => {
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+      expect(renderPage).toHaveBeenCalledTimes(1);
+
+      // The reviewer clicks a finding on another page before the first page
+      // has finished rendering. pdf.js rejects a second render against a
+      // canvas it is still drawing into, so this one has to wait.
+      await setTarget(caseTarget({ page: 4 }));
+      expect(renderPage).toHaveBeenCalledTimes(1);
+
+      pending[0].resolve();
+      await settle();
+
+      expect(renderPage).toHaveBeenCalledTimes(2);
+      expect(renderPage).toHaveBeenLastCalledWith(4, expect.anything(), expect.any(Number));
+      expect(el().querySelector('.state-panel--error')).toBeNull();
+      expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+    });
+
+    it('ignores a superseded render instead of leaving the viewer stuck', async () => {
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+      await setTarget(caseTarget({ page: 4 }));
+
+      // The superseded render fails — a cancellation, or a "same canvas"
+      // throw from a pdf.js that saw both. Its outcome belongs to a page
+      // nobody is looking at any more, so it must not become an error panel
+      // and must not leave the viewer loading forever either.
+      pending[0].reject();
+      await settle();
+      pending[1].resolve();
+      await settle();
+
+      expect(renderPage).toHaveBeenCalledTimes(2);
+      expect(el().querySelector('.state-panel--error')).toBeNull();
+      expect(el().querySelector('[role="status"]')).toBeNull();
+      expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+    });
+
+    it('drops a render two page turns have already overtaken', async () => {
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+      await setTarget(caseTarget({ page: 2 }));
+      await setTarget(caseTarget({ page: 3 }));
+
+      pending[0].resolve();
+      await settle();
+
+      // Only the page the reviewer is actually on is drawn; the one they
+      // passed through is not worth a render nobody would see.
+      expect(renderPage).toHaveBeenCalledTimes(2);
+      expect(renderPage).toHaveBeenLastCalledWith(3, expect.anything(), expect.any(Number));
+    });
+
+    it('keeps the county link when a render is orphaned by the switch to it', async () => {
+      const pending = deferredRenders();
+      await setup(caseTarget({ page: 1 }));
+
+      // Clicking a county citation closes the uploaded document, and closing it
+      // rejects the render still drawing. That rejection belongs to a document
+      // nobody has open, so it must not replace the county link with an error.
+      await setTarget(countyTarget());
+      pending[0].reject();
+      await settle();
+
+      expect(el().querySelector('.state-panel--error')).toBeNull();
+      expect(el().querySelector('.document-viewer__external a')).not.toBeNull();
+    });
+  });
+
+  it('recovers from a failed render when the reviewer turns the page', async () => {
+    renderPage = vi.fn(async () => {
+      throw new Error('Render failed');
+    });
+    await setup(caseTarget({ page: 2 }));
+    await settle();
+    expect(el().querySelector('.state-panel--error')).not.toBeNull();
+
+    // The failed document is no longer treated as loaded, so a page turn
+    // reloads it rather than short-circuiting back into the error panel.
+    renderPage.mockResolvedValue({ width: 800, height: 1035 });
+    await setTarget(caseTarget({ page: 3 }));
+    await settle();
+
+    expect(el().querySelector('.state-panel--error')).toBeNull();
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+  });
+
+  it('destroys the open document when the source changes', async () => {
+    await setup(caseTarget());
+
+    await setTarget(caseTarget({ documentId: 'doc-2' }));
+
+    expect(destroyHandle).toHaveBeenCalled();
+    expect(getDocumentContent).toHaveBeenLastCalledWith('case-1', 'doc-2');
+  });
+
+  it('destroys the open document on teardown', async () => {
+    await setup(caseTarget());
+
+    fixture.destroy();
+
+    expect(destroyHandle).toHaveBeenCalled();
+  });
+
+  it('reports an unreadable PDF as an error rather than a blank canvas', async () => {
+    open = vi.fn(() => Promise.reject(new Error('Invalid PDF structure')));
+    await setup(caseTarget());
+
+    expect(el().querySelector('.state-panel--error')?.textContent).toContain(
+      'The document could not be loaded',
+    );
+    expect(el().querySelector('.document-viewer__canvas')).toBeNull();
   });
 
   it('shows a loading state while the file is in flight', async () => {
@@ -103,15 +518,19 @@ describe('DocumentViewer', () => {
     pending.next(new Blob(['%PDF-1.7']));
     pending.complete();
     await fixture.whenStable();
+    // The signal write that follows the awaited pdf.open() schedules its
+    // change detection outside the zone task whenStable() tracks, so the
+    // view is not guaranteed to reflect the new state after a single call.
+    await fixture.whenStable();
 
-    expect(el().querySelector('.document-viewer__frame')).not.toBeNull();
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
   });
 
   it('links out to a county document instead of fetching it', async () => {
     await setup(countyTarget());
 
     expect(getDocumentContent).not.toHaveBeenCalled();
-    expect(el().querySelector('.document-viewer__frame')).toBeNull();
+    expect(el().querySelector('.document-viewer__canvas')).toBeNull();
     const link = el().querySelector<HTMLAnchorElement>('.document-viewer__external a');
     expect(link?.getAttribute('href')).toBe('https://www.hcfcd.org/regulations#page=17');
     expect(link?.textContent).toContain('Open page 17');
@@ -137,16 +556,16 @@ describe('DocumentViewer', () => {
   it('distinguishes the two sources visually', async () => {
     await setup(countyTarget());
     expect(
-      el().querySelector('.document-viewer__source')?.classList.contains(
-        'document-viewer__source--county',
-      ),
+      el()
+        .querySelector('.document-viewer__source')
+        ?.classList.contains('document-viewer__source--county'),
     ).toBe(true);
 
     await setTarget(caseTarget());
     expect(
-      el().querySelector('.document-viewer__source')?.classList.contains(
-        'document-viewer__source--case',
-      ),
+      el()
+        .querySelector('.document-viewer__source')
+        ?.classList.contains('document-viewer__source--case'),
     ).toBe(true);
   });
 
@@ -158,7 +577,7 @@ describe('DocumentViewer', () => {
 
     const panel = el().querySelector('.state-panel--error');
     expect(panel?.textContent).toContain('The document file is unavailable');
-    expect(el().querySelector('.document-viewer__frame')).toBeNull();
+    expect(el().querySelector('.document-viewer__canvas')).toBeNull();
     // The metadata stays on screen so the reviewer can still find the document.
     expect(el().textContent).toContain('application.pdf');
   });
@@ -185,7 +604,7 @@ describe('DocumentViewer', () => {
     el().querySelector<HTMLButtonElement>('.state-panel--error button')!.click();
     await fixture.whenStable();
 
-    expect(el().querySelector('.document-viewer__frame')).not.toBeNull();
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
   });
 
   it('explains that a case citation without a case cannot be opened', async () => {
@@ -202,19 +621,262 @@ describe('DocumentViewer', () => {
     await setup(caseTarget());
     fixture.componentInstance.closed.subscribe((value) => closed.push(value));
 
-    el().querySelector<HTMLButtonElement>('.document-viewer__header button')!.click();
+    el().querySelector<HTMLButtonElement>('.document-viewer__close')!.click();
 
     expect(closed).toHaveLength(1);
   });
 
-  it('releases the previous file when the source changes', async () => {
-    const revoke = vi.spyOn(URL, 'revokeObjectURL');
+  it('draws no overlay boxes when given none', async () => {
     await setup(caseTarget());
 
-    await setTarget(caseTarget({ documentId: 'doc-2' }));
+    // The citation flow passes no regions; that is a normal open, not an error.
+    expect(el().querySelectorAll('.document-viewer__region')).toHaveLength(0);
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+  });
 
-    expect(revoke).toHaveBeenCalled();
-    expect(getDocumentContent).toHaveBeenLastCalledWith('case-1', 'doc-2');
-    revoke.mockRestore();
+  it('draws one box per region, positioned as a percentage of the page', async () => {
+    await setup(caseTarget());
+
+    await setRegions([region()]);
+
+    const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
+    expect(drawn).toHaveLength(1);
+    // 0.1 of the page width is 10% of the container the page fills.
+    expect(drawn[0].style.left).toBe('10%');
+    expect(drawn[0].style.top).toBe('20%');
+    expect(drawn[0].style.width).toBe('30%');
+    expect(drawn[0].style.height).toBe('4%');
+  });
+
+  it('draws a box per region and identifies each one', async () => {
+    await setup(caseTarget());
+
+    await setRegions([
+      region({ id: 'finding-1', box: box({ x: 0.1 }) }),
+      region({ id: 'finding-2', box: box({ x: 0.5 }) }),
+    ]);
+
+    const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
+    expect(drawn).toHaveLength(2);
+    expect([...drawn].map((node) => node.dataset['regionId'])).toEqual(['finding-1', 'finding-2']);
+    expect([...drawn].map((node) => node.style.left)).toEqual(['10%', '50%']);
+  });
+
+  it('distinguishes the active region from the others', async () => {
+    await setup(caseTarget());
+
+    await setRegions([
+      region({ id: 'finding-1', active: true }),
+      region({ id: 'finding-2', active: false }),
+    ]);
+
+    const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
+    expect(drawn[0].classList.contains('document-viewer__region--active')).toBe(true);
+    expect(drawn[1].classList.contains('document-viewer__region--active')).toBe(false);
+  });
+
+  it('names each region for assistive technology', async () => {
+    await setup(caseTarget());
+
+    await setRegions([region({ label: 'Owner name is missing' })]);
+
+    expect(el().querySelector('.document-viewer__region')?.getAttribute('aria-label')).toBe(
+      'Owner name is missing',
+    );
+  });
+
+  it('draws only regions whose page matches the rendered page', async () => {
+    await setup(caseTarget({ page: 2 }));
+
+    await setRegions([
+      region({ id: 'finding-1', box: box({ pageNumber: 2 }) }),
+      region({ id: 'finding-2', box: box({ pageNumber: 3 }) }),
+    ]);
+
+    const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
+    expect(drawn).toHaveLength(1);
+    expect(drawn[0].dataset['regionId']).toBe('finding-1');
+  });
+
+  it('repeats a no-region notice against the rendered page', async () => {
+    await setup(caseTarget());
+
+    fixture.componentRef.setInput('notice', "Couldn't locate this field on the page.");
+    await fixture.whenStable();
+
+    // The reviewer is looking at the page; the explanation belongs here too,
+    // not only beside the finding they clicked.
+    expect(el().querySelector('.document-viewer__notice')?.textContent).toContain(
+      "Couldn't locate this field on the page.",
+    );
+  });
+
+  it('shows no notice when there is nothing to explain', async () => {
+    await setup(caseTarget());
+
+    expect(el().querySelector('.document-viewer__notice')).toBeNull();
+  });
+
+  it('keeps the boxes when the region set changes without a new document', async () => {
+    await setup(caseTarget());
+    await setRegions([region({ id: 'finding-1' })]);
+
+    await setRegions([region({ id: 'finding-2' })]);
+
+    const drawn = el().querySelectorAll<HTMLElement>('.document-viewer__region');
+    expect(drawn).toHaveLength(1);
+    expect(drawn[0].dataset['regionId']).toBe('finding-2');
+    // Changing which findings are boxed must not refetch or reparse the file.
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * A stub that mimics a real ResizeObserver: it records the callback and,
+   * like the browser API, delivers one notification the moment `.observe()`
+   * is called even though nothing has actually resized yet. The component
+   * must ignore that first delivery (see the dedicated test below) so a
+   * genuine resize is only whatever the test fires afterward.
+   */
+  function fakeResizeObserverClass(): {
+    ctor: new (callback: () => void) => { observe(): void; disconnect(): void };
+    notifiers: Array<() => void>;
+  } {
+    const notifiers: Array<() => void> = [];
+    class FakeResizeObserver {
+      constructor(private readonly callback: () => void) {}
+      observe(): void {
+        notifiers.push(this.callback);
+        this.callback();
+      }
+      disconnect(): void {}
+    }
+    return { ctor: FakeResizeObserver, notifiers };
+  }
+
+  it('re-renders the page when its container is resized', async () => {
+    const { ctor, notifiers } = fakeResizeObserverClass();
+    vi.stubGlobal('ResizeObserver', ctor);
+    // Restricted to the timer APIs this component's debounce actually uses.
+    // vitest's default toFake set (determined empirically — every other
+    // faked API was ruled out individually) also fakes requestAnimationFrame,
+    // which Angular's zoneless whenStable() relies on to settle; faking it
+    // alongside setTimeout hangs the harness rather than the debounce this
+    // test is driving.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await setup(caseTarget());
+    const wrapper = el().querySelector('.document-viewer__viewport') as HTMLElement;
+    Object.defineProperty(wrapper, 'clientWidth', { value: 400, configurable: true });
+    const initial = renderPage.mock.calls.length;
+
+    // notifiers[0] already fired once as the observe()-time notification
+    // above; this is the genuine resize.
+    notifiers.forEach((notify) => notify());
+    vi.advanceTimersByTime(200);
+    await fixture.whenStable();
+
+    expect(renderPage.mock.calls.length).toBeGreaterThan(initial);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('renders without a ResizeObserver rather than failing', async () => {
+    vi.stubGlobal('ResizeObserver', undefined);
+
+    await setup(caseTarget());
+
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+    expect(renderPage).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('ignores the notification ResizeObserver delivers when observation begins', async () => {
+    // Per spec, a real ResizeObserver fires once immediately on the first
+    // observe() call even though nothing has resized. Treating that as a
+    // real resize would re-render every document on open or page turn, and
+    // risk a second render racing the one the effect already triggered.
+    const { ctor } = fakeResizeObserverClass();
+    vi.stubGlobal('ResizeObserver', ctor);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await setup(caseTarget());
+    const wrapper = el().querySelector('.document-viewer__viewport') as HTMLElement;
+    // A valid width, so only the initial-notification guard (not the
+    // zero-width guard) is what suppresses the render in this test.
+    Object.defineProperty(wrapper, 'clientWidth', { value: 400, configurable: true });
+    const initial = renderPage.mock.calls.length;
+
+    vi.advanceTimersByTime(200);
+    await fixture.whenStable();
+
+    expect(renderPage.mock.calls.length).toBe(initial);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  /** Resizes the viewer to `clientWidth` and lets the debounce elapse. */
+  async function resizeTo(clientWidth: number, notifiers: Array<() => void>): Promise<void> {
+    Object.defineProperty(viewportEl(), 'clientWidth', { value: clientWidth, configurable: true });
+    notifiers.forEach((notify) => notify());
+    vi.advanceTimersByTime(200);
+    await fixture.whenStable();
+  }
+
+  it('ignores the viewer growing by a scrollbar’s width', async () => {
+    // Where the scrollbar gutter is not reserved, a scrollbar takes about 15px
+    // off the content box when it appears and gives them back when it goes.
+    // Redrawing the page into that space makes it taller, which summons the
+    // scrollbar again: the viewer visibly pulsing between two sizes.
+    const { ctor, notifiers } = fakeResizeObserverClass();
+    vi.stubGlobal('ResizeObserver', ctor);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    // jsdom measures nothing, so the page was drawn at the fallback width.
+    await setup(caseTarget());
+    const initial = renderPage.mock.calls.length;
+
+    await resizeTo(815, notifiers);
+
+    expect(renderPage.mock.calls.length).toBe(initial);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('redraws a page whose viewer has narrowed, however slightly', async () => {
+    // The page is sized in pixels, so a page left at the width of a container
+    // that has since narrowed hangs out of it.
+    const { ctor, notifiers } = fakeResizeObserverClass();
+    vi.stubGlobal('ResizeObserver', ctor);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await setup(caseTarget());
+    const initial = renderPage.mock.calls.length;
+
+    await resizeTo(785, notifiers);
+
+    expect(renderPage.mock.calls.length).toBe(initial + 1);
+    expect(renderPage).toHaveBeenLastCalledWith(2, expect.anything(), 785);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('does not re-render when the container has collapsed to zero width', async () => {
+    const { ctor, notifiers } = fakeResizeObserverClass();
+    vi.stubGlobal('ResizeObserver', ctor);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await setup(caseTarget());
+    // jsdom reports every element's clientWidth as 0 by default; left
+    // unstubbed here, that stands in for a container genuinely collapsed to
+    // zero width.
+    const initial = renderPage.mock.calls.length;
+
+    notifiers.forEach((notify) => notify());
+    vi.advanceTimersByTime(200);
+    await fixture.whenStable();
+
+    expect(renderPage.mock.calls.length).toBe(initial);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 });

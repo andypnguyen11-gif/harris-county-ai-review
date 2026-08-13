@@ -12,6 +12,20 @@ export type ValidationStatus =
 /** How a validation result was produced: deterministic rule code or AI evaluation. */
 export type ValidationType = 'Deterministic' | 'Semantic';
 
+/**
+ * A region of a document page, as fractions of the page's width and height
+ * with the origin at the top-left. Mirrors the API's BoundingBox. Fractions
+ * rather than pixels so the same values place a box correctly at any zoom or
+ * canvas size — multiply by the rendered dimensions and draw.
+ */
+export interface BoundingBox {
+  pageNumber: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /** Mirrors the API's ValidationReportItemDto. */
 export interface ValidationReportItem {
   id: string;
@@ -24,6 +38,8 @@ export interface ValidationReportItem {
   documentId: string | null;
   documentType: DocumentType | null;
   pageNumber: number | null;
+  /** Where on the page the finding came from; null when it could not be located. */
+  boundingBox: BoundingBox | null;
 }
 
 /** Mirrors the API's ValidationReportDto. */

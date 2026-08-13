@@ -1,7 +1,10 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["*.{css,js,ico,png,svg,webp,woff,woff2,txt,json,map}"]
+    "exclude": ["*.{css,js,mjs,ico,png,svg,webp,woff,woff2,txt,json,map}"]
+  },
+  "mimeTypes": {
+    ".mjs": "text/javascript"
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",

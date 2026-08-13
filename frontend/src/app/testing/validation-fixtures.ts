@@ -17,6 +17,7 @@ export function makeValidationItem(
     documentId: null,
     documentType: null,
     pageNumber: null,
+    boundingBox: null,
     ...overrides,
   };
 }

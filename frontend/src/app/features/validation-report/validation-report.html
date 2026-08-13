@@ -45,50 +45,64 @@
       <span class="report-summary__stat">{{ summary().total }} checks</span>
     </div>
 
-    @for (group of groups(); track group.label) {
-      <section class="report-group">
-        <h3 class="report-group__title">{{ group.label }}</h3>
-        <ul class="report-items">
-          @for (item of group.items; track item.id) {
-            <li class="report-item">
-              <div class="report-item__header">
-                <span class="report-item__requirement">{{ item.requirement }}</span>
-                <app-status-badge [status]="item.status" />
-                <span
-                  class="validation-type"
-                  [class.validation-type--semantic]="item.validationType === 'Semantic'"
-                  title="How this result was produced"
-                >
-                  {{ validationTypeLabels[item.validationType] }}
-                </span>
-              </div>
-              @if (item.extractedValue) {
-                <p class="report-item__value">{{ item.extractedValue }}</p>
-              }
-              <p class="report-item__message">{{ item.message }}</p>
-              @if (item.documentId) {
-                <p class="report-item__reference">
-                  @if (item.pageNumber) {
-                    <span>Page {{ item.pageNumber }}</span>
+    <div class="report-layout">
+      <div class="report-layout__findings">
+        @for (group of groups(); track group.label) {
+          <section class="report-group">
+            <h3 class="report-group__title">{{ group.label }}</h3>
+            <ul class="report-items">
+              @for (item of group.items; track item.id) {
+                <li class="report-item">
+                  <div class="report-item__header">
+                    <span class="report-item__requirement">{{ item.requirement }}</span>
+                    <app-status-badge [status]="item.status" />
+                    <span
+                      class="validation-type"
+                      [class.validation-type--semantic]="item.validationType === 'Semantic'"
+                      title="How this result was produced"
+                    >
+                      {{ validationTypeLabels[item.validationType] }}
+                    </span>
+                  </div>
+                  @if (item.extractedValue) {
+                    <p class="report-item__value">{{ item.extractedValue }}</p>
                   }
-                  <button
-                    type="button"
-                    class="btn btn--secondary btn--small"
-                    (click)="openEvidence(item)"
-                  >
-                    {{ item.pageNumber ? 'View page ' + item.pageNumber : 'View document' }}
-                  </button>
-                </p>
-              } @else if (item.pageNumber) {
-                <p class="report-item__reference">Page {{ item.pageNumber }}</p>
+                  <p class="report-item__message">{{ item.message }}</p>
+                  @if (item.documentId) {
+                    <p class="report-item__reference">
+                      @if (item.pageNumber) {
+                        <span>Page {{ item.pageNumber }}</span>
+                      }
+                      <button
+                        type="button"
+                        class="btn btn--secondary btn--small"
+                        (click)="openEvidence(item)"
+                      >
+                        {{ item.pageNumber ? 'View page ' + item.pageNumber : 'View document' }}
+                      </button>
+                    </p>
+                    @if (explainsMissingRegion(item)) {
+                      <p class="report-item__no-region">{{ noRegionMessage }}</p>
+                    }
+                  } @else if (item.pageNumber) {
+                    <p class="report-item__reference">Page {{ item.pageNumber }}</p>
+                  }
+                </li>
               }
-            </li>
-          }
-        </ul>
-      </section>
-    }
+            </ul>
+          </section>
+        }
+      </div>
 
-    <app-document-viewer [target]="viewerTarget()" (closed)="closeEvidence()" />
+      <div class="report-layout__viewer">
+        <app-document-viewer
+          [target]="viewerTarget()"
+          [regions]="viewerRegions()"
+          [notice]="viewerNotice()"
+          (closed)="closeEvidence()"
+        />
+      </div>
+    </div>
   } @else {
     <div class="report-placeholder">
       <p>No validation report yet.</p>

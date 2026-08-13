@@ -8,10 +8,11 @@ import {
   VALIDATION_TYPE_LABELS,
   ValidationReport,
   ValidationReportItem,
+  ValidationStatus,
 } from '../../core/models/validation.model';
 import { ValidationService } from '../../core/services/validation.service';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
-import { DocumentViewer } from '../document-viewer/document-viewer';
+import { DocumentViewer, ViewerRegion } from '../document-viewer/document-viewer';
 
 /** Rule results that concern the same document, in workflow rule order. */
 export interface ValidationGroup {
@@ -21,6 +22,20 @@ export interface ValidationGroup {
 
 /** Label for results that concern the submission as a whole rather than one document. */
 const PACKAGE_GROUP_LABEL = 'Submission package';
+
+/**
+ * The statuses worth boxing. A reviewer opens the page to find what went
+ * wrong, so satisfied fields stay unboxed even when their region is known —
+ * boxing everything on a dense permit form is noise.
+ */
+const ISSUE_STATUSES: readonly ValidationStatus[] = ['Missing', 'Invalid', 'PotentiallyIncomplete'];
+
+/**
+ * Shown against a finding whose region the extraction could not place. Written
+ * once because the reviewer meets it twice: beside the finding, and against
+ * the rendered page in the viewer.
+ */
+const NO_REGION_MESSAGE = "Couldn't locate this field on the page.";
 
 /**
  * Shows the latest validation report for a case and lets the reviewer run
@@ -45,6 +60,8 @@ export class ValidationReportPanel implements OnInit {
   protected readonly runError = signal(false);
   /** The evidence document the viewer is showing, or null when it is closed. */
   protected readonly viewerTarget = signal<CitationTarget | null>(null);
+  /** The finding whose box is drawn active, or null when none is. */
+  protected readonly activeItemId = signal<string | null>(null);
 
   protected readonly validationTypeLabels = VALIDATION_TYPE_LABELS;
 
@@ -75,17 +92,66 @@ export class ValidationReportPanel implements OnInit {
     return {
       total: items.length,
       complete: items.filter((item) => item.status === 'Complete').length,
-      issues: items.filter(
-        (item) =>
-          item.status === 'Missing' ||
-          item.status === 'Invalid' ||
-          item.status === 'PotentiallyIncomplete',
-      ).length,
+      issues: items.filter((item) => ISSUE_STATUSES.includes(item.status)).length,
       review: items.filter(
         (item) => item.status === 'NeedsHumanReview' || item.status === 'UnableToDetermine',
       ).length,
     };
   });
+
+  /**
+   * The boxes the viewer draws for the open document and page, per the draw
+   * policy in docs/architecture/document-region-highlighting.md. The viewer
+   * draws what it is given; the policy lives here.
+   *
+   * Public so the policy can be asserted directly in tests.
+   */
+  readonly viewerRegions = computed<ViewerRegion[]>(() => {
+    const target = this.viewerTarget();
+    if (target === null || target.page === null) {
+      return [];
+    }
+
+    const activeId = this.activeItemId();
+    return (this.report()?.items ?? [])
+      .filter(
+        (item) =>
+          item.documentId === target.documentId &&
+          item.boundingBox !== null &&
+          item.boundingBox.pageNumber === target.page &&
+          ISSUE_STATUSES.includes(item.status),
+      )
+      .map((item) => ({
+        id: item.id,
+        box: item.boundingBox!,
+        active: item.id === activeId,
+        label: `${item.requirement}: ${item.message}`,
+      }));
+  });
+
+  /** Why the open page carries no box for the finding being viewed. */
+  readonly viewerNotice = computed<string | null>(() => {
+    const activeId = this.activeItemId();
+    if (this.viewerTarget() === null || activeId === null) {
+      return null;
+    }
+
+    const item = (this.report()?.items ?? []).find((candidate) => candidate.id === activeId);
+    return item !== undefined && this.explainsMissingRegion(item) ? NO_REGION_MESSAGE : null;
+  });
+
+  protected readonly noRegionMessage = NO_REGION_MESSAGE;
+
+  /**
+   * Whether to tell the reviewer this finding could not be located. Only for
+   * findings that were going to be boxed: a satisfied check is never drawn by
+   * design, so saying it could not be found is noise about something nobody
+   * was looking for — and until every case is re-extracted, most findings
+   * carry no region at all.
+   */
+  protected explainsMissingRegion(item: ValidationReportItem): boolean {
+    return item.boundingBox === null && ISSUE_STATUSES.includes(item.status);
+  }
 
   ngOnInit(): void {
     this.loadLatest();
@@ -137,6 +203,10 @@ export class ValidationReportPanel implements OnInit {
       return;
     }
 
+    // A second click on the finding already showing clears its highlight and
+    // leaves the page's other boxes in place.
+    this.activeItemId.update((current) => (current === item.id ? null : item.id));
+
     this.viewerTarget.set({
       source: 'Case',
       caseId: this.caseId(),
@@ -150,5 +220,6 @@ export class ValidationReportPanel implements OnInit {
 
   protected closeEvidence(): void {
     this.viewerTarget.set(null);
+    this.activeItemId.set(null);
   }
 }
