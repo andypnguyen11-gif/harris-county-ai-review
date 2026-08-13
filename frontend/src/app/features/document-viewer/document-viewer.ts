@@ -96,6 +96,8 @@ export class DocumentViewer implements OnDestroy {
   /** The canvas only exists while the state is 'rendered'. */
   private readonly canvas = viewChild<ElementRef<HTMLCanvasElement>>('pdfCanvas');
   private readonly handle = signal<PdfDocumentHandle | null>(null);
+  private resizeObserver: ResizeObserver | null = null;
+  private resizeTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** The page being shown; a citation without a page opens at the first. */
   protected readonly pageNumber = signal(1);
@@ -151,6 +153,7 @@ export class DocumentViewer implements OnDestroy {
       }
 
       void this.draw(handle, page, canvas);
+      this.observe(canvas);
     });
   }
 
@@ -237,8 +240,51 @@ export class DocumentViewer implements OnDestroy {
     }
   }
 
+  /**
+   * A canvas rendered at one width and scaled by CSS goes soft, so the page is
+   * re-rendered when its container changes size. The overlay needs no such
+   * handling: its boxes are percentages of that container.
+   */
+  private observe(canvas: HTMLCanvasElement): void {
+    const container = canvas.parentElement;
+    if (this.resizeObserver !== null || container === null) {
+      return;
+    }
+
+    // Absent in non-browser test environments; the viewer still renders once.
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    this.resizeObserver = new ResizeObserver(() => {
+      // A drag fires this per frame; re-render once it settles.
+      if (this.resizeTimer !== null) {
+        clearTimeout(this.resizeTimer);
+      }
+
+      this.resizeTimer = setTimeout(() => {
+        const handle = this.handle();
+        if (handle !== null) {
+          void this.draw(handle, this.pageNumber(), canvas);
+        }
+      }, 150);
+    });
+    this.resizeObserver.observe(container);
+  }
+
+  private stopObserving(): void {
+    if (this.resizeTimer !== null) {
+      clearTimeout(this.resizeTimer);
+      this.resizeTimer = null;
+    }
+
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+  }
+
   /** Closes the open document so a long review session does not leak memory. */
   private release(): void {
+    this.stopObserving();
     // Invalidate any request still in flight so a late response cannot
     // resurrect a handle for a target this viewer has moved past.
     this.loadToken++;

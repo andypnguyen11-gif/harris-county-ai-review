@@ -437,4 +437,43 @@ describe('DocumentViewer', () => {
     // Changing which findings are boxed must not refetch or reparse the file.
     expect(open).toHaveBeenCalledTimes(1);
   });
+
+  it('re-renders the page when its container is resized', async () => {
+    const observers: Array<() => void> = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          observers.push(callback);
+        }
+        observe(): void {}
+        disconnect(): void {}
+      },
+    );
+    // Restricted to the timer APIs: Angular's zoneless whenStable() settles
+    // through a real queueMicrotask, and faking that too (vitest's default)
+    // hangs the harness rather than the debounce this test is driving.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await setup(caseTarget());
+    const initial = renderPage.mock.calls.length;
+
+    observers.forEach((notify) => notify());
+    vi.advanceTimersByTime(200);
+    await fixture.whenStable();
+
+    expect(renderPage.mock.calls.length).toBeGreaterThan(initial);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('renders without a ResizeObserver rather than failing', async () => {
+    vi.stubGlobal('ResizeObserver', undefined);
+
+    await setup(caseTarget());
+
+    expect(el().querySelector('.document-viewer__canvas')).not.toBeNull();
+    expect(renderPage).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });
