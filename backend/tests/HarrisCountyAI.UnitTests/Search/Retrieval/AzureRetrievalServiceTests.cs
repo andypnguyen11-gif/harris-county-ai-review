@@ -119,11 +119,11 @@ public class AzureRetrievalServiceTests
     }
 
     [Fact]
-    public async Task Passes_TopK_As_The_Query_Size()
+    public async Task Searches_A_Pool_Wider_Than_The_Requested_TopK()
     {
         await _service.RetrieveAsync(Request(topK: 12));
 
-        Assert.Equal(12, _gateway.LastQuery!.Size);
+        Assert.Equal(12 * AzureRetrievalService.CandidatePoolMultiplier, _gateway.LastQuery!.Size);
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public class AzureRetrievalServiceTests
 
         await service.RetrieveAsync(Request(topK: null));
 
-        Assert.Equal(9, _gateway.LastQuery!.Size);
+        Assert.Equal(9 * AzureRetrievalService.CandidatePoolMultiplier, _gateway.LastQuery!.Size);
     }
 
     [Fact]
@@ -141,7 +141,9 @@ public class AzureRetrievalServiceTests
     {
         await _service.RetrieveAsync(Request(topK: null));
 
-        Assert.Equal(RetrievalRequest.DefaultTopK, _gateway.LastQuery!.Size);
+        Assert.Equal(
+            RetrievalRequest.DefaultTopK * AzureRetrievalService.CandidatePoolMultiplier,
+            _gateway.LastQuery!.Size);
     }
 
     [Fact]
@@ -151,7 +153,42 @@ public class AzureRetrievalServiceTests
 
         await service.RetrieveAsync(Request(topK: 2));
 
-        Assert.Equal(2, _gateway.LastQuery!.Size);
+        Assert.Equal(2 * AzureRetrievalService.CandidatePoolMultiplier, _gateway.LastQuery!.Size);
+    }
+
+    /// <summary>
+    /// The candidate pool is what the vector half of a hybrid query nominates
+    /// before fusion (the gateway maps <c>Size</c> to
+    /// <c>KNearestNeighborsCount</c> as well). Tying it to TopK starves fusion:
+    /// a chunk that ranks second on keyword scoring can miss the results
+    /// entirely because it was never nominated by the vector half.
+    /// </summary>
+    [Fact]
+    public async Task Returns_Only_TopK_Chunks_From_The_Wider_Pool()
+    {
+        _gateway.HitsToReturn = [Hit("a"), Hit("b"), Hit("c"), Hit("d"), Hit("e")];
+
+        var chunks = await _service.RetrieveAsync(Request(topK: 2));
+
+        Assert.Equal(["a", "b"], chunks.Select(chunk => chunk.ChunkId));
+    }
+
+    [Fact]
+    public async Task Returns_Every_Chunk_When_The_Pool_Yields_Fewer_Than_TopK()
+    {
+        _gateway.HitsToReturn = [Hit("a"), Hit("b")];
+
+        var chunks = await _service.RetrieveAsync(Request(topK: 5));
+
+        Assert.Equal(["a", "b"], chunks.Select(chunk => chunk.ChunkId));
+    }
+
+    [Fact]
+    public async Task Widened_Pool_Never_Exceeds_The_Maximum_TopK()
+    {
+        await _service.RetrieveAsync(Request(topK: RetrievalRequest.MaxTopK));
+
+        Assert.Equal(RetrievalRequest.MaxTopK, _gateway.LastQuery!.Size);
     }
 
     [Fact]
@@ -348,7 +385,7 @@ public class AzureRetrievalServiceTests
 
         var chunks = await service.RetrieveAsync(Request(topK: 5));
 
-        Assert.Equal(5, _gateway.LastQuery!.Size);
+        Assert.Equal(5 * AzureRetrievalService.CandidatePoolMultiplier, _gateway.LastQuery!.Size);
         Assert.Equal(["a", "b"], chunks.Select(chunk => chunk.ChunkId));
         Assert.Empty(reranking.ReceivedRequests);
     }
@@ -364,7 +401,7 @@ public class AzureRetrievalServiceTests
 
         var chunks = await service.RetrieveAsync(Request(topK: 5));
 
-        Assert.Equal(5, _gateway.LastQuery!.Size);
+        Assert.Equal(5 * AzureRetrievalService.CandidatePoolMultiplier, _gateway.LastQuery!.Size);
         Assert.Equal(["a"], chunks.Select(chunk => chunk.ChunkId));
     }
 
