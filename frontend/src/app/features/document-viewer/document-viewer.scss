@@ -54,14 +54,27 @@
   border: 1px solid #fcd34d;
 }
 
+/*
+ * The scroll container only. It must not be the overlay's containing block:
+ * an absolutely positioned child is laid out against the padding box of its
+ * positioned ancestor, which for a scroll container is the visible area
+ * rather than the scrollable content.
+ */
 .document-viewer__viewport {
-  position: relative;
   width: 100%;
   max-height: 70vh;
   overflow: auto;
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
   background: #f9fafb;
+}
+
+/*
+ * The page: as wide as the viewport's content box and as tall as the canvas
+ * it wraps. Positioned so the overlay inside it covers the page exactly.
+ */
+.document-viewer__page-surface {
+  position: relative;
 }
 
 .document-viewer__canvas {
@@ -86,9 +99,9 @@
 }
 
 /*
- * Sits exactly over the canvas, which fills the page container, so a box's
- * percentage geometry is a percentage of the page itself. A resize re-renders
- * the canvas; the boxes follow with no recomputation.
+ * Sits exactly over the canvas, whose height the page surface takes, so a
+ * box's percentage geometry is a percentage of the page itself. A resize
+ * re-renders the canvas; the boxes follow with no recomputation.
  */
 .document-viewer__overlay {
   position: absolute;

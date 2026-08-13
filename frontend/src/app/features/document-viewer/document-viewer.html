@@ -30,27 +30,38 @@
       }
 
       @case ('rendered') {
-        <div class="document-viewer__viewport">
-          <canvas
-            #pdfCanvas
-            class="document-viewer__canvas"
-            [attr.aria-label]="'Page ' + pageNumber() + ' of ' + source.title"
-            role="img"
-          ></canvas>
-          <div class="document-viewer__overlay">
-            @for (region of visibleRegions(); track region.id) {
-              <div
-                class="document-viewer__region"
-                [class.document-viewer__region--active]="region.active"
-                [attr.data-region-id]="region.id"
-                [attr.aria-label]="region.label"
-                role="img"
-                [style.left.%]="region.box.x * 100"
-                [style.top.%]="region.box.y * 100"
-                [style.width.%]="region.box.width * 100"
-                [style.height.%]="region.box.height * 100"
-              ></div>
-            }
+        <div #viewport class="document-viewer__viewport">
+          <!--
+            The overlay is positioned against this surface rather than the
+            viewport: an absolutely positioned child of a scroll container is
+            laid out against the container's visible area, which is shorter
+            than the page whenever the page scrolls, and every box would be
+            drawn too high by that ratio. The surface is a plain block, so it
+            is exactly as wide as the viewport's content box and exactly as
+            tall as the canvas — the page itself.
+          -->
+          <div class="document-viewer__page-surface">
+            <canvas
+              #pdfCanvas
+              class="document-viewer__canvas"
+              [attr.aria-label]="'Page ' + pageNumber() + ' of ' + source.title"
+              role="img"
+            ></canvas>
+            <div class="document-viewer__overlay">
+              @for (region of visibleRegions(); track region.id) {
+                <div
+                  class="document-viewer__region"
+                  [class.document-viewer__region--active]="region.active"
+                  [attr.data-region-id]="region.id"
+                  [attr.aria-label]="region.label"
+                  role="img"
+                  [style.left.%]="region.box.x * 100"
+                  [style.top.%]="region.box.y * 100"
+                  [style.width.%]="region.box.width * 100"
+                  [style.height.%]="region.box.height * 100"
+                ></div>
+              }
+            </div>
           </div>
         </div>
         @if (notice(); as message) {

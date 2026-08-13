@@ -147,6 +147,36 @@ describe('DocumentViewer', () => {
     expect(wrapper?.querySelector('.document-viewer__canvas')).not.toBeNull();
   });
 
+  it('lays the overlay over the page rather than over the scroll container', async () => {
+    await setup(caseTarget());
+    await setRegions([region()]);
+
+    // The boxes are percentages of whatever the overlay is positioned
+    // against. An abspos child of the scroll container covers its *visible*
+    // area, so on a page taller than the viewport every box would be drawn
+    // too high; the overlay must be a child of the page surface instead.
+    // jsdom lays nothing out, so this asserts the structure the geometry
+    // depends on rather than the geometry itself.
+    const surface = el().querySelector('.document-viewer__page-surface');
+    expect(surface).not.toBeNull();
+    expect(el().querySelector('.document-viewer__overlay')?.parentElement).toBe(surface);
+    expect(el().querySelector('.document-viewer__canvas')?.parentElement).toBe(surface);
+    expect(surface?.parentElement?.classList.contains('document-viewer__viewport')).toBe(true);
+  });
+
+  it('renders the page at the width of the box the overlay covers', async () => {
+    await setup(caseTarget({ page: 2 }));
+    const surface = el().querySelector('.document-viewer__page-surface') as HTMLElement;
+    Object.defineProperty(surface, 'clientWidth', { value: 640, configurable: true });
+
+    // A page turn re-renders, this time with the surface measurable.
+    await setTarget(caseTarget({ page: 3 }));
+
+    // The rendered page has to be exactly as wide as the box the percentage
+    // boxes are drawn against, or the two disagree.
+    expect(renderPage).toHaveBeenLastCalledWith(3, expect.anything(), 640);
+  });
+
   it('destroys a handle superseded by a later target instead of orphaning or showing it', async () => {
     // fakeHandle() gives every open() call its own renderPage/destroy mocks
     // so the test can tell which handle the component ultimately keeps.

@@ -95,6 +95,8 @@ export class DocumentViewer implements OnDestroy {
 
   /** The canvas only exists while the state is 'rendered'. */
   private readonly canvas = viewChild<ElementRef<HTMLCanvasElement>>('pdfCanvas');
+  /** The scroll container around the page; it is what the column resizes. */
+  private readonly viewport = viewChild<ElementRef<HTMLElement>>('viewport');
   private readonly handle = signal<PdfDocumentHandle | null>(null);
   private resizeObserver: ResizeObserver | null = null;
   private resizeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -232,6 +234,9 @@ export class DocumentViewer implements OnDestroy {
     page: number,
     canvas: HTMLCanvasElement,
   ): Promise<void> {
+    // Render at the width of the box the overlay covers — the page surface,
+    // whose content width is the viewport's, so the boxes stay percentages of
+    // the page whatever the column does.
     const width = canvas.parentElement?.clientWidth || canvas.clientWidth || 800;
     try {
       await handle.renderPage(page, canvas, width);
@@ -242,11 +247,11 @@ export class DocumentViewer implements OnDestroy {
 
   /**
    * A canvas rendered at one width and scaled by CSS goes soft, so the page is
-   * re-rendered when its container changes size. The overlay needs no such
-   * handling: its boxes are percentages of that container.
+   * re-rendered when the viewport changes size. The overlay needs no such
+   * handling: its boxes are percentages of the page surface.
    */
   private observe(canvas: HTMLCanvasElement): void {
-    const container = canvas.parentElement;
+    const container = this.viewport()?.nativeElement ?? null;
     if (this.resizeObserver !== null || container === null) {
       return;
     }
