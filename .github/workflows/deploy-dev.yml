@@ -48,7 +48,9 @@ env:
   AZURE_SQL_SERVER_NAME: ${{ vars.AZURE_SQL_SERVER_NAME || 'sql-harriscountyai-dev' }}
   AZURE_SQL_DATABASE_NAME: ${{ vars.AZURE_SQL_DATABASE_NAME || 'HarrisCountyAI' }}
   DOTNET_VERSION: '10.0.x'
-  DOTNET_EF_VERSION: '10.0.11'
+  # No DOTNET_EF_VERSION here on purpose: backend/.config/dotnet-tools.json is
+  # the single place the EF tool version is pinned, and a second copy in this
+  # file would be free to drift from it.
   NODE_VERSION: '22'
 
 jobs:
@@ -272,8 +274,14 @@ jobs:
         working-directory: backend
         run: |
           set -euo pipefail
-          dotnet tool install --global dotnet-ef --version "$DOTNET_EF_VERSION"
-          export PATH="$PATH:$HOME/.dotnet/tools"
+
+          # backend/.config/dotnet-tools.json already pins dotnet-ef as a local
+          # tool, and a local manifest wins: with one present, `dotnet ef`
+          # resolves through the manifest and fails with "Run dotnet tool
+          # restore" no matter what is installed globally. Restore the manifest
+          # instead of installing a second copy, so the version that generates
+          # the migration script is the one the repository pins.
+          dotnet tool restore
 
           # Both --project and --startup-project are the Infrastructure project
           # so EF uses DesignTimeDbContextFactory. Nothing connects to a

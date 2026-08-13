@@ -4,12 +4,17 @@
 Angular app to Azure Static Web Apps, applies EF Core migrations to Azure SQL,
 and smoke-tests the result.
 
-> **Status: authored, never executed.** The workflow has not been run, and no
-> Azure resources, GitHub secrets, GitHub environments or federated identity
-> credentials have been created for it. Everything in
-> [One-time operator setup](#one-time-operator-setup) is outstanding and must
-> be completed by a human with subscription access before the first run. Treat
-> the first run as the workflow's first test.
+> **Status: executed against `rg-harriscountyai-dev`.** The one-time operator
+> setup below has been completed for that environment — resource group,
+> infrastructure, app registration and federated credentials, the `development`
+> GitHub environment, and its secrets and variables all exist. The steps remain
+> here because they are what a *new* environment needs, and because knowing how
+> a value was produced is what makes it possible to rotate or reproduce it.
+>
+> Treating the first run as the workflow's first test was the right instinct: it
+> found a subject-claim format the setup instructions did not cover, and an EF
+> tool installed globally that a local tool manifest then shadowed. Both are
+> fixed and documented below.
 
 ---
 
@@ -101,7 +106,33 @@ az ad app federated-credential create \
 ```
 
 `<owner>/<repo>` is what `gh repo view --json nameWithOwner -q .nameWithOwner`
-prints. Contributor on the resource group is required rather than a narrower
+prints.
+
+> **The subject above may not be the one GitHub presents.** Some repositories
+> get an immutable subject claim that carries numeric owner and repository ids
+> alongside the names:
+>
+> ```text
+> repo:<owner>@<owner-id>/<repo>@<repo-id>:environment:development
+> ```
+>
+> A credential registered under the plain-name form is then simply not matched,
+> and the deploy fails at *Sign in to Azure* with `AADSTS700213: No matching
+> federated identity record found for presented assertion subject '...'`. That
+> error text contains the exact subject GitHub sent, so the fix is to register a
+> second federated credential using that string verbatim. Keeping both costs
+> nothing and survives the format changing back:
+>
+> ```bash
+> az ad app federated-credential create --id "$APP_ID" --parameters '{
+>   "name": "github-harriscountyai-development-ids",
+>   "issuer": "https://token.actions.githubusercontent.com",
+>   "subject": "<paste the subject from the AADSTS700213 error>",
+>   "audiences": ["api://AzureADTokenExchange"]
+> }'
+> ```
+
+Contributor on the resource group is required rather than a narrower
 role because the workflow writes App Service application settings and CORS
 configuration and creates/deletes a temporary SQL firewall rule.
 
