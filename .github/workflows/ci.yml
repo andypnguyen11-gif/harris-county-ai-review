@@ -130,3 +130,22 @@ jobs:
           else
             echo "No Prettier config found; skipping formatting check."
           fi
+
+  # Compiles the Bicep templates and asserts the tiers and capacities the
+  # deployed environment depends on. These defaults drifted from the live
+  # resources once already, in a way that compiled and deployed cleanly while
+  # truncating documents and throttling ingestion — see infra/validate.sh.
+  # No Azure credentials are needed: nothing here contacts a subscription.
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Azure CLI is preinstalled on the runner and bundles Bicep, but the
+      # bundled version lags; installing it explicitly keeps the compiler the
+      # same one operators run locally.
+      - name: Install Bicep
+        run: az bicep install
+
+      - name: Validate infrastructure
+        run: ./infra/validate.sh

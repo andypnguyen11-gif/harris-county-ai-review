@@ -76,16 +76,21 @@ The templates deliberately use free or lowest-cost tiers:
 | --- | --- | --- |
 | Storage account | Standard_LRS, Hot | pennies/month at MVP volumes |
 | Azure AI Search | `free` | $0 (3 indexes, 50 MB) |
-| Document Intelligence | `F0` | $0 (500 pages/month) |
-| Azure OpenAI | `S0`, GlobalStandard deployments (10K TPM) | per-token usage only |
+| Document Intelligence | `S0` | ~$10 per 1,000 pages on `prebuilt-layout`; effectively a one-time cost for the corpus load |
+| Azure OpenAI | `S0`, GlobalStandard deployments (chat 100K TPM, embeddings 250K TPM) | per-token usage only; capacity is a rate limit, not a commitment |
 | Azure SQL | Basic (5 DTU, 2 GB) | ~$5/month |
 | App Service plan | `F1` Linux | $0 (60 CPU-min/day) |
 | Static Web App | `Free` | $0 |
 | Application Insights / Log Analytics | PerGB2018, 30-day retention | $0 under the free ingestion allowance |
 
-Free tiers carry hard limits (one free Search service and one F0 Document
-Intelligence per subscription; F1 App Service has daily CPU quotas). They are
-appropriate for the dev environment, not production load.
+Free tiers carry hard limits (one free Search service per subscription; F1 App
+Service has daily CPU quotas). They are appropriate for the dev environment,
+not production load.
+
+Document Intelligence is the one place the free tier is deliberately refused.
+F0 silently truncates every document to two pages, so it does not cost less —
+it costs correctness, and does so without an error to notice. See the comment
+in `modules/document-intelligence.bicep`.
 
 ## Secrets — intentionally not committed
 
@@ -130,6 +135,24 @@ account name.
 
 ## Validation
 
-Every file compiles cleanly with `az bicep build`. Changes are verified with
-`az deployment group what-if` against the live resource group before any
-deployment; existing resources should report `NoChange`.
+```bash
+./infra/validate.sh
+```
+
+Compiles every template (treating lint warnings as failures) and asserts the
+tiers and capacities the deployed environment depends on — the Document
+Intelligence SKU, and the two Azure OpenAI deployment capacities. CI runs the
+same script on every pull request.
+
+The assertions are there because compiling is not enough. These defaults drifted
+from the live resources once already: the templates kept the free tiers they
+were authored with, the resources were tuned by hand to make corpus ingestion
+work, and a redeploy would have reverted them. That reversion compiles, deploys,
+and returns HTTP 200 — it just truncates every document to two pages and
+throttles embedding. Nothing but an explicit assertion catches it.
+
+Beyond the script, changes are verified with `az deployment group what-if`
+against the live resource group before any deployment; existing resources should
+report `NoChange`. Read the what-if output rather than skimming it — a
+`Modify` on a resource you did not intend to touch is the signal that the
+templates have drifted from reality again.
