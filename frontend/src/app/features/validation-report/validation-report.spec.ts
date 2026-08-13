@@ -543,4 +543,16 @@ describe('ValidationReportPanel', () => {
       expect(fixture.componentInstance.viewerRegions()).toEqual([]);
     });
   });
+
+  it('places the viewer in its own column beside the findings', async () => {
+    const fixture = await openReport(makeValidationReport());
+
+    const layout = element(fixture).querySelector('.report-layout');
+    expect(layout).not.toBeNull();
+    expect(layout!.querySelector('.report-layout__findings .report-group')).not.toBeNull();
+    expect(layout!.querySelector('.report-layout__viewer app-document-viewer')).not.toBeNull();
+    // The viewer must not sit inside the findings column, or it scrolls away
+    // with them and the two-column layout is decorative only.
+    expect(layout!.querySelector('.report-layout__findings app-document-viewer')).toBeNull();
+  });
 });
