@@ -1,6 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 
+import staticWebAppConfig from '../../../../public/staticwebapp.config.json';
 import { PdfRenderService } from './pdf-render.service';
+
+/**
+ * The hosting rules the worker depends on, read from the file Azure Static
+ * Web Apps is deployed with. Widened deliberately: what these tests are about
+ * is whether the settings are there, so a missing one has to fail as an
+ * assertion rather than as a type error against the file's own literal shape.
+ */
+const hosting: {
+  mimeTypes?: Record<string, string>;
+  navigationFallback: { exclude: string[] };
+  globalHeaders: Record<string, string>;
+} = staticWebAppConfig;
 
 const getViewport = vi.fn();
 const render = vi.fn();
@@ -12,6 +25,7 @@ const globalWorkerOptions: { workerSrc: string } = { workerSrc: '' };
 vi.mock('pdfjs-dist', () => ({
   GlobalWorkerOptions: globalWorkerOptions,
   getDocument: (...args: unknown[]) => getDocument(...args),
+  version: '6.2.108',
 }));
 
 /** Lets every pending microtask run, whatever depth of promise chain. */
@@ -85,6 +99,18 @@ describe('PdfRenderService', () => {
     expect(render).toHaveBeenCalled();
   });
 
+  it('points the worker at the app base and at its own version', async () => {
+    await service.open(new Blob(['%PDF-1.7']));
+
+    // Absolute, so a build served under a base href does not depend on pdf.js
+    // and the browser agreeing on what the relative path means; versioned, so
+    // a worker cached from an earlier release cannot be paired with a newer
+    // API — the mismatch throws on every document.
+    expect(globalWorkerOptions.workerSrc).toBe(
+      new URL('pdf.worker.min.mjs?v=6.2.108', document.baseURI).href,
+    );
+  });
+
   it('installs the worker source once, not per open', async () => {
     await service.open(new Blob(['%PDF-1.7']));
     const first = globalWorkerOptions.workerSrc;
@@ -145,6 +171,30 @@ describe('PdfRenderService', () => {
     await expect(handle.renderPage(1, canvas, 612)).resolves.toEqual({
       width: 612,
       height: 792,
+    });
+  });
+
+  /**
+   * The worker is a `.mjs` file served as a static asset, and how the host
+   * serves it is part of whether pdf.js works at all. Both of these are
+   * invisible under `ng serve` and only bite in production.
+   */
+  describe('static hosting of the worker', () => {
+    it('serves .mjs as JavaScript', () => {
+      // A module worker whose response is not a JavaScript MIME type is
+      // refused outright, and the site sends X-Content-Type-Options: nosniff,
+      // so the browser will not guess.
+      expect(hosting.globalHeaders['X-Content-Type-Options']).toBe('nosniff');
+      expect(hosting.mimeTypes?.['.mjs']).toBe('text/javascript');
+    });
+
+    it('lets a missing .mjs 404 rather than rewriting it to the app shell', () => {
+      // Without the exclusion the fallback answers with index.html, and pdf.js
+      // reports an HTML page as a broken worker instead of a missing file.
+      const excluded = hosting.navigationFallback.exclude.some((pattern) =>
+        pattern.includes('mjs'),
+      );
+      expect(excluded).toBe(true);
     });
   });
 

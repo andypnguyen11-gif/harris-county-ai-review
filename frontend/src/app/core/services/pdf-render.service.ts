@@ -36,7 +36,7 @@ export class PdfRenderService {
 
   async open(file: Blob): Promise<PdfDocumentHandle> {
     const pdfjs = await import('pdfjs-dist');
-    this.installWorker(pdfjs.GlobalWorkerOptions);
+    this.installWorker(pdfjs.GlobalWorkerOptions, pdfjs.version);
 
     // getDocument does not take a Blob; hand it the bytes.
     const data = new Uint8Array(await file.arrayBuffer());
@@ -115,13 +115,27 @@ export class PdfRenderService {
    * bundler Angular 22 uses does not resolve a bare `pdfjs-dist/...`
    * specifier there — it treats the string as a path relative to this file
    * and fails to find it, so the module-worker form does not bundle.
+   *
+   * Two details keep that copy working in production, where the app is served
+   * from a static host under a base href rather than from `ng serve`:
+   *
+   * - The path is resolved against `document.baseURI` here rather than left
+   *   for the browser to resolve when it constructs the worker, so a build
+   *   deployed under `--base-href` does not depend on pdf.js and the browser
+   *   agreeing on what the relative string means.
+   * - It carries the version of the pdf.js that is asking for it. Assets are
+   *   copied unhashed while the app bundle is hashed, so without this a
+   *   browser holding a cached worker from an earlier release would pair it
+   *   with a newer API and throw "The API version does not match the Worker
+   *   version" on every document. Taking the version from the library itself
+   *   keeps the two in step with no second place to update.
    */
-  private installWorker(options: { workerSrc: string }): void {
+  private installWorker(options: { workerSrc: string }, version: string): void {
     if (this.workerInstalled) {
       return;
     }
 
-    options.workerSrc = 'pdf.worker.min.mjs';
+    options.workerSrc = new URL(`pdf.worker.min.mjs?v=${version}`, document.baseURI).href;
     this.workerInstalled = true;
   }
 }
