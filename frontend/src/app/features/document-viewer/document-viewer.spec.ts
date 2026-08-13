@@ -95,7 +95,9 @@ describe('DocumentViewer', () => {
     // ever consumed through `useValue` (untyped), matching how every other
     // spec in this codebase hands a fake service to `useValue`.
     open = vi.fn(async () => ({
-      pageCount: 4,
+      // Longer than any page these tests cite, so only the test that is about
+      // an out-of-range page has to think about the page count.
+      pageCount: 12,
       renderPage,
       destroy: destroyHandle,
     }));
@@ -127,6 +129,28 @@ describe('DocumentViewer', () => {
     await setup(caseTarget({ page: null }));
 
     expect(renderPage).toHaveBeenCalledWith(1, expect.anything(), expect.any(Number));
+  });
+
+  it('shows the nearest page it has when the citation names one the document lacks', async () => {
+    // Asking pdf.js for a page past the end rejects outright, and a citation
+    // can name one: an AI produced it, or the document was re-uploaded
+    // shorter since the page number was recorded.
+    open = vi.fn(async () => ({ pageCount: 4, renderPage, destroy: destroyHandle }));
+    await setup(caseTarget({ page: 9 }));
+
+    expect(renderPage).toHaveBeenLastCalledWith(4, expect.anything(), expect.any(Number));
+    expect(el().querySelector('.state-panel--error')).toBeNull();
+    expect(el().querySelector('.document-viewer__hint')?.textContent).toContain(
+      'This document has no page 9; showing page 4.',
+    );
+    // The label follows the page actually drawn, not the one asked for.
+    expect(el().querySelector('.document-viewer__canvas')?.getAttribute('aria-label')).toBe(
+      'Page 4 of application.pdf',
+    );
+
+    await setTarget(caseTarget({ page: 0 }));
+
+    expect(renderPage).toHaveBeenLastCalledWith(1, expect.anything(), expect.any(Number));
   });
 
   it('re-renders when the page changes without re-opening the file', async () => {

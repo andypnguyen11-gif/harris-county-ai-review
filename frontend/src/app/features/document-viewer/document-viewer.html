@@ -68,10 +68,12 @@
           <p class="document-viewer__notice" role="status">{{ message }}</p>
         }
         <p class="document-viewer__hint">
-          @if (source.page !== null) {
-            Showing page {{ source.page }}.
-          } @else {
+          @if (source.page === null) {
             This citation does not name a page.
+          } @else if (pageNumber() !== source.page) {
+            This document has no page {{ source.page }}; showing page {{ pageNumber() }}.
+          } @else {
+            Showing page {{ source.page }}.
           }
         </p>
       }

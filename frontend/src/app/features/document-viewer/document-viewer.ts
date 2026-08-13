@@ -154,6 +154,20 @@ export class DocumentViewer implements OnDestroy {
         return;
       }
 
+      // A citation can name a page the document does not have: one an AI
+      // produced, or one carried over from a document that has since been
+      // re-uploaded shorter. pdf.js rejects such a request outright, so the
+      // page asked for is pulled back into the document's own range and the
+      // nearest real page is shown — as the old iframe did with a bad #page
+      // fragment — rather than failing a document that is perfectly fine.
+      const inRange = Math.min(Math.max(page, 1), handle.pageCount);
+      if (inRange !== page) {
+        // Everything keyed to the page — the label, the boxes drawn — follows
+        // the page actually shown. The write re-runs this effect.
+        this.pageNumber.set(inRange);
+        return;
+      }
+
       void this.draw(handle, page, canvas);
       this.observe(canvas);
     });
